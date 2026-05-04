@@ -1,0 +1,92 @@
+import { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth, getDisplayName, getInitials } from '../context/AuthContext'
+import { BuildingIcon, MapPinIcon, BriefcaseIcon } from './Icons'
+
+function getGreeting(): string {
+  const h = new Date().getHours()
+  if (h >= 5 && h < 12) return 'Доброе утро'
+  if (h >= 12 && h < 17) return 'Добрый день'
+  if (h >= 17 && h < 22) return 'Добрый вечер'
+  return 'Доброй ночи'
+}
+
+function getRelationTitle(value: unknown): string {
+  if (!value || typeof value !== 'object') return ''
+  const source = value as Record<string, unknown>
+  return typeof source.title === 'string' ? source.title : ''
+}
+
+export function ProfileBanner() {
+  const { profile } = useAuth()
+  const navigate = useNavigate()
+
+  const displayName = getDisplayName(profile)
+  const avatar =
+    (typeof profile?.photo === 'string' && profile.photo.trim()) ||
+    (typeof profile?.avatar === 'string' && profile.avatar.trim()) || ''
+
+  const highlights = useMemo(() => [
+    {
+      label: 'Отдел',
+      value: getRelationTitle(profile?.departments_id_data) ||
+        (typeof profile?.departments_id === 'string' ? profile.departments_id : '—'),
+      Icon: BuildingIcon,
+    },
+    {
+      label: 'Локация',
+      value: getRelationTitle(profile?.locations_id_data) ||
+        (typeof profile?.locations_id === 'string' ? profile.locations_id : '—'),
+      Icon: MapPinIcon,
+    },
+    {
+      label: 'Занятость',
+      value: getRelationTitle(profile?.employment_types_id_data) ||
+        (typeof profile?.employment_types_id === 'string' ? profile.employment_types_id : '—'),
+      Icon: BriefcaseIcon,
+    },
+  ], [profile])
+
+  return (
+    /* gradient + pseudo-elements defined in index.css .profile-banner */
+    <div className="profile-banner animate-fade-in-up">
+      {/* Top row */}
+      <button 
+        type="button" 
+        onClick={() => navigate('/profile')}
+        className="relative z-10 flex items-center gap-3.5 w-full text-left bg-transparent border-0 p-0 cursor-pointer active:opacity-70 transition-opacity"
+      >
+        <div className="w-[60px] h-[60px] shrink-0 rounded-[18px] overflow-hidden bg-white/20 border-2 border-white/30 flex items-center justify-center text-white font-extrabold text-xl backdrop-blur-sm">
+          {avatar ? (
+            <img src={avatar} alt={displayName} className="w-full h-full object-cover" />
+          ) : (
+            <span>{getInitials(profile)}</span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1 text-white">
+          <p className="m-0 text-xs font-medium opacity-80">{getGreeting()}</p>
+          <h1 className="m-0 mt-0.5 text-xl font-black leading-tight tracking-tight">{displayName}</h1>
+          <p className="m-0 mt-0.5 text-xs opacity-75 font-medium">Мобильный HR кабинет</p>
+        </div>
+      </button>
+
+      {/* Chips */}
+      <div className="relative z-10 mt-3.5 grid grid-cols-3 gap-2">
+        {highlights.map((item) => (
+          <div
+            key={item.label}
+            className="rounded-xl bg-white/15 backdrop-blur-sm border border-white/12 p-2"
+          >
+            <item.Icon size={16} className="opacity-80 mb-1" />
+            <span className="block text-[10px] opacity-70 font-medium uppercase tracking-[0.04em]">
+              {item.label}
+            </span>
+            <span className="block mt-0.5 text-[11px] leading-tight font-bold break-words">
+              {item.value || '—'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
