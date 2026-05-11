@@ -80,7 +80,6 @@ export function AbsencePage() {
   const [filter, setFilter] = useState<'all' | AbsenceStatus>('all')
   const [showCreate, setShowCreate] = useState(false)
   const [initPolicyId, setInitPolicyId] = useState('')
-  const [historyYear, setHistoryYear] = useState(new Date().getFullYear())
 
   const {
     data,
@@ -127,13 +126,6 @@ export function AbsencePage() {
     absences.forEach(r => { if (r.status in c) c[r.status]++ })
     return c
   }, [absences])
-
-  // History
-  const historyRequests = useMemo(() =>
-    absences.filter(r => r.status === 'approved' && r.dateFrom && new Date(r.dateFrom).getFullYear() === historyYear)
-  , [absences, historyYear])
-
-  const totalUsed = useMemo(() => historyRequests.reduce((s, r) => s + r.days, 0), [historyRequests])
 
   /* ── Loading ── */
   if (isLoading) return (
@@ -218,54 +210,6 @@ export function AbsencePage() {
           ) : filtered.map(req => <RequestRow key={req.guid} req={req} pol={pById.get(req.policyId)} brandColor={company.mainColor} />)}
         </section>
 
-        {/* ── History ── */}
-        <section className="rounded-2xl border border-[var(--line)] bg-white overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--line)]">
-            <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">История</p>
-            <div className="flex items-center gap-0 rounded-xl border border-[var(--line)] overflow-hidden">
-              <button type="button" onClick={() => setHistoryYear(y => y - 1)} className="w-8 h-8 flex items-center justify-center border-0 bg-transparent text-[var(--text-secondary)] active:bg-gray-100" aria-label="Пред. год">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 18l-6-6 6-6" /></svg>
-              </button>
-              <span className="min-w-[52px] text-center text-[13px] font-bold text-[var(--text-main)] border-x border-[var(--line)] leading-8">{historyYear}</span>
-              <button type="button" onClick={() => setHistoryYear(y => y + 1)} className="w-8 h-8 flex items-center justify-center border-0 bg-transparent text-[var(--text-secondary)] active:bg-gray-100" aria-label="След. год">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
-              </button>
-            </div>
-          </div>
-
-          <div className="px-4 py-3 flex gap-4 border-b border-[var(--line)]">
-            <div>
-              <p className="m-0 text-[22px] font-extrabold text-[var(--text-main)]">{totalUsed % 1 === 0 ? totalUsed : totalUsed.toFixed(1)}</p>
-              <p className="m-0 mt-0.5 text-[11px] text-[var(--text-muted)] font-medium">дней использовано</p>
-            </div>
-            <div>
-              <p className="m-0 text-[22px] font-extrabold text-[var(--text-main)]">{historyRequests.length}</p>
-              <p className="m-0 mt-0.5 text-[11px] text-[var(--text-muted)] font-medium">записей</p>
-            </div>
-          </div>
-
-          <div className="divide-y divide-[var(--line)]">
-            {historyRequests.length === 0 ? (
-              <p className="px-4 py-6 m-0 text-center text-[13px] text-[var(--text-muted)]">За {historyYear} год записей нет</p>
-            ) : historyRequests.map(r => {
-              const pol = pById.get(r.policyId)
-              const ic = typeof pol?.icon === 'string' && pol.icon ? pol.icon : DEFAULT_ICON
-              const clr = hexColor(pol?.color, company.mainColor)
-              return (
-                <div key={r.guid} className="flex items-center gap-3 px-4 py-3">
-                  <div className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center" style={{ background: `${clr}12`, color: clr }}>
-                    <Icon icon={ic} width={16} height={16} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="m-0 text-[13px] font-semibold text-[var(--text-main)] truncate">{String(pol?.title || 'Отсутствие')}</p>
-                    <p className="m-0 text-[11px] text-[var(--text-muted)]">{formatDateRu(r.dateFrom)} — {formatDateRu(r.dateTo)}</p>
-                  </div>
-                  <span className="text-[13px] font-bold text-[var(--text-main)]">{r.days} д</span>
-                </div>
-              )
-            })}
-          </div>
-        </section>
       </div>
 
       {/* ── FAB ── */}

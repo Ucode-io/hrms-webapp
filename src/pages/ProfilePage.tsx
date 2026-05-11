@@ -179,40 +179,8 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="flex flex-col gap-5 animate-fade-in-up pb-10">
-      
-      {/* Header Actions */}
-      <div className="flex items-center justify-end px-1">
-        {!isEditing ? (
-          <button 
-            type="button" 
-            onClick={() => setIsEditing(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--line)] bg-white text-[13px] font-bold text-[var(--text-main)] active:scale-95 transition-all cursor-pointer shadow-sm"
-          >
-            <Icon icon="mdi:pencil-outline" width={16} />
-            Изменить
-          </button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <button 
-              type="button" 
-              onClick={() => setIsEditing(false)}
-              className="px-4 py-2 rounded-xl border border-[var(--line)] bg-white text-[13px] font-bold text-[var(--text-muted)] active:scale-95 transition-all cursor-pointer"
-            >
-              Отмена
-            </button>
-            <button 
-              type="button" 
-              disabled={isSaving}
-              onClick={() => void handleSave()}
-              className="px-4 py-2 rounded-xl border-0 text-white text-[13px] font-bold active:scale-95 transition-all cursor-pointer shadow-md"
-              style={{ background: company.mainColor }}
-            >
-              {isSaving ? 'Сохранение...' : 'Сохранить'}
-            </button>
-          </div>
-        )}
-      </div>
+    <>
+    <div className="flex flex-col gap-5 animate-fade-in-up pb-[92px]">
 
       {error && (
         <div className="rounded-2xl border border-[var(--error-line)] bg-[var(--error-bg)] text-[var(--error-text)] px-4 py-3 text-sm font-medium">
@@ -402,5 +370,38 @@ export function ProfilePage() {
       )}
 
     </div>
+
+    {!isEditing ? (
+      <button
+        type="button"
+        onClick={() => setIsEditing(true)}
+        className="fixed bottom-[88px] right-4 z-20 w-14 h-14 rounded-2xl border-0 text-white shadow-xl cursor-pointer flex items-center justify-center transition-transform active:scale-90"
+        style={{ background: company.mainColor }}
+        aria-label="Изменить профиль"
+      >
+        <Icon icon="mdi:pencil-outline" width={24} />
+      </button>
+    ) : (
+      <div className="fixed bottom-[88px] right-4 z-20 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setIsEditing(false)}
+          disabled={isSaving}
+          className="h-11 px-4 rounded-xl border border-[var(--line)] bg-white text-[13px] font-bold text-[var(--text-secondary)] shadow-lg cursor-pointer transition-transform active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          Отмена
+        </button>
+        <button
+          type="button"
+          disabled={isSaving}
+          onClick={() => void handleSave()}
+          className="h-11 px-4 rounded-xl border-0 text-white text-[13px] font-bold shadow-xl cursor-pointer transition-transform active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+          style={{ background: company.mainColor }}
+        >
+          {isSaving ? 'Сохранение...' : 'Сохранить'}
+        </button>
+      </div>
+    )}
+    </>
   )
 }

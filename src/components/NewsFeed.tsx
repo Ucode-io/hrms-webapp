@@ -19,7 +19,7 @@ export function NewsFeed() {
   const { newsFeed, isNewsLoading, newsError } = useAuth()
 
   return (
-    <section className="animate-fade-in-up animate-delay-2 flex flex-col gap-2.5">
+    <section className="animate-fade-in-up animate-delay-3 flex flex-col gap-2.5">
       <div>
         <p className="m-0 text-[17px] font-extrabold text-[var(--text-main)] tracking-tight">
           Лента новостей

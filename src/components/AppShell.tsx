@@ -9,8 +9,10 @@ import { HomePage } from '../pages/HomePage'
 import { AbsencePage } from '../pages/AbsencePage'
 import { PayrollPage } from '../pages/PayrollPage'
 import { MorePage } from '../pages/MorePage'
-import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { ProfilePage } from '../pages/ProfilePage'
+import { SportPage } from '../pages/SportPage'
+import { OrgStructurePage } from '../pages/OrgStructurePage'
+import { TimePage } from '../pages/TimePage'
 
 function detectKonstaTheme(): 'ios' | 'material' {
   if (typeof navigator === 'undefined') return 'material'
@@ -26,6 +28,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/payroll': 'Зарплата',
   '/more': 'Ещё',
   '/profile': 'Профиль',
+  '/sport': 'Спорт',
+  '/org-structure': 'Орг структура',
 }
 
 function CurrentHeader() {
@@ -35,12 +39,17 @@ function CurrentHeader() {
   if (isHome) return <AppHeader />
 
   const title = PAGE_TITLES[pathname] || ''
-  return <PageHeader title={title} showBack={!Object.keys(PAGE_TITLES).includes(pathname)} />
+  const shouldShowBack =
+    pathname === '/sport' ||
+    pathname === '/org-structure' ||
+    !Object.keys(PAGE_TITLES).includes(pathname)
+  return <PageHeader title={title} showBack={shouldShowBack} />
 }
 
 export function AppShell() {
   const { isAuthorized } = useAuth()
   const konstaTheme = useMemo(() => detectKonstaTheme(), [])
+  const { pathname } = useLocation()
 
   if (!isAuthorized) return <Navigate to="/login" replace />
 
@@ -49,15 +58,23 @@ export function AppShell() {
       <Page className="flex flex-col min-h-svh bg-[var(--app-bg)]">
         <CurrentHeader />
 
-        <main className="flex-1 px-4 pt-4 pb-[100px] flex flex-col gap-4">
+        <main
+          className={
+            pathname === '/org-structure'
+              ? 'flex-1 pb-[84px] flex flex-col'
+              : 'flex-1 px-4 pt-4 pb-[100px] flex flex-col gap-4'
+          }
+        >
           <Routes>
             <Route index element={<Navigate to="/home" replace />} />
             <Route path="/home" element={<HomePage />} />
             <Route path="/absence" element={<AbsencePage />} />
-            <Route path="/time" element={<PlaceholderPage title="Учёт времени" />} />
+            <Route path="/time" element={<TimePage />} />
             <Route path="/payroll" element={<PayrollPage />} />
             <Route path="/more" element={<MorePage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/sport" element={<SportPage />} />
+            <Route path="/org-structure" element={<OrgStructurePage />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </main>
