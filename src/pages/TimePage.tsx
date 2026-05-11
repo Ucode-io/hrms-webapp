@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Drawer } from 'vaul'
-import { Icon } from '@iconify/react'
+// import { Icon } from '@iconify/react'
 import { useAuth } from '../context/AuthContext'
 import { useCompany } from '../context/CompanyContext'
 import {
@@ -88,7 +88,7 @@ export function TimePage() {
     (typeof profile?.guid === 'string' && profile.guid) ||
     (typeof session?.user_data?.guid === 'string' && session.user_data.guid) ||
     (typeof session?.user?.guid === 'string' && session.user.guid) || ''
-  , [profile, session])
+    , [profile, session])
 
   const companyId = useMemo(() => {
     const fromProfile = profile && typeof profile === 'object' ? (profile as Record<string, unknown>).companies_id : ''
@@ -125,7 +125,7 @@ export function TimePage() {
 
   const filteredRecords = useMemo(() =>
     records.filter((record) => resolveRecordDateKey(record) === selectedDay)
-  , [records, selectedDay])
+    , [records, selectedDay])
 
   const closeForm = () => {
     if (isSubmitting) return
@@ -192,11 +192,10 @@ export function TimePage() {
                 key={dayKey}
                 type="button"
                 onClick={() => setSelectedDay(dayKey)}
-                className={`shrink-0 px-3.5 py-2 rounded-xl text-[12px] font-bold border cursor-pointer transition-all active:scale-95 ${
-                  isActive
+                className={`shrink-0 px-3.5 py-2 rounded-xl text-[12px] font-bold border cursor-pointer transition-all active:scale-95 ${isActive
                     ? 'border-transparent text-white'
                     : 'border-[var(--line)] bg-white text-[var(--text-secondary)]'
-                }`}
+                  }`}
                 style={isActive ? { background: company.mainColor } : undefined}
               >
                 {formatDayPillLabel(dayKey)}
