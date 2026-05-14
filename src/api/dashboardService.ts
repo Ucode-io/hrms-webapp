@@ -358,7 +358,6 @@ export const uploadFile = async (file: File): Promise<string> => {
     },
     headers: {
       'Content-Type': 'multipart/form-data',
-      'Environment-Id': '75643e1b-4557-4626-a754-ffe7a86f4008',
     },
   })
   

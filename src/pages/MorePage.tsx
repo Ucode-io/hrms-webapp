@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { Drawer } from 'vaul'
+import { useAuth, getDisplayName } from '../context/AuthContext'
 import { useCompany } from '../context/CompanyContext'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
-import { LogOutIcon } from '../components/Icons'
 
 interface ServiceCard {
   label: string
@@ -14,9 +14,11 @@ interface ServiceCard {
 
 export function MorePage() {
   const navigate = useNavigate()
-  const { logout } = useAuth()
+  const { logout, profile } = useAuth()
   const { company } = useCompany()
   const [searchValue, setSearchValue] = useState('')
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const displayName = getDisplayName(profile)
 
   const services: ServiceCard[] = [
     {
@@ -37,6 +39,12 @@ export function MorePage() {
       icon: 'mdi:office-building-outline',
       onClick: () => navigate('/org-structure'),
     },
+    {
+      label: 'KPI',
+      desc: 'Цели по должности',
+      icon: 'mdi:target-arrow',
+      onClick: () => navigate('/kpi'),
+    },
   ]
 
   const normalizedSearch = searchValue.trim().toLowerCase()
@@ -50,7 +58,7 @@ export function MorePage() {
   )
 
   return (
-    <div className="animate-fade-in-up flex flex-col gap-3.5">
+    <div className="animate-fade-in-up flex flex-col gap-3.5 flex-1 min-h-0">
       <section className="rounded-2xl border border-[var(--line)] bg-white p-3.5">
         <div className="relative">
           <Icon icon="mdi:magnify" width={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
@@ -93,21 +101,66 @@ export function MorePage() {
         </section>
       )}
 
-      <button
-        type="button"
-        onClick={logout}
-        className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-2xl border border-[var(--line)] bg-white text-left cursor-pointer transition-colors duration-100 active:bg-gray-50"
-      >
-        <div className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center bg-red-50 text-red-500">
-          <LogOutIcon size={20} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="m-0 text-[15px] font-semibold leading-tight text-red-500">
-            Выйти из аккаунта
+      <div className="mt-auto flex flex-col items-center gap-2 pt-6 pb-[calc(8px+env(safe-area-inset-bottom))]">
+        <button
+          type="button"
+          onClick={() => setShowLogoutConfirm(true)}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-red-200 bg-white text-red-600 text-[13px] font-bold cursor-pointer transition-all active:scale-95 active:bg-red-50"
+        >
+          <Icon icon="mdi:logout" width={16} />
+          Выйти из аккаунта
+        </button>
+        {displayName ? (
+          <p className="m-0 text-[11px] text-[var(--text-muted)]">
+            Вы вошли как <span className="font-semibold text-[var(--text-secondary)]">{displayName}</span>
           </p>
-          <p className="m-0 mt-0.5 text-xs text-[var(--text-muted)]">Завершить сессию</p>
-        </div>
-      </button>
+        ) : null}
+      </div>
+
+      <Drawer.Root open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[2px]" />
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[28px] outline-none flex flex-col">
+            <Drawer.Title className="sr-only">Подтверждение выхода</Drawer.Title>
+            <Drawer.Description className="sr-only">
+              Подтвердите, что хотите завершить сессию
+            </Drawer.Description>
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-[4px] bg-gray-300 rounded-full" />
+            </div>
+            <div className="px-5 pt-3 pb-[calc(20px+env(safe-area-inset-bottom))]">
+              <div className="mx-auto w-12 h-12 rounded-2xl bg-red-50 inline-flex items-center justify-center mb-3">
+                <Icon icon="mdi:logout" width={24} className="text-red-500" />
+              </div>
+              <p className="m-0 text-center text-[16px] font-extrabold text-[var(--text-main)]">
+                Выйти из аккаунта?
+              </p>
+              <p className="m-0 mt-1 text-center text-[12.5px] text-[var(--text-muted)] leading-relaxed">
+                Сессия будет завершена. Для возврата потребуется снова ввести логин и пароль.
+              </p>
+              <div className="mt-5 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 h-12 rounded-2xl border border-[var(--line)] bg-white text-[14px] font-bold text-[var(--text-secondary)] cursor-pointer active:bg-gray-50"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLogoutConfirm(false)
+                    logout()
+                  }}
+                  className="flex-1 h-12 rounded-2xl border-0 bg-red-500 text-white text-[14px] font-extrabold cursor-pointer active:scale-[0.985]"
+                >
+                  Выйти
+                </button>
+              </div>
+            </div>
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
     </div>
   )
 }

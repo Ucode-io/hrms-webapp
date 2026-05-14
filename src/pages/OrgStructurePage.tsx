@@ -17,9 +17,11 @@ import {
   type NodeTypes,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { orgStructureService, type OrgEmployee, type OrgPosition } from '../api/orgStructureService'
+import { orgStructureService } from '../api/orgStructureService'
+import { useAuth } from '../context/AuthContext'
 
 const UNASSIGNED_POSITION_KEY = '__unassigned_position__'
+const FALLBACK_COMPANY_ID = '0de6b2b6-0777-4184-a620-aca70c294111'
 const NODE_WIDTH = 248
 const NODE_HEIGHT = 132
 const HORIZONTAL_GAP = 64
@@ -92,6 +94,10 @@ type Point = {
   y: number
 }
 
+type OrgEdgeData = {
+  sharedBusY?: number
+}
+
 const withAlpha = (hex: string, alphaHex: string): string => {
   const clean = hex.startsWith('#') ? hex : '#3b6cf5'
   return `${clean}${alphaHex}`
@@ -100,14 +106,6 @@ const withAlpha = (hex: string, alphaHex: string): string => {
 const getPaletteByLevel = (level: number) => {
   const index = Math.max(0, (level - 1) % COLOR_PALETTE.length)
   return COLOR_PALETTE[index]
-}
-
-const getEmployeeInitials = (employee: OrgEmployee): string => {
-  const second = employee.secondName.trim()
-  const first = employee.firstName.trim()
-  const value = `${second.charAt(0)}${first.charAt(0)}`.toUpperCase()
-  if (value) return value
-  return (employee.fullName.slice(0, 2) || 'HR').toUpperCase()
 }
 
 const normalizeTitleForRank = (raw: string): string => {
@@ -225,6 +223,7 @@ const OrgChartEdge = ({
   targetY,
   sourcePosition,
   targetPosition,
+  data,
   style,
 }: EdgeProps) => {
   const isInnerStack = sourcePosition === Position.Left && targetPosition === Position.Left
@@ -241,34 +240,29 @@ const OrgChartEdge = ({
       { x: targetX, y: targetY },
     ]
   } else {
-    const isCenteredChild = !isTargetLeft && Math.abs(targetX - sourceX) < NODE_WIDTH * 0.18
+    const sharedBusY =
+      data && typeof data === 'object' && 'sharedBusY' in data && typeof (data as OrgEdgeData).sharedBusY === 'number'
+        ? (data as OrgEdgeData).sharedBusY
+        : null
+    const verticalGap = Math.max(42, Math.min(86, Math.abs(targetY - sourceY) * 0.34))
+    const busY = sharedBusY ?? sourceY + verticalGap
 
-    if (isCenteredChild) {
+    if (isTargetLeft) {
+      const sideX = targetX - 28
       points = [
         { x: sourceX, y: sourceY },
+        { x: sourceX, y: busY },
+        { x: sideX, y: busY },
+        { x: sideX, y: targetY },
         { x: targetX, y: targetY },
       ]
     } else {
-      const verticalGap = Math.max(42, Math.min(86, Math.abs(targetY - sourceY) * 0.34))
-      const busY = sourceY + verticalGap
-
-      if (isTargetLeft) {
-        const sideX = targetX - 28
-        points = [
-          { x: sourceX, y: sourceY },
-          { x: sourceX, y: busY },
-          { x: sideX, y: busY },
-          { x: sideX, y: targetY },
-          { x: targetX, y: targetY },
-        ]
-      } else {
-        points = [
-          { x: sourceX, y: sourceY },
-          { x: sourceX, y: busY },
-          { x: targetX, y: busY },
-          { x: targetX, y: targetY },
-        ]
-      }
+      points = [
+        { x: sourceX, y: sourceY },
+        { x: sourceX, y: busY },
+        { x: targetX, y: busY },
+        { x: targetX, y: targetY },
+      ]
     }
   }
 
@@ -289,138 +283,6 @@ const OrgChartEdge = ({
 
 const edgeTypes: EdgeTypes = {
   org: OrgChartEdge,
-}
-
-const buildEmployeeTreeNodes = (positions: OrgPosition[], employees: OrgEmployee[]): EmployeeTreeNode[] => {
-  const positionsById = new Map(positions.map((position) => [position.guid, position]))
-
-  const getEmployeePositionId = (employee: OrgEmployee): string => {
-    const raw = employee.positionId.trim()
-    return raw && positionsById.has(raw) ? raw : UNASSIGNED_POSITION_KEY
-  }
-
-  const getPositionTitle = (employee: OrgEmployee): string => {
-    const positionId = getEmployeePositionId(employee)
-    if (positionId !== UNASSIGNED_POSITION_KEY) {
-      const fromPositions = positionsById.get(positionId)?.title || ''
-      if (fromPositions) return fromPositions
-    }
-    return employee.positionTitle || 'Без должности'
-  }
-
-  const employeesByPosition = new Map<string, OrgEmployee[]>()
-  for (const employee of employees) {
-    const positionId = getEmployeePositionId(employee)
-    const bucket = employeesByPosition.get(positionId) || []
-    bucket.push(employee)
-    employeesByPosition.set(positionId, bucket)
-  }
-  for (const bucket of employeesByPosition.values()) {
-    bucket.sort((a, b) => a.fullName.localeCompare(b.fullName, 'ru'))
-  }
-
-  const getPositionTitleKey = (positionId: string): string => {
-    if (positionId === UNASSIGNED_POSITION_KEY) return ''
-    return (positionsById.get(positionId)?.title || '').trim().toLowerCase()
-  }
-
-  const trueParentMemo = new Map<string, string | null>()
-  const getTrueParentPositionId = (positionId: string): string | null => {
-    if (positionId === UNASSIGNED_POSITION_KEY || !positionsById.has(positionId)) return null
-    if (trueParentMemo.has(positionId)) return trueParentMemo.get(positionId) as string | null
-
-    const ownTitle = getPositionTitleKey(positionId)
-    let currentId = positionId
-    const visited = new Set<string>([currentId])
-
-    while (true) {
-      const current = positionsById.get(currentId)
-      const parentId = current?.parentPositionId?.trim() || ''
-      if (!parentId || !positionsById.has(parentId) || visited.has(parentId)) {
-        trueParentMemo.set(positionId, null)
-        return null
-      }
-      visited.add(parentId)
-
-      const parentTitle = getPositionTitleKey(parentId)
-      if (ownTitle && ownTitle === parentTitle) {
-        currentId = parentId
-        continue
-      }
-
-      trueParentMemo.set(positionId, parentId)
-      return parentId
-    }
-  }
-
-  const positionLevelMemo = new Map<string, number>()
-  const getPositionLevel = (positionId: string, visited = new Set<string>()): number => {
-    if (positionId === UNASSIGNED_POSITION_KEY || !positionsById.has(positionId)) return 1
-    if (positionLevelMemo.has(positionId)) return positionLevelMemo.get(positionId) as number
-    if (visited.has(positionId)) return 1
-
-    visited.add(positionId)
-    const trueParent = getTrueParentPositionId(positionId)
-    const level = trueParent ? getPositionLevel(trueParent, visited) + 1 : 1
-    positionLevelMemo.set(positionId, level)
-    return level
-  }
-
-  const getParentEmployeeNodeId = (employee: OrgEmployee): string | null => {
-    const positionId = getEmployeePositionId(employee)
-    const parentPositionId = getTrueParentPositionId(positionId)
-    if (!parentPositionId) return null
-
-    const parentGroup = employeesByPosition.get(parentPositionId) || []
-    const parentEmployee = parentGroup[parentGroup.length - 1]
-    if (!parentEmployee || parentEmployee.guid === employee.guid) return null
-    return `employee:${parentEmployee.guid}`
-  }
-
-  const nodes: EmployeeTreeNode[] = employees.map((employee) => {
-    const positionId = getEmployeePositionId(employee)
-    return {
-      id: `employee:${employee.guid}`,
-      employeeGuid: employee.guid,
-      parentId: getParentEmployeeNodeId(employee),
-      positionId,
-      positionTitle: getPositionTitle(employee),
-      departmentTitle: employee.departmentTitle,
-      email: employee.email,
-      phone: employee.phone,
-      photo: employee.photo,
-      fullName: employee.fullName,
-      initials: getEmployeeInitials(employee),
-      hierarchyLevel: getPositionLevel(positionId),
-      directCount: 0,
-      totalCount: 1,
-    }
-  })
-
-  const childrenMap = new Map<string, EmployeeTreeNode[]>()
-  for (const node of nodes) {
-    if (!node.parentId) continue
-    const bucket = childrenMap.get(node.parentId) || []
-    bucket.push(node)
-    childrenMap.set(node.parentId, bucket)
-  }
-
-  const totalMemo = new Map<string, number>()
-  const calcTotal = (nodeId: string): number => {
-    if (totalMemo.has(nodeId)) return totalMemo.get(nodeId) as number
-    const children = childrenMap.get(nodeId) || []
-    const total = children.reduce((sum, child) => sum + calcTotal(child.id), 1)
-    totalMemo.set(nodeId, total)
-    return total
-  }
-
-  for (const node of nodes) {
-    const children = childrenMap.get(node.id) || []
-    node.directCount = children.length
-    node.totalCount = calcTotal(node.id)
-  }
-
-  return nodes
 }
 
 const buildGraphLayout = ({
@@ -673,35 +535,109 @@ const buildGraphLayout = ({
     }
   })
 
-  const groupMeta = new Map<string, { previousId: string | null; stacked: boolean; first: boolean }>()
-  for (const [parentId] of childrenByParent.entries()) {
-    const groups = getChildGroups(parentId)
-    for (const group of groups) {
-      const stacked = group.length > 1
-      group.forEach((childId, index) => {
-        groupMeta.set(childId, {
-          previousId: index > 0 ? group[index - 1] : null,
-          stacked,
-          first: index === 0,
-        })
-      })
+  const childGroupMetaByNodeId = new Map<
+    string,
+    {
+      isVerticalStack: boolean
+      isFirstInGroup: boolean
+      previousInGroupId: string | null
     }
+  >()
+  for (const [, childIds] of childrenByParent.entries()) {
+    const groupsMap = new Map<string, string[]>()
+    for (const childId of childIds) {
+      const childNode = nodeById.get(childId)
+      const groupKey =
+        childNode && typeof childNode.positionId === 'string' && childNode.positionId.trim()
+          ? childNode.positionId.trim()
+          : UNASSIGNED_POSITION_KEY
+
+      if (!groupsMap.has(groupKey)) {
+        groupsMap.set(groupKey, [])
+      }
+      groupsMap.get(groupKey)?.push(childId)
+    }
+
+    for (const ids of groupsMap.values()) {
+      ids.sort((leftId, rightId) => {
+        const leftTitle = nodeById.get(leftId)?.fullName || ''
+        const rightTitle = nodeById.get(rightId)?.fullName || ''
+        return leftTitle.localeCompare(rightTitle, 'ru')
+      })
+
+      const isVerticalStack = ids.length > 1
+      for (let index = 0; index < ids.length; index += 1) {
+        childGroupMetaByNodeId.set(ids[index], {
+          isVerticalStack,
+          isFirstInGroup: index === 0,
+          previousInGroupId: index > 0 ? ids[index - 1] : null,
+        })
+      }
+    }
+  }
+
+  const sharedBusYByParentId = new Map<string, number>()
+  for (const [parentId, childIds] of childrenByParent.entries()) {
+    const parentPosition = positionById.get(parentId)
+    if (!parentPosition || childIds.length === 0) {
+      continue
+    }
+
+    const directChildIds = childIds.filter((childId) => {
+      const groupMeta = childGroupMetaByNodeId.get(childId)
+      return !(groupMeta?.isVerticalStack && !groupMeta.isFirstInGroup && groupMeta.previousInGroupId)
+    })
+    if (directChildIds.length === 0) {
+      continue
+    }
+
+    const sourceY = parentPosition.y + NODE_HEIGHT
+    const minTargetY = directChildIds.reduce((minY, childId) => {
+      const childPosition = positionById.get(childId)
+      if (!childPosition) return minY
+      return Math.min(minY, childPosition.y)
+    }, Number.POSITIVE_INFINITY)
+
+    if (!Number.isFinite(minTargetY)) {
+      continue
+    }
+
+    const verticalGap = Math.max(42, Math.min(86, Math.abs(minTargetY - sourceY) * 0.34))
+    sharedBusYByParentId.set(parentId, sourceY + verticalGap)
   }
 
   const edges: Edge[] = employeeNodes
     .filter((node) => node.parentId && nodeById.has(node.parentId))
     .map((node) => {
-      const meta = groupMeta.get(node.id)
-      const isInnerStack = Boolean(meta?.stacked && !meta.first && meta.previousId)
-      const source = isInnerStack ? String(meta?.previousId) : String(node.parentId)
+      const groupMeta = childGroupMetaByNodeId.get(node.id)
+      const parentId = String(node.parentId)
+      const stackedLinkSourceId =
+        groupMeta?.isVerticalStack && !groupMeta.isFirstInGroup && groupMeta.previousInGroupId
+          ? groupMeta.previousInGroupId
+          : null
+      const source = stackedLinkSourceId || parentId
       const target = node.id
+      const isInnerStackEdge = Boolean(stackedLinkSourceId)
+      const isVerticalStackEdge = Boolean(groupMeta?.isVerticalStack)
+
+      let sourceHandle = 'source-bottom'
+      let targetHandle = 'target-top'
+      if (isInnerStackEdge) {
+        sourceHandle = 'source-left'
+        targetHandle = 'target-left'
+      } else if (isVerticalStackEdge) {
+        sourceHandle = 'source-bottom'
+        targetHandle = 'target-left'
+      }
+
+      const sharedBusY = !isInnerStackEdge ? sharedBusYByParentId.get(parentId) : undefined
 
       return {
         id: `edge:${source}:${target}`,
         source,
         target,
-        sourceHandle: isInnerStack ? 'source-left' : 'source-bottom',
-        targetHandle: isInnerStack ? 'target-left' : (meta?.stacked ? 'target-left' : 'target-top'),
+        sourceHandle,
+        targetHandle,
         type: 'org',
         animated: false,
         style: {
@@ -711,6 +647,7 @@ const buildGraphLayout = ({
           strokeLinejoin: 'round',
         },
         zIndex: 0,
+        data: sharedBusY !== undefined ? ({ sharedBusY } satisfies OrgEdgeData) : undefined,
       }
     })
 
@@ -719,29 +656,39 @@ const buildGraphLayout = ({
 
 export function OrgStructurePage() {
   const [selectedNodeId, setSelectedNodeId] = useState('')
+  const { session, profile } = useAuth()
+  const companyId = useMemo(() => {
+    const fromProfile =
+      profile && typeof profile === 'object'
+        ? (profile as Record<string, unknown>).companies_id
+        : ''
+    const fromSessionData =
+      session?.user_data && typeof session.user_data === 'object'
+        ? (session.user_data as Record<string, unknown>).companies_id
+        : ''
+    const fromSessionUser =
+      session?.user && typeof session.user === 'object'
+        ? (session.user as Record<string, unknown>).companies_id
+        : ''
+
+    if (typeof fromProfile === 'string' && fromProfile) return fromProfile
+    if (typeof fromSessionData === 'string' && fromSessionData) return fromSessionData
+    if (typeof fromSessionUser === 'string' && fromSessionUser) return fromSessionUser
+    return FALLBACK_COMPANY_ID
+  }, [profile, session])
 
   const {
     data,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['org-structure-mobile'],
+    queryKey: ['org-structure-mobile', companyId],
     queryFn: async () => {
-      const [positions, employees] = await Promise.all([
-        orgStructureService.getPositions(),
-        orgStructureService.getEmployees(),
-      ])
-      return { positions, employees }
+      return orgStructureService.getOrgStructureSnapshot(companyId || undefined)
     },
   })
 
-  const positions = data?.positions || []
-  const employees = data?.employees || []
-
-  const employeeTreeNodes = useMemo(
-    () => buildEmployeeTreeNodes(positions, employees),
-    [employees, positions],
-  )
+  const employeeTreeNodes = data?.nodes || []
 
   const graph = useMemo(
     () => buildGraphLayout({ employeeNodes: employeeTreeNodes, selectedNodeId }),
@@ -771,6 +718,17 @@ export function OrgStructurePage() {
     return (
       <div className="animate-fade-in-up h-[calc(100svh-132px)] w-full flex items-center justify-center px-4 text-sm text-[var(--error-text)]">
         Не удалось загрузить оргструктуру
+      </div>
+    )
+  }
+
+  if (!employeeTreeNodes.length) {
+    return (
+      <div className="animate-fade-in-up h-[calc(100svh-132px)] w-full flex items-center justify-center px-4">
+        <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-6 text-center">
+          <p className="m-0 text-[15px] font-semibold text-[var(--text-main)]">Нет данных для отображения</p>
+          <p className="m-0 mt-1 text-[12px] text-[var(--text-muted)]">Оргструктура для выбранной компании не найдена.</p>
+        </div>
       </div>
     )
   }

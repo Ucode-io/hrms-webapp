@@ -1,200 +1,164 @@
 import adminRequest from './adminRequest'
 
-const DEPARTMENTS_SLUG = 'departments'
-const USERS_SLUG = 'user_base'
-const POSITIONS_SLUG = 'positions'
-const EMPLOYEE_ROLE_ID = import.meta.env.VITE_EMPLOYEE_ROLE_ID || '52e5168d-660b-4339-9ec4-9c02ae226345'
+const REPORTS_FUNCTION_PATH = '/v2/invoke_function/udevs-hrms-reports'
+const GET_ORG_STRUCTURE_METHOD = 'get_org_structure'
+const UNASSIGNED_POSITION_KEY = '__unassigned_position__'
 
-export interface OrgDepartment {
-  guid: string
-  title: string
-  parentDepartmentId: string | null
-  leaderGuid: string
-  leaderName: string
-}
-
-export interface OrgEmployee {
-  guid: string
-  fullName: string
-  firstName: string
-  secondName: string
-  middleName: string
-  email: string
-  phone: string
+export interface OrgStructureGraphNode {
+  id: string
+  employeeGuid: string
+  parentId: string | null
   positionId: string
   positionTitle: string
-  departmentId: string
   departmentTitle: string
+  email: string
+  phone: string
   photo: string
+  fullName: string
+  initials: string
+  hierarchyLevel: number
+  directCount: number
+  totalCount: number
 }
 
-export interface OrgPosition {
-  guid: string
-  title: string
-  parentPositionId: string | null
+export interface OrgStructureGraphEdge {
+  source: string
+  target: string
 }
 
-type RawDepartment = Record<string, unknown>
-type RawEmployee = Record<string, unknown>
-type RawPosition = Record<string, unknown>
-
-const encodeData = (data: Record<string, unknown>): string => encodeURIComponent(JSON.stringify(data))
-
-const extractList = <T>(res: unknown): T[] => {
-  if (Array.isArray(res)) return res as T[]
-  const obj = (res && typeof res === 'object') ? (res as Record<string, unknown>) : {}
-  if (Array.isArray(obj.response)) return obj.response as T[]
-  if (Array.isArray(obj.data)) return obj.data as T[]
-  return []
+export interface OrgStructureSnapshot {
+  nodes: OrgStructureGraphNode[]
+  edges: OrgStructureGraphEdge[]
 }
+
+type OrgStructureReportNode = {
+  id?: string
+  parent_id?: string | null
+  department_guid?: string
+  hierarchy_level?: number
+  direct_employees_count?: number
+  total_employees_count?: number
+  employeeDepartmentTitle?: string
+  manager?: {
+    full_name?: string | null
+    email?: string | null
+    phone?: string | null
+    photo?: string | null
+    initials?: string | null
+    position_title?: string | null
+  } | null
+}
+
+type OrgStructureReportEdge = {
+  source?: string
+  target?: string
+}
+
+type OrgStructureInvokeResult = {
+  chart?: {
+    nodes?: OrgStructureReportNode[]
+    edges?: OrgStructureReportEdge[]
+  }
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
 
 const toText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '')
 
-const toRecord = (value: unknown): Record<string, unknown> | null =>
-  value && typeof value === 'object' ? (value as Record<string, unknown>) : null
-
-const resolveLeaderName = (source: RawDepartment): string => {
-  const relation = toRecord(source.user_base_id_data)
-  if (!relation) return 'Не назначен'
-
-  const firstName = toText(relation.first_name)
-  const secondName = toText(relation.second_name)
-  const middleName = toText(relation.middle_name)
-  const fullName = [secondName, firstName, middleName].filter(Boolean).join(' ').trim()
-  return fullName || 'Не назначен'
-}
-
-const normalizeDepartment = (raw: RawDepartment): OrgDepartment | null => {
-  const guid = toText(raw.guid)
-  const title = toText(raw.title)
-  if (!guid || !title) return null
-
-  const parentRaw = toText(raw.departments_id)
-  return {
-    guid,
-    title,
-    parentDepartmentId: parentRaw || null,
-    leaderGuid: toText(raw.user_base_id),
-    leaderName: resolveLeaderName(raw),
+const toNumber = (value: unknown, fallback = 0): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) return parsed
   }
+  return fallback
 }
 
-const resolveEmployeeFullName = (raw: RawEmployee): string => {
-  const firstName = toText(raw.first_name)
-  const secondName = toText(raw.second_name)
-  const middleName = toText(raw.middle_name)
-  const fullName = [secondName, firstName, middleName].filter(Boolean).join(' ').trim()
-  if (fullName) return fullName
-  const login = toText(raw.login)
-  if (login) return login
-  const email = toText(raw.email)
-  if (email) return email
-  return 'Сотрудник'
+const normalizeInvokeResult = <T>(raw: unknown): T => {
+  if (isRecord(raw) && 'result' in raw) {
+    return raw.result as T
+  }
+  if (isRecord(raw) && 'data' in raw && isRecord(raw.data) && 'result' in raw.data) {
+    return (raw.data as Record<string, unknown>).result as T
+  }
+  if (
+    isRecord(raw) &&
+    'data' in raw &&
+    isRecord(raw.data) &&
+    'data' in raw.data &&
+    isRecord((raw.data as Record<string, unknown>).data) &&
+    'result' in ((raw.data as Record<string, unknown>).data as Record<string, unknown>)
+  ) {
+    return (((raw.data as Record<string, unknown>).data as Record<string, unknown>).result) as T
+  }
+  return raw as T
 }
 
-const normalizeEmployee = (raw: RawEmployee): OrgEmployee | null => {
-  const guid = toText(raw.guid)
-  if (!guid) return null
+const invokeReports = async <T>(method: string, data: Record<string, unknown>): Promise<T> => {
+  const response = await adminRequest.post(REPORTS_FUNCTION_PATH, {
+    data: {
+      method,
+      data,
+    },
+  })
+  return normalizeInvokeResult<T>(response)
+}
 
-  const deptRelation = toRecord(raw.departments_id_data)
-  const departmentTitle = toText(deptRelation?.title)
-  const firstName = toText(raw.first_name)
-  const secondName = toText(raw.second_name)
-  const middleName = toText(raw.middle_name)
-  const positionId = toText(raw.positions_id)
+const normalizeGraphNode = (node: OrgStructureReportNode): OrgStructureGraphNode | null => {
+  const id = toText(node.id)
+  if (!id) return null
+
+  const manager = node.manager || null
+  const positionId = toText(node.department_guid)
+  const parentId = toText(node.parent_id) || null
+  const positionTitle = toText(manager?.position_title) || 'Без должности'
+  const fullName = toText(manager?.full_name) || positionTitle
+  const initials = toText(manager?.initials) || fullName.slice(0, 2).toUpperCase() || 'HR'
+  const employeeGuid = id.startsWith('employee:') ? id.replace(/^employee:/, '') : ''
 
   return {
-    guid,
-    fullName: resolveEmployeeFullName(raw),
-    firstName,
-    secondName,
-    middleName,
-    email: toText(raw.email),
-    phone: toText(raw.phone),
-    positionId,
-    positionTitle: toText(toRecord(raw.positions_id_data)?.title) || 'Без должности',
-    departmentId: toText(raw.departments_id),
-    departmentTitle: departmentTitle || 'Без департамента',
-    photo: toText(raw.photo) || toText(raw.avatar),
+    id,
+    employeeGuid,
+    parentId,
+    positionId: positionId && positionId !== UNASSIGNED_POSITION_KEY ? positionId : UNASSIGNED_POSITION_KEY,
+    positionTitle,
+    departmentTitle: toText(node.employeeDepartmentTitle),
+    email: toText(manager?.email),
+    phone: toText(manager?.phone),
+    photo: toText(manager?.photo),
+    fullName,
+    initials,
+    hierarchyLevel: Math.max(1, toNumber(node.hierarchy_level, 1)),
+    directCount: Math.max(0, toNumber(node.direct_employees_count, 0)),
+    totalCount: Math.max(0, toNumber(node.total_employees_count, 0)),
   }
 }
 
-const normalizePosition = (raw: RawPosition): OrgPosition | null => {
-  const guid = toText(raw.guid)
-  const title = toText(raw.title)
-  if (!guid || !title) return null
-  const parentPositionId = toText(raw.positions_id)
-  return {
-    guid,
-    title,
-    parentPositionId: parentPositionId || null,
-  }
-}
-
-const fetchAllBySlug = async <T extends Record<string, unknown>>(
-  slug: string,
-  queryData: Record<string, unknown> = {},
-): Promise<T[]> => {
-  const limit = 200
-  let offset = 0
-  const maxPages = 50
-  const list: T[] = []
-
-  for (let page = 0; page < maxPages; page += 1) {
-    const res = await adminRequest.get(`/v2/items/${slug}`, {
-      params: {
-        with_relations: true,
-        data: encodeData({ limit, offset, ...queryData }),
-      },
-    })
-
-    const chunk = extractList<T>(res)
-    if (chunk.length === 0) break
-    list.push(...chunk)
-    offset += chunk.length
-    if (chunk.length < limit) break
-  }
-
-  return list
+const normalizeGraphEdge = (edge: OrgStructureReportEdge): OrgStructureGraphEdge | null => {
+  const source = toText(edge.source)
+  const target = toText(edge.target)
+  if (!source || !target) return null
+  return { source, target }
 }
 
 export const orgStructureService = {
-  getDepartments: async (): Promise<OrgDepartment[]> => {
-    const raw = await fetchAllBySlug<RawDepartment>(DEPARTMENTS_SLUG)
-    const mapped = raw.map(normalizeDepartment).filter(Boolean) as OrgDepartment[]
+  getOrgStructureSnapshot: async (companiesId?: string): Promise<OrgStructureSnapshot> => {
+    const payload: Record<string, unknown> = {}
+    const company = toText(companiesId)
+    if (company) payload.companies_id = company
 
-    const byId = new Set(mapped.map((item) => item.guid))
-    return mapped
-      .map((item) => ({
-        ...item,
-        parentDepartmentId: item.parentDepartmentId && byId.has(item.parentDepartmentId)
-          ? item.parentDepartmentId
-          : null,
-      }))
-      .sort((a, b) => a.title.localeCompare(b.title, 'ru'))
-  },
+    const result = await invokeReports<OrgStructureInvokeResult>(GET_ORG_STRUCTURE_METHOD, payload)
+    const rawNodes = Array.isArray(result?.chart?.nodes) ? result.chart.nodes : []
+    const rawEdges = Array.isArray(result?.chart?.edges) ? result.chart.edges : []
 
-  getEmployees: async (): Promise<OrgEmployee[]> => {
-    const raw = await fetchAllBySlug<RawEmployee>(
-      USERS_SLUG,
-      EMPLOYEE_ROLE_ID ? { role_id: EMPLOYEE_ROLE_ID } : {},
-    )
-    const mapped = raw.map(normalizeEmployee).filter(Boolean) as OrgEmployee[]
-    return mapped.sort((a, b) => a.fullName.localeCompare(b.fullName, 'ru'))
-  },
+    const nodes = rawNodes.map(normalizeGraphNode).filter(Boolean) as OrgStructureGraphNode[]
+    const nodeIds = new Set(nodes.map((node) => node.id))
+    const edges = rawEdges
+      .map(normalizeGraphEdge)
+      .filter(Boolean)
+      .filter((edge): edge is OrgStructureGraphEdge => Boolean(edge && nodeIds.has(edge.source) && nodeIds.has(edge.target)))
 
-  getPositions: async (): Promise<OrgPosition[]> => {
-    const raw = await fetchAllBySlug<RawPosition>(POSITIONS_SLUG)
-    const mapped = raw.map(normalizePosition).filter(Boolean) as OrgPosition[]
-    const byId = new Set(mapped.map((item) => item.guid))
-
-    return mapped
-      .map((item) => ({
-        ...item,
-        parentPositionId: item.parentPositionId && byId.has(item.parentPositionId)
-          ? item.parentPositionId
-          : null,
-      }))
-      .sort((a, b) => a.title.localeCompare(b.title, 'ru'))
+    return { nodes, edges }
   },
 }

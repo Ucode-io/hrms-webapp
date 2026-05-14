@@ -13,6 +13,7 @@ import { ProfilePage } from '../pages/ProfilePage'
 import { SportPage } from '../pages/SportPage'
 import { OrgStructurePage } from '../pages/OrgStructurePage'
 import { TimePage } from '../pages/TimePage'
+import { KpiPage } from '../pages/KpiPage'
 
 function detectKonstaTheme(): 'ios' | 'material' {
   if (typeof navigator === 'undefined') return 'material'
@@ -30,6 +31,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/profile': 'Профиль',
   '/sport': 'Спорт',
   '/org-structure': 'Орг структура',
+  '/kpi': 'KPI',
 }
 
 function CurrentHeader() {
@@ -42,6 +44,7 @@ function CurrentHeader() {
   const shouldShowBack =
     pathname === '/sport' ||
     pathname === '/org-structure' ||
+    pathname === '/kpi' ||
     !Object.keys(PAGE_TITLES).includes(pathname)
   return <PageHeader title={title} showBack={shouldShowBack} />
 }
@@ -75,6 +78,7 @@ export function AppShell() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/sport" element={<SportPage />} />
             <Route path="/org-structure" element={<OrgStructurePage />} />
+            <Route path="/kpi" element={<KpiPage />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </main>
