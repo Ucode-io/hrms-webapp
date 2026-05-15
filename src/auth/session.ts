@@ -8,6 +8,7 @@ export interface AuthSession {
   isAuth: boolean
   token: string
   refreshToken: string | null
+  companyId: string | null
   user: UserData
   user_data: UserData
 }
@@ -15,16 +16,25 @@ export interface AuthSession {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
 
+const normalizeCompanyId = (value: unknown): string | null =>
+  typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+
 export const persistSession = (authData: LoginResponseData): AuthSession => {
   const token = authData.token.access_token
   const refreshToken = authData.token.refresh_token || null
+  const companyId =
+    normalizeCompanyId(authData.companies_id) || normalizeCompanyId(authData.user_data?.companies_id)
+  const normalizedUserData: UserData = companyId
+    ? { ...authData.user_data, companies_id: companyId }
+    : authData.user_data
 
   const session: AuthSession = {
     isAuth: true,
     token,
     refreshToken,
-    user: authData.user_data,
-    user_data: authData.user_data,
+    companyId,
+    user: normalizedUserData,
+    user_data: normalizedUserData,
   }
 
   localStorage.setItem(PERSIST_KEY, JSON.stringify(session))
@@ -50,6 +60,7 @@ export const loadSession = (): AuthSession | null => {
           token: parsed.token,
           refreshToken:
             typeof parsed.refreshToken === 'string' ? parsed.refreshToken : null,
+          companyId: normalizeCompanyId(parsed.companyId),
           user: isRecord(parsed.user) ? (parsed.user as UserData) : {},
           user_data: isRecord(parsed.user_data)
             ? (parsed.user_data as UserData)
@@ -74,6 +85,7 @@ export const loadSession = (): AuthSession | null => {
     isAuth: true,
     token: fallbackToken,
     refreshToken: fallbackRefresh,
+    companyId: null,
     user: {},
     user_data: {},
   }

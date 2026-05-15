@@ -88,6 +88,7 @@ export const reportsService = {
     date_from: string
     date_to: string
     position_id?: string
+    companies_id?: string
     search?: string
   }): Promise<KpiTableResponse> => {
     return invokeReports<KpiTableResponse>('get_kpi_table', data)

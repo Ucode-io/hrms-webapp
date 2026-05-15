@@ -21,6 +21,7 @@ export interface UserData {
   role_id?: string
   client_type_id?: string
   user_id_auth?: string
+  companies_id?: string | null
   avatar?: string
   photo?: string
   [key: string]: unknown
@@ -29,6 +30,7 @@ export interface UserData {
 export interface LoginResponseData {
   token: TokenData
   user_data: UserData
+  companies_id?: string | null
 }
 
 interface LoginResponse {

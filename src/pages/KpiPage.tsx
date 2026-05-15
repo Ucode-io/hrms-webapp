@@ -91,12 +91,31 @@ export function KpiPage() {
     )
   }, [profile, session])
 
+  const companiesId = useMemo(() => {
+    const fromProfile =
+      profile && typeof profile === 'object'
+        ? (profile as Record<string, unknown>).companies_id
+        : ''
+    const fromSessionData =
+      session?.user_data && typeof session.user_data === 'object'
+        ? (session.user_data as Record<string, unknown>).companies_id
+        : ''
+    const fromSessionUser =
+      session?.user && typeof session.user === 'object'
+        ? (session.user as Record<string, unknown>).companies_id
+        : ''
+    const value = [fromProfile, fromSessionData, fromSessionUser].find(
+      (item) => typeof item === 'string' && item.trim().length > 0,
+    )
+    return typeof value === 'string' ? value.trim() : ''
+  }, [profile, session])
+
   const range = useMemo(() => getPeriodRange(cursorDate, periodMode), [cursorDate, periodMode])
   const periodTitle = useMemo(() => formatPeriodLabel(cursorDate, periodMode), [cursorDate, periodMode])
 
   const queryKey = useMemo(
-    () => ['kpi-table-mobile', periodMode, range.from, range.to, positionId] as const,
-    [periodMode, range.from, range.to, positionId],
+    () => ['kpi-table-mobile', periodMode, range.from, range.to, positionId, companiesId] as const,
+    [periodMode, range.from, range.to, positionId, companiesId],
   )
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
@@ -107,6 +126,7 @@ export function KpiPage() {
         date_from: range.from,
         date_to: range.to,
         position_id: positionId || undefined,
+        companies_id: companiesId || undefined,
       })
     },
     enabled: Boolean(positionId),
@@ -122,7 +142,7 @@ export function KpiPage() {
 
   useEffect(() => {
     setExpandedIds(new Set())
-  }, [periodMode, range.from, range.to, positionId])
+  }, [periodMode, range.from, range.to, positionId, companiesId])
 
   const totalKpiCount = useMemo(
     () => groupsState.reduce((sum, group) => sum + countNodesByType(group.items, periodMode), 0),
@@ -286,17 +306,13 @@ export function KpiPage() {
           >
             <Icon icon="mdi:chevron-left" width={18} />
           </button>
-          <button
-            type="button"
-            onClick={() => setCursorDate(new Date())}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-xl border-0 bg-white/15 backdrop-blur text-white text-[12px] font-bold cursor-pointer active:bg-white/25"
-          >
+          <div className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-xl border-0 bg-white/15 backdrop-blur text-white text-[12px] font-bold">
             <Icon icon="mdi:calendar-today" width={14} />
-            Сегодня
+            {periodTitle}
             {isFetching ? (
               <span className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-white/40 border-t-white" />
             ) : null}
-          </button>
+          </div>
           <button
             type="button"
             onClick={() => setCursorDate((prev) => movePeriod(prev, periodMode, 'next'))}
