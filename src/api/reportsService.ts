@@ -59,6 +59,62 @@ export interface UpdateKpiValueResponse {
   } | null
 }
 
+export type EmployeeAbsenceStatus = 'pending' | 'approved' | 'rejected'
+export type EmployeeAbsencePeriodSlug = 'week' | 'month' | 'year'
+
+export interface EmployeeAbsencePolicy {
+  guid: string
+  title: string
+  icon: string | null
+  color: string | null
+  period: EmployeeAbsencePeriodSlug
+  limit: number
+  cycle: { from: string; to: string }
+  used_days: number
+  pending_days: number
+  available: number
+}
+
+export interface EmployeeAbsencePolicyRef {
+  guid: string
+  title: string
+  icon: string | null
+  color: string | null
+  period: EmployeeAbsencePeriodSlug
+}
+
+export interface EmployeeAbsenceRequest {
+  guid: string
+  absence_policies_id: string | null
+  policy: EmployeeAbsencePolicyRef | null
+  date_from: string | null
+  date_to: string | null
+  requested_days: number
+  status: EmployeeAbsenceStatus
+  note: string | null
+  attachments: string | null
+  requested_breakdown: string | null
+  reviewed_at: string | null
+  reviewed_by: string | null
+  reject_reason: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface EmployeeAbsenceSummary {
+  as_of_date: string
+  user_base_id: string
+  policies: EmployeeAbsencePolicy[]
+  requests: EmployeeAbsenceRequest[]
+  history: {
+    year: number
+    from: string
+    to: string
+    total_used_days: number
+    approved: EmployeeAbsenceRequest[]
+  }
+}
+
 type ReportsInvokeResponse<T> = {
   method?: string
   result?: T
@@ -99,5 +155,13 @@ export const reportsService = {
       guid,
       actual_value: actualValue,
     })
+  },
+
+  getEmployeeAbsenceSummary: async (data: {
+    user_base_id: string
+    as_of_date?: string
+    history_year?: number
+  }): Promise<EmployeeAbsenceSummary> => {
+    return invokeReports<EmployeeAbsenceSummary>('get_employee_absence_summary', data)
   },
 }
