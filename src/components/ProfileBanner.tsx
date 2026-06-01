@@ -17,7 +17,7 @@ function getRelationTitle(value: unknown): string {
   return typeof source.title === 'string' ? source.title : ''
 }
 
-export function ProfileBanner() {
+export function ProfileBanner({ disableNav = false }: { disableNav?: boolean }) {
   const { profile } = useAuth()
   const navigate = useNavigate()
 
@@ -53,8 +53,8 @@ export function ProfileBanner() {
       {/* Top row */}
       <button 
         type="button" 
-        onClick={() => navigate('/profile')}
-        className="relative z-10 flex items-center gap-3.5 w-full text-left bg-transparent border-0 p-0 cursor-pointer active:opacity-70 transition-opacity"
+        onClick={() => !disableNav && navigate('/profile')}
+        className={`relative z-10 flex items-center gap-3.5 w-full text-left bg-transparent border-0 p-0 transition-opacity ${disableNav ? 'cursor-default' : 'cursor-pointer active:opacity-70'}`}
       >
         <div className="w-[60px] h-[60px] shrink-0 rounded-[18px] overflow-hidden bg-white/20 border-2 border-white/30 flex items-center justify-center text-white font-extrabold text-xl backdrop-blur-sm">
           {avatar ? (

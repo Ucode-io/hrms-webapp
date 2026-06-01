@@ -21,12 +21,6 @@ export function MorePage() {
 
   const services: ServiceCard[] = [
     {
-      label: 'Профиль',
-      desc: 'Личные данные и контакты',
-      icon: 'mdi:account-outline',
-      onClick: () => navigate('/profile'),
-    },
-    {
       label: 'Спорт',
       desc: 'Посещение спорта',
       icon: 'mdi:dumbbell',

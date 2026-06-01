@@ -3,6 +3,7 @@ import { useAuth, getDisplayName, getInitials } from '../context/AuthContext'
 import { useCompany } from '../context/CompanyContext'
 import { updateUserBase, uploadFile } from '../api/dashboardService'
 import { Icon } from '@iconify/react'
+import { ProfileBanner } from '../components/ProfileBanner'
 
 function getRelationTitle(value: unknown): string {
   if (!value || typeof value !== 'object') return ''
@@ -164,9 +165,6 @@ export function ProfilePage() {
     </div>
   )
 
-  const jobTitle = getRelationTitle(profile?.roles_id_data) || (typeof profile?.roles_id === 'string' ? profile.roles_id : 'Сотрудник')
-  const location = getRelationTitle(profile?.locations_id_data) || (typeof profile?.locations_id === 'string' ? profile.locations_id : '—')
-  
   const workingData = {
     startDate: typeof profile?.contract_date === 'string' ? profile.contract_date : '',
     jobType: getRelationTitle(profile?.employment_types_id_data),
@@ -190,25 +188,8 @@ export function ProfilePage() {
 
       {!isEditing ? (
         <>
-          {/* Avatar and Main Info */}
-          <div className="profile-banner animate-fade-in-up shadow-sm mb-2 rounded-[24px]">
-            <div className="relative z-10 flex flex-col items-center">
-              <div className="w-[88px] h-[88px] shrink-0 rounded-[28px] overflow-hidden bg-white/20 border-2 border-white/30 flex items-center justify-center text-white font-extrabold text-2xl backdrop-blur-sm">
-                {avatar ? (
-                  <img src={avatar} alt={displayName} className="w-full h-full object-cover" />
-                ) : (
-                  <span>{getInitials(profile)}</span>
-                )}
-              </div>
-              <h1 className="m-0 mt-4 text-[22px] font-black text-white tracking-tight text-center drop-shadow-sm">
-                {displayName}
-              </h1>
-              <div className="flex flex-wrap items-center justify-center gap-3 mt-2 text-[13px] font-semibold text-white/90">
-                <span className="flex items-center gap-1.5"><Icon icon="mdi:briefcase-outline" /> {jobTitle}</span>
-                <span className="flex items-center gap-1.5"><Icon icon="mdi:map-marker-outline" /> {location}</span>
-              </div>
-            </div>
-          </div>
+          {/* Profile banner */}
+          <ProfileBanner disableNav />
 
           {/* Personal Info Read */}
           <section className="rounded-[24px] border border-[var(--line)] bg-white overflow-hidden shadow-sm">
