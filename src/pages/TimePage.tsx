@@ -95,6 +95,13 @@ function recordDateIso(r: AttendanceRecord): string {
   const p = new Date(s); return isNaN(p.getTime()) ? '' : toIsoDate(p)
 }
 
+// Prefer the server-computed delay_time; fall back to deriving from check-in.
+function getDelay(r: AttendanceRecord): string {
+  const stored = normalizeTime(String(r.delay_time || ''))
+  if (stored) return stored
+  return computeDelayTimeFromCheckIn(String(r.check_in_time || ''))
+}
+
 /* ── Day status type ─────────────────────────────────── */
 type DayStatus = 'present' | 'late' | 'absent' | 'active' | 'future' | 'weekend' | 'empty'
 
@@ -198,15 +205,18 @@ function CalendarGrid({
           const style = DAY_STATUS_STYLE[status]
           const recs = recordsByDate.get(iso) || []
           const checkIn = recs.length > 0 ? normalizeTime(String(recs[0].check_in_time || '')) : ''
+          const isToday = iso === todayIso
+          const interactive = status !== 'future' && status !== 'weekend'
 
           return (
             <button
               key={iso}
               type="button"
-              onClick={() => status !== 'future' && status !== 'weekend' && onDayPress(iso)}
+              aria-label={`${day} число`}
+              onClick={() => interactive && onDayPress(iso)}
               className={`relative flex flex-col items-center justify-center rounded-xl py-1.5 min-h-[46px] transition-all active:scale-95 ${style.cell} ${
-                status === 'future' || status === 'weekend' ? 'cursor-default' : 'cursor-pointer'
-              }`}
+                isToday && status !== 'active' ? 'ring-2 ring-[var(--accent)]/50' : ''
+              } ${interactive ? 'cursor-pointer' : 'cursor-default'}`}
             >
               <span className={`text-[13px] leading-none ${style.num}`}>{day}</span>
               {checkIn && (
@@ -239,17 +249,18 @@ function CalendarGrid({
 }
 
 /* ── Daily log row ───────────────────────────────────── */
-function LogRow({ record, onPress }: { record: AttendanceRecord; onPress: () => void }) {
+function LogRow({ record, todayIso, onPress }: { record: AttendanceRecord; todayIso: string; onPress: () => void }) {
   const iso = recordDateIso(record)
   const checkIn = formatTime(record.check_in_time)
   const checkOut = formatTime(record.check_out_time)
   const duration = formatDuration(String(record.check_in_time || ''), String(record.check_out_time || ''))
   const actionStatus = normalizeActionStatus(record.action_status)
   const workflowStatus = normalizeWorkflowStatus(record.status)
-  const actionCfg = ACTION_BADGE[actionStatus] || ACTION_BADGE.unknown
+  const delay = getDelay(record)
+  // "Active" only makes sense for today: checked in, not yet checked out.
+  const isActive = iso === todayIso && checkIn !== '—' && checkOut === '—'
+  const actionCfg = isActive ? ACTION_BADGE.active : (ACTION_BADGE[actionStatus] || ACTION_BADGE.unknown)
   const workflowCfg = WORKFLOW_BADGE[workflowStatus] || WORKFLOW_BADGE.unknown
-  const isActive = actionStatus === 'unknown' && checkIn !== '—' && checkOut === '—'
-    || (checkIn !== '—' && checkOut === '—')
 
   const d = iso ? new Date(iso) : null
   const dayNum = d ? String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') : '—'
@@ -274,9 +285,10 @@ function LogRow({ record, onPress }: { record: AttendanceRecord; onPress: () => 
         </p>
         <p className="m-0 mt-0.5 text-[11.5px] text-[var(--text-muted)]">
           {duration && <span>{duration}</span>}
-          {computeDelayTimeFromCheckIn(String(record.check_in_time || '')) !== '00:00' && normalizeTime(String(record.check_in_time || '')) && (
-            <span className="text-amber-600"> · +{computeDelayTimeFromCheckIn(String(record.check_in_time || ''))} опозд.</span>
+          {delay !== '00:00' && (
+            <span className="text-amber-600">{duration ? ' · ' : ''}+{delay} опозд.</span>
           )}
+          {!duration && delay === '00:00' && actionStatus === 'absent' && <span>Отсутствие</span>}
         </p>
       </div>
 
@@ -312,7 +324,7 @@ function RecordDetailDrawer({ record, open, onClose }: {
   const actionStatus = normalizeActionStatus(record.action_status)
   const workflowStatus = normalizeWorkflowStatus(record.status)
   const actionCfg = ACTION_BADGE[actionStatus] || ACTION_BADGE.unknown
-  const delay = computeDelayTimeFromCheckIn(String(record.check_in_time || ''))
+  const delay = getDelay(record)
   const d = iso ? new Date(iso) : null
 
   return (
@@ -398,6 +410,18 @@ function AddRecordDrawer({ open, defaultDate, employeeGuid, companyId, accentCol
   const [form, setForm] = useState({ date: defaultDate, checkIn: '', checkOut: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [prevOpen, setPrevOpen] = useState(open)
+
+  // The drawer stays mounted between opens. Re-seed the form on each open
+  // transition (React-recommended "adjust state during render" pattern) so the
+  // chosen calendar day is applied and previous input is cleared.
+  if (open !== prevOpen) {
+    setPrevOpen(open)
+    if (open) {
+      setForm({ date: defaultDate, checkIn: '', checkOut: '' })
+      setError('')
+    }
+  }
 
   const delay = useMemo(
     () => (normalizeTime(form.checkIn) ? computeDelayTimeFromCheckIn(form.checkIn) : null),
@@ -534,7 +558,7 @@ export function TimePage() {
     return pick(profile) || pick(session?.user_data) || pick(session?.user) || ''
   }, [profile, session])
 
-  const { data: allRecords = [], isLoading, refetch } = useQuery({
+  const { data: allRecords = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['attendance', employeeGuid],
     queryFn: () => attendanceService.getByEmployee(employeeGuid),
     enabled: Boolean(employeeGuid),
@@ -560,21 +584,22 @@ export function TimePage() {
     [allRecords, monthPrefix],
   )
 
-  /* Stats */
+  /* Stats — counted per unique day (a day may have several attendance rows) */
   const stats = useMemo(() => {
     const plannedDays = countWorkdaysInMonth(monthKey)
     const elapsedDays = countElapsedWorkdays(monthKey, todayIso)
     let worked = 0, late = 0, absent = 0
-    for (const r of monthRecords) {
-      const s = normalizeActionStatus(r.action_status)
+    for (const [iso, recs] of recordsByDate) {
+      if (!iso.startsWith(monthPrefix) || recs.length === 0) continue
+      const s = normalizeActionStatus(recs[0].action_status) // recs[0] = newest
       if (s === 'present' || s === 'late') worked++
       if (s === 'late') late++
       if (s === 'absent') absent++
     }
-    const rate = elapsedDays > 0 ? Math.round((worked / elapsedDays) * 100) : 0
+    const rate = elapsedDays > 0 ? Math.min(100, Math.round((worked / elapsedDays) * 100)) : 0
     const rateLabel = rate >= 95 ? 'Отлично' : rate >= 80 ? 'Хорошо' : rate >= 60 ? 'Удовл.' : 'Низкий'
     return { plannedDays, elapsedDays, worked, late, absent, rate, rateLabel }
-  }, [monthRecords, monthKey, todayIso])
+  }, [recordsByDate, monthPrefix, monthKey, todayIso])
 
   const prevMonth = () => {
     const d = monthKeyToDate(monthKey)
@@ -586,6 +611,13 @@ export function TimePage() {
   }
 
   const openAdd = (iso: string) => { setAddDefaultDate(iso); setShowAdd(true) }
+
+  // Tap a calendar day: open its record if one exists, otherwise add a new one.
+  const handleDayPress = (iso: string) => {
+    const recs = recordsByDate.get(iso)
+    if (recs && recs.length > 0) setSelectedRecord(recs[0])
+    else openAdd(iso)
+  }
 
   return (
     <>
@@ -613,8 +645,22 @@ export function TimePage() {
           </div>
         </div>
 
+        {/* ── Error ─────────────────────────────────── */}
+        {isError && !isLoading && (
+          <div className="rounded-2xl bg-rose-50 px-4 py-3.5 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <Icon icon="mdi:alert-circle-outline" width={20} className="shrink-0 text-rose-500" />
+              <p className="m-0 text-[13px] font-semibold text-rose-600 truncate">Не удалось загрузить данные</p>
+            </div>
+            <button type="button" onClick={() => void refetch()}
+              className="shrink-0 rounded-xl bg-white px-3 py-1.5 text-[12px] font-bold text-rose-600 active:scale-95 transition-transform">
+              Повторить
+            </button>
+          </div>
+        )}
+
         {/* ── Stats 2×2 ─────────────────────────────── */}
-        {!isLoading && (
+        {!isLoading && !isError && (
           <div className="grid grid-cols-2 gap-3">
             <StatCard icon="mdi:calendar-month" iconBg="bg-indigo-400"
               value={String(stats.plannedDays)} label="Рабочих дней" sub={`${stats.elapsedDays} прошло`} />
@@ -645,7 +691,7 @@ export function TimePage() {
               monthKey={monthKey}
               todayIso={todayIso}
               recordsByDate={recordsByDate}
-              onDayPress={(iso) => openAdd(iso)}
+              onDayPress={handleDayPress}
             />
           )}
         </div>
@@ -670,7 +716,7 @@ export function TimePage() {
           ) : (
             <div className="divide-y divide-[var(--line)]">
               {monthRecords.map((r) => (
-                <LogRow key={r.guid} record={r} onPress={() => setSelectedRecord(r)} />
+                <LogRow key={r.guid} record={r} todayIso={todayIso} onPress={() => setSelectedRecord(r)} />
               ))}
             </div>
           )}
