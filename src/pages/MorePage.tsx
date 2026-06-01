@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Drawer } from 'vaul'
 import { useAuth, getDisplayName } from '../context/AuthContext'
 import { useCompany } from '../context/CompanyContext'
@@ -16,7 +16,6 @@ export function MorePage() {
   const navigate = useNavigate()
   const { logout, profile } = useAuth()
   const { company } = useCompany()
-  const [searchValue, setSearchValue] = useState('')
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const displayName = getDisplayName(profile)
 
@@ -45,39 +44,24 @@ export function MorePage() {
       icon: 'mdi:target-arrow',
       onClick: () => navigate('/kpi'),
     },
+    {
+      label: 'Документы',
+      desc: 'Мои файлы и документы',
+      icon: 'mdi:file-document-outline',
+      onClick: () => navigate('/documents'),
+    },
+    {
+      label: 'Имущество',
+      desc: 'Закреплённое имущество',
+      icon: 'mdi:package-variant-closed',
+      onClick: () => navigate('/property'),
+    },
   ]
-
-  const normalizedSearch = searchValue.trim().toLowerCase()
-  const filteredServices = useMemo(
-    () => services.filter((item) => {
-      if (!normalizedSearch) return true
-      const haystack = `${item.label} ${item.desc}`.toLowerCase()
-      return haystack.includes(normalizedSearch)
-    }),
-    [normalizedSearch, services],
-  )
 
   return (
     <div className="animate-fade-in-up flex flex-col gap-3.5 flex-1 min-h-0">
-      <section className="rounded-2xl border border-[var(--line)] bg-white p-3.5">
-        <div className="relative">
-          <Icon icon="mdi:magnify" width={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-          <input
-            value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
-            placeholder="Название модуля"
-            className="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--app-bg)] pl-9 pr-3 text-[13px] text-[var(--text-main)] outline-none focus:border-[var(--accent)]"
-          />
-        </div>
-      </section>
-
-      {filteredServices.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-10 text-center text-sm text-[var(--text-muted)]">
-          Модули не найдены
-        </div>
-      ) : (
-        <section className="grid grid-cols-3 gap-2">
-          {filteredServices.map((item) => (
+      <section className="grid grid-cols-3 gap-2">
+          {services.map((item) => (
             <button
               key={item.label}
               type="button"
@@ -99,7 +83,6 @@ export function MorePage() {
             </button>
           ))}
         </section>
-      )}
 
       <div className="mt-auto flex flex-col items-center gap-2 pt-6 pb-[calc(8px+env(safe-area-inset-bottom))]">
         <button
