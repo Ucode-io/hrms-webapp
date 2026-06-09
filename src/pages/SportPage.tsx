@@ -353,11 +353,13 @@ export function SportPage() {
         </svg>
       </button>
 
-      <Drawer.Root open={showForm} onOpenChange={setShowForm}>
+      {/* handleOnly: keep the date input tappable — vaul's full-content drag
+          otherwise swallows taps so the native picker never opens. */}
+      <Drawer.Root open={showForm} onOpenChange={setShowForm} handleOnly>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" />
           <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[28px] outline-none max-h-[90vh] flex flex-col">
-            <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-[4px] bg-gray-300 rounded-full" /></div>
+            <div className="flex justify-center pt-3 pb-1"><Drawer.Handle className="!w-10 !h-[4px] !bg-gray-300" /></div>
             <div className="px-5 pt-2 pb-[calc(18px+env(safe-area-inset-bottom))] overflow-y-auto">
               <h3 className="m-0 text-[18px] font-extrabold text-[var(--text-main)]">
                 {editing ? 'Изменить посещение спорта' : 'Добавить посещение спорта'}

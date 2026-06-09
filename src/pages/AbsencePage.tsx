@@ -5,6 +5,7 @@ import { Icon } from '@iconify/react'
 import { useAuth } from '../context/AuthContext'
 import { useCompany } from '../context/CompanyContext'
 import { absenceService, formatDateRu, toIsoDate } from '../api/absenceService'
+import DateField from '../components/DateField'
 import {
   reportsService,
   type EmployeeAbsencePolicy,
@@ -301,7 +302,10 @@ export function AbsencePage() {
       )}
 
       {/* ── Create Drawer ── */}
-      <Drawer.Root open={showCreate} onOpenChange={setShowCreate}>
+      {/* handleOnly: drag is restricted to the handle so the form controls
+          (select / date inputs) stay tappable — otherwise vaul's drag gesture
+          swallows taps and the native pickers never open. */}
+      <Drawer.Root open={showCreate} onOpenChange={setShowCreate} handleOnly>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" />
           <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[28px] outline-none max-h-[92vh] flex flex-col">
@@ -310,7 +314,7 @@ export function AbsencePage() {
               Создание заявки на отсутствие
             </Drawer.Description>
             <div className="flex justify-center pt-3 pb-1">
-              <div className="w-10 h-[4px] bg-gray-300 rounded-full" />
+              <Drawer.Handle className="!w-10 !h-[4px] !bg-gray-300" />
             </div>
             <div className="flex-1 overflow-y-auto px-5 pt-2 pb-[calc(20px+env(safe-area-inset-bottom))]">
               <CreateForm
@@ -522,26 +526,25 @@ function CreateForm({
           <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
             С
           </label>
-          <input
-            type="date"
+          <DateField
             value={dateFrom}
-            onChange={(e) => {
-              setDateFrom(e.target.value)
-              if (dateTo < e.target.value) setDateTo(e.target.value)
+            accent={color}
+            onChange={(iso) => {
+              setDateFrom(iso)
+              if (dateTo < iso) setDateTo(iso)
             }}
-            className={inputCls}
           />
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
             По
           </label>
-          <input
-            type="date"
+          <DateField
             value={dateTo}
             min={dateFrom}
-            onChange={(e) => setDateTo(e.target.value)}
-            className={inputCls}
+            accent={color}
+            align="right"
+            onChange={(iso) => setDateTo(iso)}
           />
         </div>
       </div>
