@@ -1,6 +1,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
   type ReactNode,
 } from 'react'
@@ -8,6 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import { loginWithPassword, type UserData } from '../api/authService'
 import { getNewsFeed, getUserBaseByGuid, type NewsItem } from '../api/dashboardService'
+import { setUnauthorizedHandler } from '../api/unauthorizedHandler'
 import {
   clearSession,
   loadSession,
@@ -138,6 +140,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null)
     setLoginError('')
   }
+
+  // Let the authenticated axios interceptor force a logout on any 401.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      localStorage.removeItem('user_profile')
+      setSession(null)
+      setLoginError('')
+    })
+    return () => setUnauthorizedHandler(null)
+  }, [])
 
   return (
     <AuthContext.Provider

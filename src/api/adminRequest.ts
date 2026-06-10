@@ -1,4 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
+import { handleUnauthorized } from './unauthorizedHandler'
 
 const API_BASE_URL = 'https://api.admin.u-code.io/'
 const DEFAULT_PROJECT_ID = '9a462573-ce11-4288-928a-a6ba754b6998'
@@ -136,7 +137,15 @@ adminRequest.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 
 adminRequest.interceptors.response.use(
   (response) => response?.data?.data?.data ?? response?.data?.data ?? response?.data,
-  (error: AxiosError) => Promise.reject(error),
+  (error: AxiosError) => {
+    // A 401 on an authenticated request means the token is dead — force logout.
+    // Only act when we actually had a Bearer token (API-KEY calls can 401 for
+    // unrelated reasons and must not bounce an anonymous user).
+    if (error.response?.status === 401 && localStorage.getItem('auth_token')) {
+      handleUnauthorized()
+    }
+    return Promise.reject(error)
+  },
 )
 
 export default adminRequest
