@@ -73,6 +73,12 @@ export interface EmployeeAbsencePolicy {
   used_days: number
   pending_days: number
   available: number
+  /** Minimum employment tenure (months) required before this policy can be used. */
+  min_months?: number
+  /** False when the employee has not yet reached `min_months` of tenure. */
+  eligible?: boolean
+  /** ISO date from which the policy becomes available (hire date + min_months). */
+  eligible_at?: string | null
 }
 
 export interface EmployeeAbsencePolicyRef {

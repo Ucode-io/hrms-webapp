@@ -162,6 +162,7 @@ export function AbsencePage() {
               const pct = pol.limit > 0 ? Math.min((pol.used_days / pol.limit) * 100, 100) : 0
               const ic = typeof pol.icon === 'string' && pol.icon ? pol.icon : DEFAULT_ICON
               const clr = hexColor(pol.color, company.mainColor)
+              const eligible = pol.eligible !== false
 
               return (
                 <div
@@ -199,6 +200,13 @@ export function AbsencePage() {
                         Ожидает: {pol.pending_days % 1 === 0 ? pol.pending_days : pol.pending_days.toFixed(1)} д
                       </p>
                     ) : null}
+                    {!eligible ? (
+                      <p className="m-0 mt-1.5 rounded-lg bg-amber-50 px-2 py-1 text-[10.5px] font-semibold text-amber-700">
+                        {pol.eligible_at
+                          ? `Доступно с ${formatDateRu(pol.eligible_at)}`
+                          : `Доступно после ${pol.min_months ?? 0} мес. стажа`}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="h-[5px] rounded-full bg-gray-100 overflow-hidden">
                     <div
@@ -208,11 +216,12 @@ export function AbsencePage() {
                   </div>
                   <button
                     type="button"
+                    disabled={!eligible}
                     onClick={() => {
                       setInitPolicyId(pol.guid)
                       setShowCreate(true)
                     }}
-                    className="w-full h-9 rounded-xl border-0 text-[12px] font-bold cursor-pointer transition-all active:scale-[0.97]"
+                    className="w-full h-9 rounded-xl border-0 text-[12px] font-bold cursor-pointer transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
                     style={{ background: `${clr}12`, color: clr }}
                   >
                     Создать запрос
@@ -467,9 +476,18 @@ function CreateForm({
   const selected = policies.find((p) => p.guid === policyId)
   const avail = selected?.available ?? 0
   const forecast = avail - days
+  const eligible = selected ? selected.eligible !== false : true
 
   const submit = async () => {
     if (!policyId || days <= 0) return
+    if (selected && selected.eligible === false) {
+      setErr(
+        selected.eligible_at
+          ? `Этот тип отсутствия будет доступен с ${formatDateRu(selected.eligible_at)}.`
+          : `Этот тип отсутствия доступен после ${selected.min_months ?? 0} мес. стажа.`,
+      )
+      return
+    }
     setSubmitting(true)
     setErr('')
     try {
@@ -597,6 +615,14 @@ function CreateForm({
         />
       </div>
 
+      {!eligible && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 px-4 py-2.5 text-[13px] font-medium">
+          {selected?.eligible_at
+            ? `Этот тип отсутствия будет доступен с ${formatDateRu(selected.eligible_at)}.`
+            : `Этот тип отсутствия доступен после ${selected?.min_months ?? 0} мес. стажа.`}
+        </div>
+      )}
+
       {err && (
         <div className="rounded-2xl border border-[var(--error-line)] bg-[var(--error-bg)] text-[var(--error-text)] px-4 py-2.5 text-[13px] font-medium">
           {err}
@@ -605,7 +631,7 @@ function CreateForm({
 
       <button
         type="button"
-        disabled={submitting || !policyId || days <= 0}
+        disabled={submitting || !policyId || days <= 0 || !eligible}
         onClick={() => void submit()}
         className="w-full h-[52px] rounded-2xl text-white font-bold text-[15px] border-0 cursor-pointer transition-all active:scale-[0.97] disabled:opacity-50 shadow-lg"
         style={{ background: color }}
