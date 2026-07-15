@@ -50,6 +50,18 @@ export function MorePage() {
       icon: 'mdi:package-variant-closed',
       onClick: () => navigate('/property'),
     },
+    {
+      label: 'Опросы',
+      desc: 'Назначенные опросники',
+      icon: 'mdi:clipboard-text-outline',
+      onClick: () => navigate('/surveys'),
+    },
+    {
+      label: 'Тренинги',
+      desc: 'Обучение и домашние задания',
+      icon: 'mdi:school-outline',
+      onClick: () => navigate('/trainings'),
+    },
   ]
 
   return (

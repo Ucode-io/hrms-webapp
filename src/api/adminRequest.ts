@@ -3,7 +3,7 @@ import { handleUnauthorized } from './unauthorizedHandler'
 
 const API_BASE_URL = 'https://api.admin.u-code.io/'
 const DEFAULT_PROJECT_ID = '9a462573-ce11-4288-928a-a6ba754b6998'
-const API_KEY = 'P-bta3QjePSLS84na33QXCvxUEv3vB4iMU'
+const API_KEY = 'P-aUAOU0KNOuRctMIRJDjVb5kElKgxkYpI'
 const AUTH_PERSIST_KEY = 'ayva-auth'
 const USER_PROFILE_KEY = 'user_profile'
 

@@ -16,6 +16,10 @@ import { TimePage } from '../pages/TimePage'
 import { KpiPage } from '../pages/KpiPage'
 import { DocumentsPage } from '../pages/DocumentsPage'
 import { PropertyPage } from '../pages/PropertyPage'
+import { SurveysPage } from '../pages/SurveysPage'
+import { SurveyTakePage } from '../pages/SurveyTakePage'
+import { TrainingsPage } from '../pages/TrainingsPage'
+import { TrainingDetailPage } from '../pages/TrainingDetailPage'
 
 function detectKonstaTheme(): 'ios' | 'material' {
   if (typeof navigator === 'undefined') return 'material'
@@ -36,6 +40,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/kpi': 'KPI',
   '/documents': 'Документы',
   '/property': 'Имущество',
+  '/surveys': 'Опросы',
+  '/trainings': 'Тренинги',
 }
 
 function CurrentHeader() {
@@ -44,13 +50,23 @@ function CurrentHeader() {
 
   if (isHome) return <AppHeader />
 
-  const title = PAGE_TITLES[pathname] || ''
+  const isSurveyTake = /^\/surveys\/.+/.test(pathname)
+  const isTrainingDetail = /^\/trainings\/.+/.test(pathname)
+  const title = isSurveyTake
+    ? 'Прохождение опроса'
+    : isTrainingDetail
+      ? 'Тренинг'
+      : PAGE_TITLES[pathname] || ''
   const shouldShowBack =
     pathname === '/sport' ||
     pathname === '/org-structure' ||
     pathname === '/kpi' ||
     pathname === '/documents' ||
     pathname === '/property' ||
+    pathname === '/surveys' ||
+    pathname === '/trainings' ||
+    isSurveyTake ||
+    isTrainingDetail ||
     !Object.keys(PAGE_TITLES).includes(pathname)
   return <PageHeader title={title} showBack={shouldShowBack} />
 }
@@ -87,6 +103,10 @@ export function AppShell() {
             <Route path="/kpi" element={<KpiPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/property" element={<PropertyPage />} />
+            <Route path="/surveys" element={<SurveysPage />} />
+            <Route path="/surveys/:id" element={<SurveyTakePage />} />
+            <Route path="/trainings" element={<TrainingsPage />} />
+            <Route path="/trainings/:id" element={<TrainingDetailPage />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </main>

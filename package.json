@@ -18,6 +18,8 @@
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-router-dom": "^7.14.2",
+    "survey-core": "^2.5.34",
+    "survey-react-ui": "^2.5.34",
     "vaul": "^1.1.2"
   },
   "devDependencies": {

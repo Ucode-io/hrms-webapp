@@ -165,3 +165,26 @@ input[type="date"].mobile-input::-webkit-inner-spin-button,
 input[type="date"].mobile-input::-webkit-clear-button {
   display: none;
 }
+
+/* ── SurveyJS (прохождение опросов) — доводка под стиль приложения ──────────
+   Базовая тема задаётся в src/config/surveyTheme.ts; здесь только то, что
+   переменными темы не покрывается в этой версии разметки. */
+
+/* Заголовок опроса: убираем синюю полосу, ставим тонкий разделитель. */
+.sd-root-modern .sd-title.sd-container-modern__title {
+  box-shadow: inset 0 -1px 0 #f3f4f6;
+}
+
+/* h3 заголовка опроса игнорирует --sjs-font-surveytitle-* в этой разметке —
+   иерархия: опрос (24px) > страница (19px) > вопрос. */
+.sd-root-modern .sd-container-modern__title .sd-header__text h3 {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #111827;
+}
+
+.sd-root-modern .sd-container-modern__title .sd-description {
+  font-size: 14px;
+  color: #6b7280;
+}
