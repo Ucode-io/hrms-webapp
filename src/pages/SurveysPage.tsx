@@ -50,7 +50,7 @@ export function SurveysPage() {
     >
       <div
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-          survey.completed ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'
+          survey.completed ? 'bg-green-50 text-green-600' : 'bg-[var(--accent-light)] text-[var(--accent)]'
         }`}
       >
         <Icon

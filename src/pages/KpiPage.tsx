@@ -7,6 +7,7 @@ import {
   reportsService,
   type KpiPeriodType,
 } from '../api/reportsService'
+import { resolveCompaniesId } from '../api/adminRequest'
 import {
   KPI_PERIOD_TABS,
   clampPercent,
@@ -91,24 +92,10 @@ export function KpiPage() {
     )
   }, [profile, session])
 
-  const companiesId = useMemo(() => {
-    const fromProfile =
-      profile && typeof profile === 'object'
-        ? (profile as Record<string, unknown>).companies_id
-        : ''
-    const fromSessionData =
-      session?.user_data && typeof session.user_data === 'object'
-        ? (session.user_data as Record<string, unknown>).companies_id
-        : ''
-    const fromSessionUser =
-      session?.user && typeof session.user === 'object'
-        ? (session.user as Record<string, unknown>).companies_id
-        : ''
-    const value = [fromProfile, fromSessionData, fromSessionUser].find(
-      (item) => typeof item === 'string' && item.trim().length > 0,
-    )
-    return typeof value === 'string' ? value.trim() : ''
-  }, [profile, session])
+  const companiesId = useMemo(
+    () => resolveCompaniesId(profile, session?.user_data, session?.user),
+    [profile, session],
+  )
 
   const range = useMemo(() => getPeriodRange(cursorDate, periodMode), [cursorDate, periodMode])
   const periodTitle = useMemo(() => formatPeriodLabel(cursorDate, periodMode), [cursorDate, periodMode])
@@ -353,7 +340,7 @@ export function KpiPage() {
         </div>
         <div className="rounded-2xl border border-[var(--line)] bg-white px-3 py-2.5">
           <div className="flex items-center gap-1.5">
-            <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-[var(--accent-light)] text-[var(--accent)]">
               <Icon icon="mdi:target" width={13} />
             </span>
             <p className="m-0 text-[10.5px] text-[var(--text-muted)] font-semibold">Всего</p>

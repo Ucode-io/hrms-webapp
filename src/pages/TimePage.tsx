@@ -13,6 +13,7 @@ import {
   toIsoDate,
   type AttendanceRecord,
 } from '../api/attendanceService'
+import { resolveCompaniesId } from '../api/adminRequest'
 
 /* ── Date helpers ────────────────────────────────────── */
 function getMonthKey(date: Date) {
@@ -552,11 +553,10 @@ export function TimePage() {
     (typeof session?.user?.guid === 'string' && session.user.guid) || ''
   , [profile, session])
 
-  const companyId = useMemo(() => {
-    const pick = (obj: unknown) => typeof (obj as Record<string,unknown> | null)?.companies_id === 'string'
-      ? String((obj as Record<string,unknown>).companies_id) : ''
-    return pick(profile) || pick(session?.user_data) || pick(session?.user) || ''
-  }, [profile, session])
+  const companyId = useMemo(
+    () => resolveCompaniesId(profile, session?.user_data, session?.user),
+    [profile, session],
+  )
 
   const { data: allRecords = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['attendance', employeeGuid],

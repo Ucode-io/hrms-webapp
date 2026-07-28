@@ -18,10 +18,10 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { orgStructureService } from '../api/orgStructureService'
+import { resolveCompaniesId } from '../api/adminRequest'
 import { useAuth } from '../context/AuthContext'
 
 const UNASSIGNED_POSITION_KEY = '__unassigned_position__'
-const FALLBACK_COMPANY_ID = '0de6b2b6-0777-4184-a620-aca70c294111'
 const NODE_WIDTH = 248
 const NODE_HEIGHT = 132
 const HORIZONTAL_GAP = 64
@@ -657,25 +657,10 @@ const buildGraphLayout = ({
 export function OrgStructurePage() {
   const [selectedNodeId, setSelectedNodeId] = useState('')
   const { session, profile } = useAuth()
-  const companyId = useMemo(() => {
-    const fromProfile =
-      profile && typeof profile === 'object'
-        ? (profile as Record<string, unknown>).companies_id
-        : ''
-    const fromSessionData =
-      session?.user_data && typeof session.user_data === 'object'
-        ? (session.user_data as Record<string, unknown>).companies_id
-        : ''
-    const fromSessionUser =
-      session?.user && typeof session.user === 'object'
-        ? (session.user as Record<string, unknown>).companies_id
-        : ''
-
-    if (typeof fromProfile === 'string' && fromProfile) return fromProfile
-    if (typeof fromSessionData === 'string' && fromSessionData) return fromSessionData
-    if (typeof fromSessionUser === 'string' && fromSessionUser) return fromSessionUser
-    return FALLBACK_COMPANY_ID
-  }, [profile, session])
+  const companyId = useMemo(
+    () => resolveCompaniesId(profile, session?.user_data, session?.user),
+    [profile, session],
+  )
 
   const {
     data,

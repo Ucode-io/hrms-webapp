@@ -2,10 +2,20 @@ import {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   type ReactNode,
 } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { defaultCompanyBrand, getCompanyBrand, type CompanyBrand } from '../api/companyService'
+import {
+  defaultCompanyBrand,
+  getCompanyBrand,
+  resolveBrandCompanyId,
+  type CompanyBrand,
+} from '../api/companyService'
+import { resolveCompaniesId } from '../api/adminRequest'
+import { useAuth } from './AuthContext'
+
+const brandCacheKey = (companiesId: string) => `company_brand:${companiesId}`
 
 /* ── Color utils ────────────────────────────── */
 function hexToHsl(hex: string): { h: number; s: number; l: number } {
@@ -39,6 +49,7 @@ function applyBrandColors(mainColor: string) {
   root.style.setProperty('--accent', `hsl(${h}, ${s}%, ${l}%)`)
   root.style.setProperty('--accent-light', `hsl(${h}, ${Math.min(s + 10, 100)}%, 94%)`)
   root.style.setProperty('--accent-soft', `hsla(${h}, ${s}%, ${l}%, 0.08)`)
+  root.style.setProperty('--accent-dark', `hsl(${h}, ${s}%, ${Math.max(l - 10, 20)}%)`)
   root.style.setProperty('--gradient-start', `hsl(${h}, ${Math.min(s + 5, 100)}%, ${Math.min(l + 8, 60)}%)`)
   root.style.setProperty('--gradient-end', `hsl(${(h + 20) % 360}, ${Math.min(s + 10, 100)}%, ${Math.max(l - 5, 30)}%)`)
 }
@@ -53,12 +64,18 @@ const CompanyContext = createContext<CompanyContextValue>({
 })
 
 export function CompanyProvider({ children }: { children: ReactNode }) {
+  const { session, profile } = useAuth()
+  const companiesId = useMemo(
+    () => resolveBrandCompanyId(resolveCompaniesId(profile, session?.user_data, session?.user)),
+    [profile, session],
+  )
+
   const { data: company = defaultCompanyBrand } = useQuery({
-    queryKey: ['companyBrand'],
+    queryKey: ['companyBrand', companiesId],
     queryFn: async () => {
       try {
-        const brand = await getCompanyBrand()
-        localStorage.setItem('company_brand', JSON.stringify(brand))
+        const brand = await getCompanyBrand(companiesId)
+        localStorage.setItem(brandCacheKey(companiesId), JSON.stringify(brand))
         return brand
       } catch {
         return defaultCompanyBrand
@@ -66,7 +83,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     },
     initialData: () => {
       try {
-        const cached = localStorage.getItem('company_brand')
+        const cached = localStorage.getItem(brandCacheKey(companiesId))
         if (cached) return JSON.parse(cached) as CompanyBrand
       } catch {}
       return undefined

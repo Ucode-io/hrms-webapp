@@ -30,7 +30,7 @@ const STATUS_META: Record<
 > = {
   submitted: {
     label: 'ДЗ на проверке',
-    className: 'bg-blue-50 text-blue-600',
+    className: 'bg-[var(--accent-light)] text-[var(--accent)]',
     icon: 'mdi:clock-outline',
   },
   accepted: {

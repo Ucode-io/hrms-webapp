@@ -34,7 +34,7 @@ const parseStoredRecord = (raw: string | null): Record<string, unknown> | null =
   }
 }
 
-const getCompaniesIdFromStorage = (): string | null => {
+export const getCompaniesId = (): string | null => {
   const persistedSession = parseStoredRecord(localStorage.getItem(AUTH_PERSIST_KEY))
   const persistedUserProfile = parseStoredRecord(localStorage.getItem(USER_PROFILE_KEY))
 
@@ -44,6 +44,44 @@ const getCompaniesIdFromStorage = (): string | null => {
     normalizeCompanyId(persistedSession?.user && (persistedSession.user as Record<string, unknown>).companies_id) ||
     normalizeCompanyId(persistedUserProfile?.companies_id)
   )
+}
+
+// Резолвер для UI-слоя: сначала свежие данные профиля/сессии из React-стейта,
+// затем сохранённая сессия. Возвращает '' — удобно для query-key и payload'ов.
+export const resolveCompaniesId = (...sources: unknown[]): string => {
+  for (const source of sources) {
+    if (!isRecord(source)) continue
+    const value = normalizeCompanyId(source.companies_id)
+    if (value) return value
+  }
+
+  return getCompaniesId() || ''
+}
+
+// GET-фильтры уходят в один query-параметр `data` — либо объектом, либо уже
+// закодированной JSON-строкой. Достаём исходные фильтры, чтобы не потерять их
+// при добавлении companies_id.
+const parseDataQueryParam = (value: unknown): Record<string, unknown> => {
+  if (isRecord(value)) return value
+  if (typeof value !== 'string' || value.length === 0) return {}
+
+  const candidates = [value]
+  try {
+    candidates.push(decodeURIComponent(value))
+  } catch {
+    // Оставляем исходный вариант.
+  }
+
+  for (const candidate of candidates) {
+    try {
+      const parsed: unknown = JSON.parse(candidate)
+      if (isRecord(parsed)) return parsed
+    } catch {
+      // Пробуем следующий вариант.
+    }
+  }
+
+  return {}
 }
 
 const isItemsRequest = (url?: string): boolean =>
@@ -67,6 +105,8 @@ const injectCompaniesIntoItemsRequest = (
   if (method === 'get') {
     const params = isRecord(config.params) ? { ...config.params } : {}
     params.companies_id = companiesId
+    const dataParam = parseDataQueryParam(params.data)
+    params.data = encodeURIComponent(JSON.stringify(withCompaniesId(dataParam, companiesId)))
     config.params = params
     return config
   }
@@ -95,10 +135,10 @@ const injectCompaniesIntoInvokeFunctionRequest = (
 ): InternalAxiosRequestConfig => {
   if (!isInvokeFunctionRequest(config.url)) return config
 
+  // Шлюз разворачивает конверт до объекта с `method`, а метод читает только
+  // вложенный `data` — companies_id кладём именно туда (как в hrms-front).
   const requestBody: Record<string, unknown> = isRecord(config.data) ? { ...config.data } : {}
   const gatewayPayload: Record<string, unknown> = isRecord(requestBody.data) ? { ...requestBody.data } : {}
-
-  gatewayPayload.companies_id = companiesId
 
   if (isRecord(gatewayPayload.data)) {
     gatewayPayload.data = withCompaniesId(gatewayPayload.data, companiesId)
@@ -110,7 +150,6 @@ const injectCompaniesIntoInvokeFunctionRequest = (
     gatewayPayload.data = { companies_id: companiesId }
   }
 
-  requestBody.companies_id = companiesId
   requestBody.data = gatewayPayload
   config.data = requestBody
   return config
@@ -118,7 +157,7 @@ const injectCompaniesIntoInvokeFunctionRequest = (
 
 adminRequest.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = localStorage.getItem('auth_token')
-  const companiesId = getCompaniesIdFromStorage()
+  const companiesId = getCompaniesId()
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`

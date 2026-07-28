@@ -32,11 +32,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <HashRouter>
-        <CompanyProvider>
-          <AuthProvider>
+        {/* AuthProvider снаружи: брендинг компании зависит от залогиненного пользователя. */}
+        <AuthProvider>
+          <CompanyProvider>
             <AuthGate />
-          </AuthProvider>
-        </CompanyProvider>
+          </CompanyProvider>
+        </AuthProvider>
       </HashRouter>
     </QueryClientProvider>
   )

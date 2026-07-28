@@ -1,9 +1,14 @@
 import axios from 'axios'
+import { getCompaniesId } from './adminRequest'
 
-const COMPANY_API_URL =
-  'https://api.admin.u-code.io/v2/items/companies/0de6b2b6-0777-4184-a620-aca70c294111'
+const COMPANIES_API_URL = 'https://api.admin.u-code.io/v2/items/companies'
+// Брендинг до логина: компании ещё нет, показываем дефолтную (как в hrms-front).
+const LOGIN_SCREEN_COMPANY_ID = '0de6b2b6-0777-4184-a620-aca70c294111'
 const PROJECT_ID = 'f90c520f-eb6a-496c-9fa0-c38095d4793b'
 const API_KEY = 'P-JtJ1lICCMHmhp9JaoxhWh1ZAwoyzFtxw'
+
+export const resolveBrandCompanyId = (companiesId?: string | null): string =>
+  (companiesId && companiesId.trim()) || getCompaniesId() || LOGIN_SCREEN_COMPANY_ID
 
 export interface CompanyBrand {
   name: string
@@ -32,8 +37,9 @@ export const defaultCompanyBrand: CompanyBrand = {
   companyCover: '',
 }
 
-export const getCompanyBrand = async (): Promise<CompanyBrand> => {
-  const response = await axios.get<CompanyApiResponse>(COMPANY_API_URL, {
+export const getCompanyBrand = async (companiesId?: string | null): Promise<CompanyBrand> => {
+  const companyId = resolveBrandCompanyId(companiesId)
+  const response = await axios.get<CompanyApiResponse>(`${COMPANIES_API_URL}/${companyId}`, {
     params: { 'project-id': PROJECT_ID },
     headers: {
       Authorization: 'API-KEY',

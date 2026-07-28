@@ -132,7 +132,7 @@ export function TrainingDetailPage() {
         onClick={() => fileInputRef.current?.click()}
         className="flex w-full items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-4 text-left transition active:scale-[0.99]"
       >
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-light)] text-[var(--accent)]">
           <Icon icon={selectedFile ? 'mdi:file-check-outline' : 'mdi:file-upload-outline'} width={22} />
         </div>
         <div className="min-w-0 flex-1">
@@ -167,7 +167,7 @@ export function TrainingDetailPage() {
         onChange={(event) => setComment(event.target.value)}
         placeholder="Комментарий к работе (необязательно)"
         rows={2}
-        className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-[14px] text-gray-800 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none"
+        className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-[14px] text-gray-800 placeholder:text-gray-400 focus:border-[var(--accent)] focus:outline-none"
       />
 
       {submitError && (
@@ -178,7 +178,7 @@ export function TrainingDetailPage() {
         type="button"
         onClick={handleSubmit}
         disabled={isSubmitting}
-        className="w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-medium text-white transition active:scale-[0.99] disabled:opacity-60"
+        className="w-full rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-medium text-white transition active:scale-[0.99] disabled:opacity-60"
       >
         {isSubmitting ? 'Отправляем...' : 'Отправить домашнее задание'}
       </button>
@@ -194,7 +194,7 @@ export function TrainingDetailPage() {
     return (
       <div
         className={`space-y-2 rounded-xl p-4 ${
-          isAccepted ? 'bg-green-50' : isRejected ? 'bg-red-50' : 'bg-blue-50'
+          isAccepted ? 'bg-green-50' : isRejected ? 'bg-red-50' : 'bg-[var(--accent-light)]'
         }`}
       >
         <div className="flex items-center gap-2">
@@ -207,11 +207,11 @@ export function TrainingDetailPage() {
                   : 'mdi:clock-outline'
             }
             width={20}
-            className={isAccepted ? 'text-green-600' : isRejected ? 'text-red-500' : 'text-blue-600'}
+            className={isAccepted ? 'text-green-600' : isRejected ? 'text-red-500' : 'text-[var(--accent)]'}
           />
           <p
             className={`text-[14px] font-semibold ${
-              isAccepted ? 'text-green-700' : isRejected ? 'text-red-600' : 'text-blue-700'
+              isAccepted ? 'text-green-700' : isRejected ? 'text-red-600' : 'text-[var(--accent)]'
             }`}
           >
             {isAccepted
@@ -254,7 +254,7 @@ export function TrainingDetailPage() {
             type="button"
             onClick={() => setIsResubmitting(true)}
             className={`w-full rounded-xl px-4 py-2.5 text-sm font-medium text-white transition active:scale-[0.99] ${
-              isRejected ? 'bg-red-500' : 'bg-blue-600'
+              isRejected ? 'bg-red-500' : 'bg-[var(--accent)]'
             }`}
           >
             Отправить заново
@@ -331,7 +331,7 @@ export function TrainingDetailPage() {
                     rel="noreferrer"
                     className="flex items-center gap-3 rounded-xl border border-gray-100 p-3 transition active:scale-[0.99]"
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-light)] text-[var(--accent)]">
                       <Icon icon={MATERIAL_ICONS[material.material_type]} width={18} />
                     </div>
                     <div className="min-w-0 flex-1">

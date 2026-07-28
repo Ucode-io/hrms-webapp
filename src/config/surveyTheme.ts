@@ -1,7 +1,7 @@
 import type { ITheme } from 'survey-core'
 
 /**
- * SurveyJS theme matched to the webview look: Inter, blue-600 primary,
+ * SurveyJS theme matched to the webview look: Inter, цвет компании как primary,
  * soft rounded corners, panelless (questions flow inside our own white
  * rounded-2xl card instead of drawing their own boxes).
  */
@@ -42,10 +42,10 @@ export const surveyTheme: ITheme = {
     '--sjs-general-dim-forecolor': 'rgba(17, 24, 39, 1)',
     '--sjs-general-dim-forecolor-light': 'rgba(107, 114, 128, 1)',
 
-    // Primary: blue-600 (app accent).
-    '--sjs-primary-backcolor': 'rgba(37, 99, 235, 1)',
-    '--sjs-primary-backcolor-light': 'rgba(37, 99, 235, 0.08)',
-    '--sjs-primary-backcolor-dark': 'rgba(29, 78, 216, 1)', // blue-700
+    // Primary: цвет компании (--accent, выставляется CompanyProvider).
+    '--sjs-primary-backcolor': 'var(--accent)',
+    '--sjs-primary-backcolor-light': 'var(--accent-soft)',
+    '--sjs-primary-backcolor-dark': 'var(--accent-dark)',
     '--sjs-primary-forecolor': 'rgba(255, 255, 255, 1)',
     '--sjs-primary-forecolor-light': 'rgba(255, 255, 255, 0.25)',
 
@@ -67,7 +67,7 @@ export const surveyTheme: ITheme = {
     '--sjs-special-green-light': 'rgba(34, 197, 94, 0.1)',
     '--sjs-special-red': 'rgba(239, 68, 68, 1)',
     '--sjs-special-red-light': 'rgba(239, 68, 68, 0.1)',
-    '--sjs-special-blue': 'rgba(37, 99, 235, 1)',
-    '--sjs-special-blue-light': 'rgba(37, 99, 235, 0.1)',
+    '--sjs-special-blue': 'var(--accent)',
+    '--sjs-special-blue-light': 'var(--accent-soft)',
   },
 }

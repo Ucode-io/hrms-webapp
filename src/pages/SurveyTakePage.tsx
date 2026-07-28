@@ -104,7 +104,7 @@ export function SurveyTakePage() {
           <button
             type="button"
             onClick={() => navigate('/surveys')}
-            className="mt-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white"
+            className="mt-2 rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white"
           >
             К списку опросов
           </button>
@@ -117,7 +117,7 @@ export function SurveyTakePage() {
           <button
             type="button"
             onClick={() => navigate('/surveys')}
-            className="mt-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white"
+            className="mt-2 rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white"
           >
             К списку опросов
           </button>
@@ -130,7 +130,7 @@ export function SurveyTakePage() {
             </div>
           )}
           {isSubmitting && (
-            <div className="mx-4 mt-4 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-600">
+            <div className="mx-4 mt-4 rounded-xl bg-[var(--accent-light)] px-4 py-3 text-sm text-[var(--accent)]">
               Отправляем ответы...
             </div>
           )}

@@ -1,7 +1,6 @@
-import adminRequest from './adminRequest'
+import adminRequest, { getCompaniesId } from './adminRequest'
 
 const ATTENDANCE_COLLECTION = 'attendance'
-const DEFAULT_COMPANY_GUID = '0de6b2b6-0777-4184-a620-aca70c294111'
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/
 
 export type AttendanceWorkflowStatus = 'accepted' | 'rejected' | 'requested' | 'unknown'
@@ -159,7 +158,7 @@ export const attendanceService = {
     return adminRequest.post(`/v2/items/${ATTENDANCE_COLLECTION}`, {
       data: {
         user_base_id: userBaseId,
-        companies_id: companyId || DEFAULT_COMPANY_GUID,
+        companies_id: companyId || getCompaniesId(),
         date,
         ...(normalizedCheckIn ? { check_in_time: normalizedCheckIn } : {}),
         ...(normalizedCheckOut ? { check_out_time: normalizedCheckOut } : {}),

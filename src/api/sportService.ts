@@ -1,7 +1,6 @@
-import adminRequest from './adminRequest'
+import adminRequest, { getCompaniesId } from './adminRequest'
 
 const SPORT_ATTENDANCE_COLLECTION = 'sport_attendance'
-const DEFAULT_COMPANY_GUID = '0de6b2b6-0777-4184-a620-aca70c294111'
 
 export interface SportAttendanceRecord {
   guid: string
@@ -119,7 +118,7 @@ export const sportService = {
     adminRequest.post(`/v2/items/${SPORT_ATTENDANCE_COLLECTION}`, {
       data: {
         user_base_id: userBaseId,
-        companies_id: companyId || DEFAULT_COMPANY_GUID,
+        companies_id: companyId || getCompaniesId(),
         time: toIsoDateTime(date, time),
         video,
       },
@@ -143,7 +142,7 @@ export const sportService = {
     adminRequest.put(`/v2/items/${SPORT_ATTENDANCE_COLLECTION}/${guid}`, {
       data: {
         user_base_id: userBaseId,
-        companies_id: companyId || DEFAULT_COMPANY_GUID,
+        companies_id: companyId || getCompaniesId(),
         time: toIsoDateTime(date, time),
         video,
       },

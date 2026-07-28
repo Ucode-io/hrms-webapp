@@ -13,6 +13,7 @@ import {
   splitSportDateTime,
   type SportAttendanceRecord,
 } from '../api/sportService'
+import { resolveCompaniesId } from '../api/adminRequest'
 
 type SportForm = {
   date: string
@@ -49,13 +50,6 @@ const getLastSixMonthKeys = (): string[] => {
   return result
 }
 
-const getCompanyId = (source: unknown): string => {
-  if (!source || typeof source !== 'object') return ''
-  const obj = source as Record<string, unknown>
-  const value = obj.companies_id
-  return typeof value === 'string' ? value : ''
-}
-
 export function SportPage() {
   const { session, profile } = useAuth()
   const { company } = useCompany()
@@ -78,7 +72,7 @@ export function SportPage() {
   , [profile, session])
 
   const companyId = useMemo(
-    () => getCompanyId(profile) || getCompanyId(session?.user_data) || getCompanyId(session?.user),
+    () => resolveCompaniesId(profile, session?.user_data, session?.user),
     [profile, session],
   )
 
