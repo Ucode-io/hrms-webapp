@@ -68,6 +68,12 @@ export function MorePage() {
       icon: 'mdi:school-outline',
       onClick: () => navigate('/trainings'),
     },
+    {
+      label: 'База знаний',
+      desc: 'Регламенты и инструкции',
+      icon: 'mdi:book-open-page-variant-outline',
+      onClick: () => navigate('/knowledge'),
+    },
   ]
 
   return (

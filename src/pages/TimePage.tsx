@@ -14,6 +14,10 @@ import {
   type AttendanceRecord,
 } from '../api/attendanceService'
 import { resolveCompaniesId } from '../api/adminRequest'
+import { reportsService } from '../api/reportsService'
+// Единый формат сумм по всему приложению — чтобы валюта не разъезжалась
+// между экранами «Зарплата» и «Учёт времени».
+import { formatAmount } from '../api/payrollService'
 
 /* ── Date helpers ────────────────────────────────────── */
 function getMonthKey(date: Date) {
@@ -512,6 +516,16 @@ function AddRecordDrawer({ open, defaultDate, employeeGuid, companyId, accentCol
   )
 }
 
+/** «95 мин» → «1 ч 35 мин»: часы читаются быстрее трёхзначных минут. */
+function formatMinutes(total: number): string {
+  const minutes = Math.max(0, Math.round(total))
+  if (minutes < 60) return `${minutes} мин`
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  return rest > 0 ? `${hours} ч ${rest} мин` : `${hours} ч`
+}
+
+
 /* ── Stats card ──────────────────────────────────────── */
 function StatCard({ icon, iconBg, value, label, sub, valueColor }: {
   icon: string; iconBg: string; value: string; label: string; sub?: string; valueColor?: string
@@ -583,6 +597,36 @@ export function TimePage() {
     () => allRecords.filter((r) => recordDateIso(r).startsWith(monthPrefix)).sort((a, b) => recordDateIso(b).localeCompare(recordDateIso(a))),
     [allRecords, monthPrefix],
   )
+
+  /* Опоздания и штраф за месяц — считает сервер: нужны оклад, график работы,
+     рабочие дни по календарю праздников и настройки компании (коэффициент и
+     «прощаемые» минуты), которых на клиенте нет. */
+  const { data: lateness = null } = useQuery({
+    queryKey: ['employee-lateness', employeeGuid, monthKey],
+    queryFn: () =>
+      reportsService.getEmployeeLatenessSummary({
+        user_base_id: employeeGuid,
+        month: monthKey,
+      }),
+    enabled: Boolean(employeeGuid),
+    staleTime: 60_000,
+  })
+
+  /** Пока метод не задеплоен (`lateness === null`) показываем «—», а не «0 сум»:
+   *  ноль читался бы как «штрафа нет», хотя данных просто нет. */
+  const latenessPenaltyLabel = !lateness
+    ? '—'
+    : !lateness.has_work_schedule
+      ? '—'
+      : formatAmount(Math.round(lateness.penalty_amount))
+
+  const latenessPenaltyHint = !lateness
+    ? 'Нет данных'
+    : !lateness.has_work_schedule
+      ? 'Не задан график работы'
+      : lateness.penalized_minutes > 0
+        ? `${formatMinutes(lateness.penalized_minutes)} сверх ${lateness.grace_minutes} мин`
+        : `До ${lateness.grace_minutes} мин не штрафуется`
 
   /* Stats — counted per unique day (a day may have several attendance rows) */
   const stats = useMemo(() => {
@@ -666,13 +710,23 @@ export function TimePage() {
               value={String(stats.plannedDays)} label="Рабочих дней" sub={`${stats.elapsedDays} прошло`} />
             <StatCard icon="mdi:check-circle" iconBg="bg-emerald-400"
               value={String(stats.worked)} label="Отработано" valueColor="text-emerald-600" />
+            {/* Опоздания: количество и суммарные минуты. Минуты приходят с
+                сервера (та же агрегация, что в отчётах и зарплатном Excel) —
+                на клиенте их из сырых записей честно не посчитать. */}
             <StatCard icon="mdi:clock-alert" iconBg="bg-amber-400"
-              value={String(stats.late + stats.absent)} label="Опоздания + отсутствия"
-              sub={stats.late || stats.absent ? `${stats.late} опозд · ${stats.absent} отс.` : undefined} />
-            <StatCard icon="mdi:chart-bar" iconBg="bg-violet-400"
-              value={`${stats.rate}%`} label="Явка"
-              valueColor={stats.rate >= 90 ? 'text-emerald-600' : stats.rate >= 70 ? 'text-amber-600' : 'text-rose-600'}
-              sub={stats.rateLabel} />
+              value={String(lateness?.late_days ?? stats.late)} label="Опозданий"
+              valueColor={(lateness?.late_days ?? stats.late) > 0 ? 'text-amber-600' : undefined}
+              sub={
+                lateness
+                  ? `${formatMinutes(lateness.late_minutes)} всего`
+                  : stats.absent
+                    ? `${stats.absent} отс.`
+                    : undefined
+              } />
+            <StatCard icon="mdi:cash-remove" iconBg="bg-rose-400"
+              value={latenessPenaltyLabel} label="Штраф за опоздания"
+              valueColor={(lateness?.penalty_amount ?? 0) > 0 ? 'text-rose-600' : undefined}
+              sub={latenessPenaltyHint} />
           </div>
         )}
 

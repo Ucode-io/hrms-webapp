@@ -117,6 +117,13 @@ export interface MyTask {
   title: string
   description: string
   statusId: string | null
+  /* id справочников — нужны пикерам в карточке (значения показываем из
+     развёрнутых полей ниже, а выбираем по id). */
+  typeId: string | null
+  priorityId: string | null
+  locationId: string | null
+  sheetId: string | null
+  parentId: string | null
   statusTitle: string
   statusColor: string
   statusGroup: TaskStatusGroup
@@ -173,15 +180,50 @@ export interface TaskStatusOption {
   isInitial: boolean
 }
 
+export interface TaskDirectoryItem {
+  id: string
+  title: string
+  color: string
+  icon: string
+}
+
+/** Справочники для пикеров в карточке задачи. */
+export interface TaskDirectories {
+  types: TaskDirectoryItem[]
+  priorities: TaskDirectoryItem[]
+  tags: TaskDirectoryItem[]
+  sheets: TaskDirectoryItem[]
+  locations: TaskRef[]
+  employees: TaskAssignee[]
+}
+
 export interface MyTasksResponse {
   user_base_id: string
   tasks: MyTask[]
   /** Справочник статусов компании — для смены статуса из карточки. */
   statuses: TaskStatusOption[]
+  directories: TaskDirectories
   views: {
     by_status: MyTaskStatusColumn[]
     by_deadline: MyTaskDeadlineGroup[]
   }
+}
+
+/** Поля задачи, которые можно патчить точечно (см. `task_content_patch`). */
+export interface TaskPatch {
+  title?: string
+  description?: string
+  type_id?: string | null
+  priority_id?: string | null
+  location_id?: string | null
+  sheet_id?: string | null
+  parent_id?: string | null
+  start_date?: string | null
+  deadline?: string | null
+  assignee_ids?: string[]
+  tag_ids?: string[]
+  checklist?: Array<{ id: string; text: string; done: boolean }>
+  attachments?: TaskAttachmentInput[]
 }
 
 export interface TaskComment {
@@ -216,6 +258,23 @@ export interface TaskAttachmentInput {
   url: string
   uploadedById?: string | null
   uploadedAt?: string | null
+}
+
+/** Опоздания за месяц + штраф (та же формула, что в зарплатном Excel). */
+export interface EmployeeLatenessSummary {
+  month: string
+  user_base_id: string
+  late_days: number
+  late_minutes: number
+  /** Минуты сверх «прощаемых» — именно они превращаются в деньги. */
+  penalized_minutes: number
+  penalty_amount: number
+  /** Без графика работы штраф не считается — нужно, чтобы отличить «0» от «нет данных». */
+  has_work_schedule: boolean
+  grace_minutes: number
+  coefficient: number
+  work_days: number
+  scheduled_working_days: number
 }
 
 export type EmployeeAbsenceStatus = 'pending' | 'approved' | 'rejected'
@@ -360,6 +419,14 @@ export const reportsService = {
       user_base_id: raw?.user_base_id || userBaseId,
       tasks: Array.isArray(raw?.tasks) ? raw.tasks.map(normalizeTask) : [],
       statuses: arr<TaskStatusOption>(raw?.statuses),
+      directories: {
+        types: arr<TaskDirectoryItem>(raw?.directories?.types),
+        priorities: arr<TaskDirectoryItem>(raw?.directories?.priorities),
+        tags: arr<TaskDirectoryItem>(raw?.directories?.tags),
+        sheets: arr<TaskDirectoryItem>(raw?.directories?.sheets),
+        locations: arr<TaskRef>(raw?.directories?.locations),
+        employees: arr<TaskAssignee>(raw?.directories?.employees),
+      },
       views: {
         by_status: Array.isArray(views?.by_status) ? views.by_status : [],
         by_deadline: Array.isArray(views?.by_deadline) ? views.by_deadline : [],
@@ -395,22 +462,53 @@ export const reportsService = {
   },
 
   /**
-   * Точечный патч чек-листа и вложений. Поле, которого нет в объекте, сервер
-   * не трогает — поэтому здесь передаём только то, что реально меняем.
+   * Точечный патч полей задачи. Поле, которого нет в объекте, сервер не
+   * трогает — поэтому здесь передаём только то, что реально меняем.
+   * Статуса тут нет: он двигает ещё и даты задачи, для него `moveTask`.
    */
   patchTaskContent: async (
     taskId: string,
-    patch: {
-      checklist?: Array<{ id: string; text: string; done: boolean }>
-      attachments?: TaskAttachmentInput[]
-    },
+    patch: TaskPatch,
     authorId: string,
   ): Promise<unknown> => {
-    return invokeReports('task_content_patch', {
+    const raw = await invokeReports<{ server_error?: string }>('task_content_patch', {
       task_id: taskId,
       author_id: authorId || undefined,
       ...patch,
     })
+    // Ошибку метод отдаёт как обычный 200 с `server_error` — без проверки
+    // правка «сохранилась» бы молча, а на деле не применилась.
+    if (typeof raw?.server_error === 'string' && raw.server_error) {
+      throw new Error(raw.server_error)
+    }
+    return raw
+  },
+
+  getEmployeeLatenessSummary: async (data: {
+    user_base_id: string
+    month: string
+  }): Promise<EmployeeLatenessSummary | null> => {
+    const raw = await invokeReports<Partial<EmployeeLatenessSummary> & { server_error?: string }>(
+      'get_employee_lateness_summary',
+      data,
+    )
+    // Метод новый: пока он не задеплоен, шлюз вернёт конверт без наших полей.
+    // Отдаём null — карточки покажут «—» вместо выдуманного нуля.
+    if (typeof raw?.server_error === 'string' && raw.server_error) return null
+    if (typeof raw?.late_minutes !== 'number') return null
+    return {
+      month: raw.month || data.month,
+      user_base_id: raw.user_base_id || data.user_base_id,
+      late_days: raw.late_days ?? 0,
+      late_minutes: raw.late_minutes ?? 0,
+      penalized_minutes: raw.penalized_minutes ?? 0,
+      penalty_amount: raw.penalty_amount ?? 0,
+      has_work_schedule: Boolean(raw.has_work_schedule),
+      grace_minutes: raw.grace_minutes ?? 0,
+      coefficient: raw.coefficient ?? 0,
+      work_days: raw.work_days ?? 0,
+      scheduled_working_days: raw.scheduled_working_days ?? 0,
+    }
   },
 
   getEmployeeAbsenceSummary: async (data: {

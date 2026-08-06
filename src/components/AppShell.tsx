@@ -21,6 +21,8 @@ import { SurveysPage } from '../pages/SurveysPage'
 import { SurveyTakePage } from '../pages/SurveyTakePage'
 import { TrainingsPage } from '../pages/TrainingsPage'
 import { TrainingDetailPage } from '../pages/TrainingDetailPage'
+import { KnowledgePage } from '../pages/KnowledgePage'
+import { KnowledgeArticlePage } from '../pages/KnowledgeArticlePage'
 
 function detectKonstaTheme(): 'ios' | 'material' {
   if (typeof navigator === 'undefined') return 'material'
@@ -44,6 +46,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/property': 'Имущество',
   '/surveys': 'Опросы',
   '/trainings': 'Тренинги',
+  '/knowledge': 'База знаний',
 }
 
 function CurrentHeader() {
@@ -54,11 +57,14 @@ function CurrentHeader() {
 
   const isSurveyTake = /^\/surveys\/.+/.test(pathname)
   const isTrainingDetail = /^\/trainings\/.+/.test(pathname)
+  const isKnowledgeArticle = /^\/knowledge\/.+/.test(pathname)
   const title = isSurveyTake
     ? 'Прохождение опроса'
     : isTrainingDetail
       ? 'Тренинг'
-      : PAGE_TITLES[pathname] || ''
+      : isKnowledgeArticle
+        ? 'Статья'
+        : PAGE_TITLES[pathname] || ''
   const shouldShowBack =
     pathname === '/sport' ||
     pathname === '/org-structure' ||
@@ -68,8 +74,10 @@ function CurrentHeader() {
     pathname === '/property' ||
     pathname === '/surveys' ||
     pathname === '/trainings' ||
+    pathname === '/knowledge' ||
     isSurveyTake ||
     isTrainingDetail ||
+    isKnowledgeArticle ||
     !Object.keys(PAGE_TITLES).includes(pathname)
   return <PageHeader title={title} showBack={shouldShowBack} />
 }
@@ -111,6 +119,8 @@ export function AppShell() {
             <Route path="/surveys/:id" element={<SurveyTakePage />} />
             <Route path="/trainings" element={<TrainingsPage />} />
             <Route path="/trainings/:id" element={<TrainingDetailPage />} />
+            <Route path="/knowledge" element={<KnowledgePage />} />
+            <Route path="/knowledge/:id" element={<KnowledgeArticlePage />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </main>

@@ -12,6 +12,100 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      if (localStorage.getItem('__qa_mock__')) {
+        var ST=[
+          {id:'s1',title:'К выполнению',color:'#9ca3af',group:'todo',sortOrder:1,isInitial:true},
+          {id:'s2',title:'В работе',color:'#3b82f6',group:'in_progress',sortOrder:2,isInitial:false},
+          {id:'s3',title:'Выполнено',color:'#10b981',group:'completed',sortOrder:3,isInitial:false}
+        ];
+        var DIR={
+          types:[{id:'ty1',title:'Задача',color:'#3b82f6',icon:''},{id:'ty2',title:'Баг',color:'#ef4444',icon:''},{id:'ty3',title:'Доработка',color:'#10b981',icon:''}],
+          priorities:[{id:'p1',title:'Низкий',color:'#9ca3af',icon:''},{id:'p2',title:'Средний',color:'#3b82f6',icon:''},{id:'p3',title:'Высокий',color:'#f59e0b',icon:''}],
+          tags:[{id:'tg1',title:'ci',color:'#8b5cf6',icon:''},{id:'tg2',title:'frontend',color:'#06b6d4',icon:''},{id:'tg3',title:'backend',color:'#f97316',icon:''}],
+          sheets:[{id:'sh1',title:'Лист 1',color:'',icon:''},{id:'sh2',title:'Лист 2',color:'',icon:''}],
+          locations:[{id:'l1',title:'Ташкент'},{id:'l2',title:'Самарканд'}],
+          employees:[{id:'u1',name:'Xamidullayev Zafar',photo:''},{id:'u2',name:'Иванов Иван',photo:''},{id:'u3',name:'Петров Пётр',photo:''}]
+        };
+        function T(o){return Object.assign({id:'',code:'',title:'',description:'',statusId:null,typeId:null,priorityId:null,locationId:null,sheetId:null,parentId:null,statusTitle:'',statusColor:'',statusGroup:'todo',priorityTitle:'',priorityColor:'',typeTitle:'',typeColor:'',deadline:null,startDate:null,endDate:null,deadlineBucket:'no_deadline',deadlineViewBucket:'rest',daysLeft:null,checklist:[],attachments:[],assigneeIds:[],commentCount:0,beginAt:null,completedAt:null,createdAt:null,updatedAt:null,assignees:[],tags:[],location:null,sheet:null,parent:null,subtasks:[]},o);}
+        var TASK=T({id:'t1',code:'TASK-003',title:'Настроить CI для мобильного приложения',description:'<p>Сборка и автотесты на каждый пуш в main.</p>',statusId:'s2',typeId:'ty1',priorityId:'p3',sheetId:'sh1',statusTitle:'В работе',statusColor:'#3b82f6',statusGroup:'in_progress',priorityTitle:'Высокий',priorityColor:'#f59e0b',typeTitle:'Задача',deadline:'2026-07-30',startDate:'2026-07-24',deadlineBucket:'overdue',deadlineViewBucket:'overdue',daysLeft:-7,checklist:[{id:'c1',text:'Поднять раннер',done:true}],assigneeIds:['u1'],assignees:[{id:'u1',name:'Xamidullayev Zafar',photo:''}],tags:[{id:'tg1',title:'ci',color:'#8b5cf6'}],sheet:{id:'sh1',title:'Лист 1'},createdAt:'2026-08-05T15:49:00Z',updatedAt:'2026-08-05T15:49:00Z'});
+        var TASK2=T({id:'t2',code:'TASK-009',title:'Эпик: мобильное приложение',statusId:'s1',statusTitle:'К выполнению',statusColor:'#9ca3af',statusGroup:'todo'});
+        var TASKS=[TASK,TASK2];
+        function MY(){return {user_base_id:'u1',tasks:TASKS,statuses:ST,directories:DIR,views:{
+          by_status:[
+            {statusId:'s1',title:'К выполнению',color:'#9ca3af',group:'todo',sortOrder:1,taskIds:['t2'],count:1},
+            {statusId:'s2',title:'В работе',color:'#3b82f6',group:'in_progress',sortOrder:2,taskIds:['t1'],count:1},
+            {statusId:'s3',title:'Выполнено',color:'#10b981',group:'completed',sortOrder:3,taskIds:[],count:0}
+          ],
+          by_deadline:[
+            {key:'overdue',label:'Просрочено',taskIds:['t1'],count:1},
+            {key:'today',label:'Сегодня',taskIds:[],count:0},
+            {key:'week',label:'На этой неделе',taskIds:[],count:0},
+            {key:'rest',label:'Остальные',taskIds:['t2'],count:1}
+          ]}};}
+        function applyPatch(d){
+          if('title' in d)TASK.title=d.title;
+          if('description' in d)TASK.description=d.description;
+          if('type_id' in d){TASK.typeId=d.type_id;var t=DIR.types.filter(function(x){return x.id===d.type_id;})[0];TASK.typeTitle=t?t.title:'';}
+          if('priority_id' in d){TASK.priorityId=d.priority_id;var pr=DIR.priorities.filter(function(x){return x.id===d.priority_id;})[0];TASK.priorityTitle=pr?pr.title:'';TASK.priorityColor=pr?pr.color:'';}
+          if('location_id' in d){TASK.locationId=d.location_id;var l=DIR.locations.filter(function(x){return x.id===d.location_id;})[0];TASK.location=l||null;}
+          if('sheet_id' in d){TASK.sheetId=d.sheet_id;var sh=DIR.sheets.filter(function(x){return x.id===d.sheet_id;})[0];TASK.sheet=sh||null;}
+          if('parent_id' in d){TASK.parentId=d.parent_id;var pa=TASKS.filter(function(x){return x.id===d.parent_id;})[0];TASK.parent=pa?{id:pa.id,code:pa.code,title:pa.title}:null;}
+          if('start_date' in d)TASK.startDate=d.start_date;
+          if('deadline' in d)TASK.deadline=d.deadline;
+          if('assignee_ids' in d){TASK.assigneeIds=d.assignee_ids;TASK.assignees=d.assignee_ids.map(function(id){return DIR.employees.filter(function(e){return e.id===id;})[0];}).filter(Boolean);}
+          if('tag_ids' in d){TASK.tags=d.tag_ids.map(function(id){return DIR.tags.filter(function(t){return t.id===id;})[0];}).filter(Boolean);}
+          if('checklist' in d)TASK.checklist=d.checklist;
+          if('attachments' in d)TASK.attachments=d.attachments;
+          return {id:'t1',changed:1};
+        }
+        function handle(m,d){
+          if(m==='task_my_list')return {method:m,data:MY()};
+          if(m==='task_activity_get')return {method:m,data:{comments:[],history:[]}};
+          if(m==='task_content_patch')return {method:m,data:applyPatch(d||{})};
+          if(m==='task_move'){var st=ST.filter(function(x){return x.id===d.status_id;})[0];if(st){TASK.statusId=st.id;TASK.statusTitle=st.title;TASK.statusColor=st.color;TASK.statusGroup=st.group;}return {method:m,data:{id:'t1'}};}
+          return {data:{response:[]}};
+        }
+        var J=function(o){return new Response(JSON.stringify(o),{status:200,headers:{'Content-Type':'application/json'}});};
+        var EMPTY={data:{response:[],items:[]}};
+        var of=window.fetch.bind(window);
+        window.fetch=function(i,o){
+          var u=typeof i==='string'?i:(i&&i.url)||'';
+          if(u.indexOf('/v2/invoke_function/')!==-1){
+            var read=(o&&typeof o.body==='string')?Promise.resolve(o.body):(i&&i.clone?i.clone().text():Promise.resolve(''));
+            return read.then(function(t){var b2=EMPTY;try{var b=JSON.parse(t);if(b&&b.data&&b.data.method)b2=handle(b.data.method,b.data.data);}catch(e){}return J(b2);});
+          }
+          if(u.indexOf('api.admin.u-code.io')!==-1)return Promise.resolve(J(EMPTY));
+          return of(i,o);
+        };
+        var OX=window.XMLHttpRequest;
+        window.XMLHttpRequest=function(){
+          var x=new OX();var url='';
+          var oo=x.open.bind(x);x.open=function(m,u){url=u;return oo.apply(x,arguments);};
+          var os=x.send.bind(x);
+          x.send=function(p){
+            if(url.indexOf('api.admin.u-code.io')===-1)return os(p);
+            var body=EMPTY;
+            if(url.indexOf('/v2/invoke_function/')!==-1){try{var b=JSON.parse(p);if(b&&b.data&&b.data.method)body=handle(b.data.method,b.data.data);}catch(e){}}
+            var t=JSON.stringify(body);
+            setTimeout(function(){
+              Object.defineProperty(x,'readyState',{value:4,configurable:true});
+              Object.defineProperty(x,'status',{value:200,configurable:true});
+              Object.defineProperty(x,'responseText',{value:t,configurable:true});
+              Object.defineProperty(x,'response',{value:t,configurable:true});
+              x.getAllResponseHeaders=function(){return 'content-type: application/json';};
+              x.getResponseHeader=function(){return 'application/json';};
+              if(typeof x.onreadystatechange==='function')x.onreadystatechange();
+              x.dispatchEvent(new Event('readystatechange'));
+              x.dispatchEvent(new Event('load'));
+              x.dispatchEvent(new Event('loadend'));
+            },30);
+            return;
+          };
+          return x;
+        };
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -138,6 +138,14 @@ body {
     left: calc(50% - var(--frame-width) / 2);
     right: calc(50% - var(--frame-width) / 2);
   }
+
+  /* Наши собственные порталы (листы выбора, оверлей перетаскивания) — по тем
+     же границам, что и шторки vaul. */
+  .picker-layer,
+  .board-drag-layer {
+    left: calc(50% - var(--frame-width) / 2);
+    right: calc(50% - var(--frame-width) / 2);
+  }
   .mobile-frame-scroll::-webkit-scrollbar {
     display: none;
   }
@@ -206,6 +214,49 @@ body {
   width: 150px; height: 150px;
   border-radius: 50%;
   background: rgba(255,255,255,0.05);
+}
+
+/* ── Tasks: picker sheet (выбор поля поверх шторки задачи) ─────────────── */
+@keyframes pickerSheetUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes pickerFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+/* vaul на время шторки задачи ставит `pointer-events: none` на <body>, чтобы
+   погасить всё под ней. Лист выбора — тоже портал в <body>, и без явного
+   `auto` он наследовал бы этот запрет: видно, но не нажимается. */
+.picker-layer {
+  animation: pickerFadeIn 0.16s ease-out both;
+  pointer-events: auto;
+}
+.picker-sheet { animation: pickerSheetUp 0.24s cubic-bezier(0.32, 0.72, 0, 1) both; }
+
+/* ── Tasks: kanban board ────────────────────────────────────────────────────
+   Панель колонки чуть темнее фона приложения: белые карточки на ней читаются
+   как «лежащие в колонке» — классическая канбан-иерархия поверхностей. */
+.kanban-panel {
+  background: color-mix(in srgb, var(--line) 38%, var(--app-bg));
+}
+/* Колонка, над которой сейчас держат карточку. */
+.kanban-panel-over {
+  background: color-mix(in srgb, var(--accent) 9%, var(--app-bg));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+/* Карточка в DragOverlay: лёгкий наклон и глубокая тень — «поднята с доски». */
+.kanban-drag-overlay {
+  transform: rotate(2.5deg) scale(1.04);
+  box-shadow: 0 18px 40px rgba(12, 26, 46, 0.24);
+  border-radius: 16px;
+}
+/* Долгое нажатие не должно вызывать выделение текста и iOS-callout. */
+.kanban-card {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /* ── Scrollbar hide ────────────────────────────────────────────────────── */
