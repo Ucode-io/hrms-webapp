@@ -97,12 +97,17 @@ export function KpiPage() {
     [profile, session],
   )
 
+  const employeeId = useMemo(() => {
+    const candidates = [profile?.guid, session?.user_data?.guid, session?.user?.guid]
+    return candidates.find((value): value is string => typeof value === 'string' && value.trim().length > 0) || ''
+  }, [profile, session])
+
   const range = useMemo(() => getPeriodRange(cursorDate, periodMode), [cursorDate, periodMode])
   const periodTitle = useMemo(() => formatPeriodLabel(cursorDate, periodMode), [cursorDate, periodMode])
 
   const queryKey = useMemo(
-    () => ['kpi-table-mobile', periodMode, range.from, range.to, positionId, companiesId] as const,
-    [periodMode, range.from, range.to, positionId, companiesId],
+    () => ['kpi-table-mobile', periodMode, range.from, range.to, positionId, companiesId, employeeId] as const,
+    [periodMode, range.from, range.to, positionId, companiesId, employeeId],
   )
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
@@ -114,6 +119,7 @@ export function KpiPage() {
         date_to: range.to,
         position_id: positionId || undefined,
         companies_id: companiesId || undefined,
+        employee_id: employeeId || undefined,
       })
     },
     enabled: Boolean(positionId),
@@ -129,7 +135,7 @@ export function KpiPage() {
 
   useEffect(() => {
     setExpandedIds(new Set())
-  }, [periodMode, range.from, range.to, positionId, companiesId])
+  }, [periodMode, range.from, range.to, positionId, companiesId, employeeId])
 
   const totalKpiCount = useMemo(
     () => groupsState.reduce((sum, group) => sum + countNodesByType(group.items, periodMode), 0),

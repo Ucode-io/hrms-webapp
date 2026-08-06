@@ -18,6 +18,12 @@
   --error-bg:        #fff1f0;
   --error-line:      #ffccc7;
   --error-text:      #cf1322;
+  /* Обложка компании (CompanyContext подставляет url(...)); `none` — пока
+     бренд не загрузился или обложка не задана. */
+  --company-cover:   none;
+  /* Ширина мобильной колонки на десктопе. Ею же выравниваются bottom sheets,
+     которые рендерятся порталом мимо контейнера. */
+  --frame-width:     520px;
 }
 
 /* ── Tailwind theme tokens ─────────────────────────────────────────────── */
@@ -48,6 +54,93 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Desktop preview: centred mobile column ────────────────────────────────
+   This UI is built for a mobile webview, not a full-width desktop browser
+   tab. Below the breakpoint (the real target — an in-app webview or an
+   actual phone) `.mobile-frame`/`.mobile-frame-scroll` are plain, unstyled
+   divs and change nothing. Above it, they hold the app to a phone-width
+   column in the middle of the window instead of letting it stretch edge to
+   edge. The container's `transform` also becomes the containing block for
+   `position: fixed` children (AppTabbar), so the tab bar docks to the
+   column's bottom edge instead of the real browser window's. */
+@media (min-width: 768px) {
+  body {
+    min-height: 100vh;
+    /* Тон подобран близко к `--app-bg` приложения: цель — чтобы колонка
+       выглядела продолжением страницы, а не карточкой поверх неё. */
+    background: #e9eef6;
+  }
+
+  /* Обложка компании (как на логине hrms-front) — только как еле различимая
+     текстура поля вокруг. Отдельным слоем, потому что поверх идёт светлая
+     заливка, гасящая контраст фотографии. */
+  body::before,
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+  body::before {
+    background-image: var(--company-cover);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  /* Светлая вуаль поверх обложки — гасит контраст фотографии до уровня,
+     на котором интерфейс поверх неё читается спокойно. */
+  body::after {
+    background: rgba(233, 238, 246, 0.62);
+  }
+
+  #root {
+    /* На всю ширину: колонку центрирует сам `.mobile-frame` (margin: auto).
+       Так страницы без контейнера — например логин — занимают всё окно. */
+    width: 100%;
+    height: 100%;
+    /* Над обоими фоновыми слоями. */
+    position: relative;
+    z-index: 1;
+  }
+
+  .mobile-frame {
+    position: relative;
+    width: var(--frame-width);
+    margin: 0 auto;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--app-bg);
+    /* Вместо жёсткой границы — широкий ореол в тон фона: край колонки
+       растворяется в обложке, и приложение читается как её часть, а не как
+       карточка поверх. Тени (тёмной) здесь намеренно нет. */
+    box-shadow: 0 0 90px 40px rgba(233, 238, 246, 0.75);
+    transform: translateZ(0);
+  }
+
+  .mobile-frame-scroll {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  /* Bottom sheets (vaul) рендерятся порталом в <body>, поэтому `transform`
+     контейнера на них не действует — без этого шторка и её затемнение
+     растягивались бы на всё окно, мимо колонки. Ограничиваем их теми же
+     границами через left/right, а не через `transform`: transform у шторки
+     занят анимацией открытия и перетаскиванием. */
+  [data-vaul-overlay],
+  [data-vaul-drawer][data-vaul-drawer-direction='bottom'] {
+    left: calc(50% - var(--frame-width) / 2);
+    right: calc(50% - var(--frame-width) / 2);
+  }
+  .mobile-frame-scroll::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* ── Animations ─────────────────────────────────────────────────────────── */

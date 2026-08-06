@@ -14,6 +14,7 @@ import { SportPage } from '../pages/SportPage'
 import { OrgStructurePage } from '../pages/OrgStructurePage'
 import { TimePage } from '../pages/TimePage'
 import { KpiPage } from '../pages/KpiPage'
+import { TasksPage } from '../pages/TasksPage'
 import { DocumentsPage } from '../pages/DocumentsPage'
 import { PropertyPage } from '../pages/PropertyPage'
 import { SurveysPage } from '../pages/SurveysPage'
@@ -38,6 +39,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/sport': 'Спорт',
   '/org-structure': 'Орг структура',
   '/kpi': 'KPI',
+  '/tasks': 'Задачи',
   '/documents': 'Документы',
   '/property': 'Имущество',
   '/surveys': 'Опросы',
@@ -61,6 +63,7 @@ function CurrentHeader() {
     pathname === '/sport' ||
     pathname === '/org-structure' ||
     pathname === '/kpi' ||
+    pathname === '/tasks' ||
     pathname === '/documents' ||
     pathname === '/property' ||
     pathname === '/surveys' ||
@@ -101,6 +104,7 @@ export function AppShell() {
             <Route path="/sport" element={<SportPage />} />
             <Route path="/org-structure" element={<OrgStructurePage />} />
             <Route path="/kpi" element={<KpiPage />} />
+            <Route path="/tasks" element={<TasksPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/property" element={<PropertyPage />} />
             <Route path="/surveys" element={<SurveysPage />} />

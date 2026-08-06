@@ -134,6 +134,21 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
               </div>
             </div>
 
+            {/* Reward preview: payout is proportional to completion, full amount at 100%+ */}
+            {node.rewardAmount != null && node.rewardAmount > 0 ? (
+              <div className="mt-2.5 flex items-center justify-between gap-3 rounded-2xl border border-amber-100 bg-amber-50/70 px-3.5 py-2.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Icon icon="mdi:cash-multiple" width={16} className="text-amber-600 shrink-0" />
+                  <p className="m-0 text-[11.5px] font-semibold text-amber-800 truncate">
+                    Вознаграждение при 100%: {formatNumber(node.rewardAmount)}
+                  </p>
+                </div>
+                <p className="m-0 shrink-0 text-[13px] font-extrabold text-amber-700">
+                  ≈ {formatNumber((node.rewardAmount * projectedClamped) / 100)}
+                </p>
+              </div>
+            ) : null}
+
             {/* Input */}
             <div className="mt-4">
               <label className="block text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-semibold mb-1.5">

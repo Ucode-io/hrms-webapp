@@ -39,6 +39,12 @@ export function MorePage() {
       onClick: () => navigate('/kpi'),
     },
     {
+      label: 'Задачи',
+      desc: 'Мои задачи и сроки',
+      icon: 'mdi:checkbox-marked-outline',
+      onClick: () => navigate('/tasks'),
+    },
+    {
       label: 'Документы',
       desc: 'Мои файлы и документы',
       icon: 'mdi:file-document-outline',
@@ -72,7 +78,7 @@ export function MorePage() {
               key={item.label}
               type="button"
               onClick={item.onClick}
-              className="rounded-2xl border border-[var(--line)] bg-white min-h-[144px] p-3 text-left cursor-pointer transition-transform active:scale-[0.98]"
+              className="rounded-2xl border border-[var(--line)] bg-white min-h-[144px] p-3 text-center cursor-pointer transition-transform active:scale-[0.98]"
             >
               <div
                 className="mx-auto h-14 w-14 rounded-full flex items-center justify-center text-white shadow-sm"

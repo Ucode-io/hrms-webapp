@@ -19,11 +19,24 @@ function AuthGate() {
 
   return (
     <Routes>
+      {/* Логин — без колонки: у страницы своя полноэкранная вёрстка, как на
+          вебе, и сужать её до ширины телефона незачем. */}
       <Route
         path="/login"
         element={isAuthorized ? <Navigate to="/home" replace /> : <LoginPage />}
       />
-      <Route path="/*" element={<AppShell />} />
+      <Route
+        path="/*"
+        element={
+          /* Ниже md-брейкпоинта (реальная цель — webview или телефон) это
+             обычные div'ы без стилей. См. `.mobile-frame` в index.css. */
+          <div className="mobile-frame">
+            <div className="mobile-frame-scroll">
+              <AppShell />
+            </div>
+          </div>
+        }
+      />
     </Routes>
   )
 }

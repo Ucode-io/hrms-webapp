@@ -1,4 +1,9 @@
-import type { KpiPeriodType, KpiTableGroup, KpiTableItem } from '../../api/reportsService'
+import type {
+  KpiAggregationType,
+  KpiPeriodType,
+  KpiTableGroup,
+  KpiTableItem,
+} from '../../api/reportsService'
 
 export type KpiNode = {
   id: string
@@ -10,12 +15,15 @@ export type KpiNode = {
   valueSymbol: string
   valueSymbolPosition: 'prefix' | 'suffix'
   periodType: KpiPeriodType
+  aggregationType: KpiAggregationType
   startDate: string
   endDate: string
   planTotal: number
   actualTotal: number
   percentTotal: number
   hasChildren: boolean
+  rewardAmount: number | null
+  employeeIds: string[]
   children: KpiNode[]
 }
 
@@ -103,6 +111,28 @@ const normalizePeriodType = (value: unknown): KpiPeriodType => {
     return value
   }
   return 'monthly'
+}
+
+const normalizeAggregationType = (value: unknown): KpiAggregationType => {
+  if (value === 'sum' || value === 'min' || value === 'max' || value === 'avg') return value
+  return 'sum'
+}
+
+/** Mirrors the backend's `aggregateActuals` (kpi-common.js) so an optimistic
+ * fact edit on mobile shows the same parent total the next refetch would. */
+export const aggregateActuals = (values: number[], aggregationType: KpiAggregationType): number => {
+  if (values.length === 0) return 0
+  switch (aggregationType) {
+    case 'min':
+      return Math.min(...values)
+    case 'max':
+      return Math.max(...values)
+    case 'avg':
+      return values.reduce((sum, value) => sum + value, 0) / values.length
+    case 'sum':
+    default:
+      return values.reduce((sum, value) => sum + value, 0)
+  }
 }
 
 const toNumber = (value: unknown): number => {
@@ -195,25 +225,35 @@ export const normalizeNode = (raw: KpiTableItem): KpiNode => {
     valueSymbol: typeof raw.value_symbol === 'string' ? raw.value_symbol : '',
     valueSymbolPosition: raw.value_symbol_position === 'prefix' ? 'prefix' : 'suffix',
     periodType,
+    aggregationType: normalizeAggregationType(raw.aggregation_type),
     startDate: typeof raw.start_date === 'string' ? raw.start_date : '',
     endDate: typeof raw.end_date === 'string' ? raw.end_date : '',
     planTotal,
     actualTotal,
     percentTotal,
     hasChildren: Boolean(raw.has_children) || children.length > 0,
+    rewardAmount: typeof raw.reward_amount === 'number' ? raw.reward_amount : null,
+    employeeIds: Array.isArray(raw.employee_ids)
+      ? raw.employee_ids.filter((id): id is string => typeof id === 'string')
+      : [],
     children,
   }
 }
 
 export const normalizeGroups = (response: { groups?: KpiTableGroup[]; items?: KpiTableItem[] }): KpiGroup[] => {
+  // Top-level cards must be roots only: a server that still lists a child
+  // among the roots (it matched the table's own date/position filters) would
+  // otherwise render that KPI twice — once nested, once as its own card.
+  const isRoot = (item: KpiTableItem) => item.parent_id == null
+
   const rawGroups = Array.isArray(response.groups) ? response.groups : []
   if (rawGroups.length > 0) {
     return rawGroups.map((group) => ({
       position: typeof group.position === 'string' && group.position.trim() ? group.position : 'Без должности',
-      items: Array.isArray(group.items) ? group.items.map(normalizeNode) : [],
+      items: Array.isArray(group.items) ? group.items.filter(isRoot).map(normalizeNode) : [],
     }))
   }
-  const items = Array.isArray(response.items) ? response.items.map(normalizeNode) : []
+  const items = Array.isArray(response.items) ? response.items.filter(isRoot).map(normalizeNode) : []
   return [{ position: 'KPI', items }]
 }
 
@@ -225,7 +265,10 @@ const updateNodeActual = (node: KpiNode, targetId: string, nextActual: number): 
   }
 
   const nextChildren = node.children.map((child) => updateNodeActual(child, targetId, nextActual))
-  const nextActualTotal = nextChildren.reduce((sum, child) => sum + child.actualTotal, 0)
+  const nextActualTotal = aggregateActuals(
+    nextChildren.map((child) => child.actualTotal),
+    node.aggregationType,
+  )
   return {
     ...node,
     children: nextChildren,

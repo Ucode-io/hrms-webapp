@@ -95,6 +95,16 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     applyBrandColors(company.mainColor)
   }, [company.mainColor])
 
+  // Обложка компании — тот же источник, что на логин-странице hrms-front.
+  // Используется только как фон вокруг мобильной колонки на десктопе
+  // (см. `.mobile-frame` в index.css); в webview/на телефоне не видна.
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      '--company-cover',
+      company.companyCover ? `url("${company.companyCover}")` : 'none',
+    )
+  }, [company.companyCover])
+
   return (
     <CompanyContext.Provider value={{ company }}>
       {children}
