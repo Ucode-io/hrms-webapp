@@ -3,6 +3,55 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 
+// ponytail: минимальная типизация SDK вместо @types/telegram-web-app —
+// используем ровно три метода.
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp?: {
+        ready: () => void
+        expand: () => void
+        // Bot API 7.7, в старых клиентах метода нет — зовём опционально.
+        disableVerticalSwipes?: () => void
+      }
+    }
+  }
+}
+
+// Telegram дописывает свои параметры в хеш (`#tgWebAppData=...&tgWebAppVersion=...`),
+// а у нас на хеше висит роутер — без чистки HashRouter пытается открыть
+// маршрут `/tgWebAppData=...`. Чиним до рендера, replaceState — чтобы не
+// плодить запись в истории. SDK к этому моменту хеш уже разобрал: его
+// <script> в index.html блокирующий, а этот модуль — defer.
+if (window.location.hash.includes('tgWebApp')) {
+  const { pathname, search } = window.location
+  window.history.replaceState(null, '', `${pathname}${search}#/`)
+}
+
+// Вне Telegram window.Telegram нет — обычный webview работает как работал.
+const tg = window.Telegram?.WebApp
+if (tg) {
+  tg.ready()
+  tg.expand() // без expand мини-апп открывается на половину экрана
+  // Иначе свайп вниз по скроллящейся странице закрывает мини-апп.
+  tg.disableVerticalSwipes?.()
+}
+
+// В iOS-вебвью (и в Telegram) клавиатура не сжимает layout viewport — только
+// visual. Страница об этом не знает, скроллить некуда, и инпут остаётся под
+// клавиатурой. Отдаём её высоту в CSS-переменную: вёрстка добавляет её в
+// padding-bottom скролл-контейнера, дальше iOS сам доводит фокус до вида.
+const viewport = window.visualViewport
+if (viewport) {
+  const syncKeyboardInset = () => {
+    const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
+    document.documentElement.style.setProperty('--keyboard-inset', `${inset}px`)
+  }
+  viewport.addEventListener('resize', syncKeyboardInset)
+  viewport.addEventListener('scroll', syncKeyboardInset)
+  syncKeyboardInset()
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

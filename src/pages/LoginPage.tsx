@@ -28,7 +28,11 @@ export function LoginPage() {
 
   return (
     <App theme={konstaTheme} safeAreas className="webview-root">
-      <Page className="flex flex-col min-h-svh bg-[var(--app-bg)] overflow-hidden">
+      {/* Ни `min-h-svh`, ни `overflow-hidden`: konsta Page — это уже
+          `absolute h-full overflow-auto`, то есть скролл-контейнер ровно по
+          вьюпорту. `overflow-hidden` его убивал, и в Telegram на iPhone
+          форма просто обрезалась — доскроллить до неё было нельзя. */}
+      <Page className="flex flex-col bg-[var(--app-bg)]">
         {/* ── Gradient hero ── */}
         {/* gradient + ::before/::after orbs defined in index.css .auth-hero-section */}
         <div className="auth-hero-section">
@@ -58,7 +62,9 @@ export function LoginPage() {
         </div>
 
         {/* ── Form card ── */}
-        <div className="relative z-10 flex-1 flex flex-col items-center px-4 pb-6 -mt-8">
+        {/* Запас снизу на высоту клавиатуры (--keyboard-inset считает main.tsx):
+            без него скроллить некуда и инпут остаётся под клавиатурой. */}
+        <div className="relative z-10 flex-1 flex flex-col items-center px-4 pb-[calc(1.5rem+var(--keyboard-inset))] -mt-8">
           <div className="w-full max-w-[440px] bg-white rounded-[24px] border border-[var(--line)] shadow-xl shadow-black/10 p-6">
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               {/* Header */}

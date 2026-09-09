@@ -24,6 +24,9 @@
   /* Ширина мобильной колонки на десктопе. Ею же выравниваются bottom sheets,
      которые рендерятся порталом мимо контейнера. */
   --frame-width:     520px;
+  /* Высота экранной клавиатуры; обновляет main.tsx по visualViewport. Вне
+     мобильного вебвью всегда 0px. */
+  --keyboard-inset:  0px;
 }
 
 /* ── Tailwind theme tokens ─────────────────────────────────────────────── */
@@ -55,6 +58,12 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* iOS зумит страницу при фокусе в поле, у которого font-size < 16px, и обратно
+   уже не отъезжает. Правило вне слоёв — так оно бьёт `text-sm` и прочие
+   утилиты Tailwind (unlayered всегда выигрывает у layered), поэтому чинится
+   разом во всех формах, а не только на логине. */
+input, select, textarea { font-size: 16px; }
 
 /* ── Desktop preview: centred mobile column ────────────────────────────────
    This UI is built for a mobile webview, not a full-width desktop browser
