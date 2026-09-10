@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -9,6 +10,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import { loginWithPassword, type UserData } from '../api/authService'
 import { getNewsFeed, getUserBaseByGuid, type NewsItem } from '../api/dashboardService'
+import { reportsService } from '../api/reportsService'
 import { setUnauthorizedHandler } from '../api/unauthorizedHandler'
 import {
   clearSession,
@@ -150,6 +152,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     return () => setUnauthorizedHandler(null)
   }, [])
+
+  // Привязка Telegram-чата к сотруднику. Завязано на isAuthorized, а не на
+  // login(): срабатывает и после свежего входа, и при восстановленной сессии —
+  // иначе тот, кто уже залогинен, никогда бы не привязался.
+  //
+  // Молча, без индикации: уведомления в боте — приятный бонус, и упавшая
+  // привязка не повод показывать сотруднику ошибку на входе.
+  const telegramLinkedRef = useRef(false)
+  useEffect(() => {
+    if (!isAuthorized || telegramLinkedRef.current) return
+    const initData = window.Telegram?.WebApp?.initData
+    if (!initData) return // вне Telegram привязывать нечего
+
+    telegramLinkedRef.current = true
+    void reportsService.linkTelegram(initData).catch(() => {})
+  }, [isAuthorized])
 
   return (
     <AuthContext.Provider

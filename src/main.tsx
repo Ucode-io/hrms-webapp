@@ -2,9 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { capturePendingTaskId } from './telegram/startParam'
 
 // ponytail: минимальная типизация SDK вместо @types/telegram-web-app —
-// используем ровно три метода.
+// используем ровно три метода и одно поле.
 declare global {
   interface Window {
     Telegram?: {
@@ -13,6 +14,13 @@ declare global {
         expand: () => void
         // Bot API 7.7, в старых клиентах метода нет — зовём опционально.
         disableVerticalSwipes?: () => void
+        // Подписанная строка с данными пользователя. Намеренно берём её, а не
+        // initDataUnsafe.user.id: id оттуда подделывается обычным curl, а эту
+        // строку бек проверяет HMAC-ом по токену бота и достаёт chat_id сам.
+        initData: string
+        // Из неподписанной части берём только start_param — он решает, какой
+        // экран открыть, и подделывать в нём нечего.
+        initDataUnsafe?: { start_param?: string }
       }
     }
   }
@@ -31,6 +39,8 @@ if (window.location.hash.includes('tgWebApp')) {
 // Вне Telegram window.Telegram нет — обычный webview работает как работал.
 const tg = window.Telegram?.WebApp
 if (tg) {
+  // До рендера: роутер уже на первом кадре решает, вести на /home или /tasks.
+  capturePendingTaskId()
   tg.ready()
   tg.expand() // без expand мини-апп открывается на половину экрана
   // Иначе свайп вниз по скроллящейся странице закрывает мини-апп.

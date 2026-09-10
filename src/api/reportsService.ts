@@ -363,6 +363,13 @@ const invokeReports = async <T>(method: string, data: Record<string, unknown>): 
 }
 
 export const reportsService = {
+  // Привязка Telegram-аккаунта к сотруднику: шлём подписанную строку целиком,
+  // chat_id из неё достаёт бек после проверки HMAC. Сотрудника он берёт из
+  // токена, а не из тела запроса, поэтому guid здесь не нужен.
+  linkTelegram: async (initData: string): Promise<{ linked: boolean }> => {
+    return invokeReports<{ linked: boolean }>('telegram_link', { init_data: initData })
+  },
+
   getKpiTable: async (data: {
     period_type: KpiPeriodType
     date_from: string

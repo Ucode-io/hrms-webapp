@@ -10,6 +10,7 @@ import {
 } from '../api/reportsService'
 import { TaskDetailSheet } from './tasks/TaskDetailSheet'
 import { KanbanBoard, type KanbanColumn } from './tasks/KanbanBoard'
+import { takePendingTaskId } from '../telegram/startParam'
 
 type ViewMode = 'status' | 'deadline'
 
@@ -106,10 +107,15 @@ export function TasksPage() {
   const { session, profile } = useAuth()
   const queryClient = useQueryClient()
   const [view, setView] = useState<ViewMode>('status')
+  // Задача из Telegram-уведомления. Забираем на первом рендере, а не в
+  // эффекте: эффект дал бы лишний цикл рендера, а шторка и так показывает
+  // пустоту, пока список задач не приехал (`if (!task) return null`).
+  // Ссылка одноразовая — иначе шторка открывалась бы при каждом возврате.
+  const [pendingTaskId] = useState(takePendingTaskId)
   // Храним id, а не сам объект: после правки список перезапрашивается, и
   // карточка должна показать свежую задачу, а не снимок на момент открытия.
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
-  const [sheetOpen, setSheetOpen] = useState(false)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(pendingTaskId)
+  const [sheetOpen, setSheetOpen] = useState(pendingTaskId !== null)
   const [toast, setToast] = useState('')
   const toastTimerRef = useRef<number | null>(null)
 

@@ -23,6 +23,7 @@ import { TrainingsPage } from '../pages/TrainingsPage'
 import { TrainingDetailPage } from '../pages/TrainingDetailPage'
 import { KnowledgePage } from '../pages/KnowledgePage'
 import { KnowledgeArticlePage } from '../pages/KnowledgeArticlePage'
+import { hasPendingTaskId } from '../telegram/startParam'
 
 function detectKonstaTheme(): 'ios' | 'material' {
   if (typeof navigator === 'undefined') return 'material'
@@ -102,7 +103,8 @@ export function AppShell() {
           }
         >
           <Routes>
-            <Route index element={<Navigate to="/home" replace />} />
+            {/* Deep link из уведомления приходит на «/» — ведём сразу на задачи. */}
+            <Route index element={<Navigate to={hasPendingTaskId() ? '/tasks' : '/home'} replace />} />
             <Route path="/home" element={<HomePage />} />
             <Route path="/absence" element={<AbsencePage />} />
             <Route path="/time" element={<TimePage />} />

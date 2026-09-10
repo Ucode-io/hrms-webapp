@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { AppShell } from './components/AppShell'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { LoginPage } from './pages/LoginPage'
+import { hasPendingTaskId } from './telegram/startParam'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,7 +24,9 @@ function AuthGate() {
           вебе, и сужать её до ширины телефона незачем. */}
       <Route
         path="/login"
-        element={isAuthorized ? <Navigate to="/home" replace /> : <LoginPage />}
+        element={
+          isAuthorized ? <Navigate to={hasPendingTaskId() ? '/tasks' : '/home'} replace /> : <LoginPage />
+        }
       />
       <Route
         path="/*"
