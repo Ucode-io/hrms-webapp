@@ -1,0 +1,19 @@
+name: CI/CD
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  ci-cd-prod:
+    if: github.ref_name == 'master'
+    uses: Ucode-io/ci-cd/.github/workflows/ci_cd.yml@main
+    with:
+      ENVIRONMENT: production
+      ENV_TAG: latest
+    secrets: inherit
