@@ -1,6 +1,7 @@
 import { Fragment, type CSSProperties, type ReactNode } from 'react'
 import { Icon } from '@iconify/react'
 import type { KbArticleSummary, KbBlock, KbInline, KbTextStyles } from '../../api/knowledgeService'
+import { FilePreviewButton } from '../../components/FilePreviewDrawer'
 
 /**
  * Отрисовка тела статьи базы знаний.
@@ -287,20 +288,24 @@ function BlockView({ block, index, onOpenArticle, resolveArticle }: BlockProps) 
       if (!url) return null
       const name = propString(block, 'name') || propString(block, 'caption') || 'Файл'
       return (
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="my-1 flex items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white p-3 no-underline transition active:scale-[0.99]"
-        >
+        <div className="my-1 flex items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white p-3">
           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-light)] text-[var(--accent)]">
             <Icon icon="mdi:paperclip" width={18} />
           </span>
           <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-[var(--text-main)]">
             {name}
           </span>
-          <Icon icon="mdi:download" width={18} className="shrink-0 text-gray-300" />
-        </a>
+          <FilePreviewButton fileUrl={url} fileName={name} />
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label="Скачать файл"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-gray-300 no-underline"
+          >
+            <Icon icon="mdi:download" width={18} />
+          </a>
+        </div>
       )
     }
 

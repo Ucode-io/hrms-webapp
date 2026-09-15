@@ -11,6 +11,7 @@ import {
   type EmployeeDocument,
   type DocumentType,
 } from '../api/documentsService'
+import { FilePreviewDrawer } from '../components/FilePreviewDrawer'
 
 /* ── Type config ─────────────────────────────────────── */
 const TYPE_CONFIG: Record<
@@ -71,15 +72,14 @@ function DocCard({ doc, accentColor }: { doc: EmployeeDocument; accentColor: str
   const cfg = TYPE_CONFIG[type]
   const name = getDocumentName(doc)
   const folderTitle = doc.document_folders_id_data?.title || null
-
-  const handleOpen = () => {
-    if (doc.file && typeof doc.file === 'string') window.open(doc.file, '_blank', 'noopener')
-  }
+  const file = typeof doc.file === 'string' ? doc.file : ''
+  const [isPreviewOpen, setPreviewOpen] = useState(false)
 
   return (
+    <>
     <button
       type="button"
-      onClick={handleOpen}
+      onClick={() => { if (file) setPreviewOpen(true) }}
       className="w-full text-left rounded-2xl bg-white overflow-hidden shadow-[0_1px_8px_rgba(0,0,0,0.07)] active:scale-[0.97] transition-transform"
     >
       {/* Preview area */}
@@ -124,11 +124,18 @@ function DocCard({ doc, accentColor }: { doc: EmployeeDocument; accentColor: str
           className="mt-2.5 w-full h-8 rounded-xl flex items-center justify-center gap-1.5 text-[12px] font-semibold text-white"
           style={{ backgroundColor: accentColor }}
         >
-          <Icon icon="mdi:open-in-new" width={13} />
+          <Icon icon="mdi:eye-outline" width={14} />
           Открыть
         </div>
       </div>
     </button>
+    <FilePreviewDrawer
+      open={isPreviewOpen}
+      onClose={() => setPreviewOpen(false)}
+      fileUrl={file}
+      fileName={name}
+    />
+    </>
   )
 }
 
@@ -137,15 +144,14 @@ function DocRow({ doc, accentColor }: { doc: EmployeeDocument; accentColor: stri
   const type = getDocumentType(doc.type)
   const cfg = TYPE_CONFIG[type]
   const name = getDocumentName(doc)
-
-  const handleOpen = () => {
-    if (doc.file && typeof doc.file === 'string') window.open(doc.file, '_blank', 'noopener')
-  }
+  const file = typeof doc.file === 'string' ? doc.file : ''
+  const [isPreviewOpen, setPreviewOpen] = useState(false)
 
   return (
+    <>
     <button
       type="button"
-      onClick={handleOpen}
+      onClick={() => { if (file) setPreviewOpen(true) }}
       className="w-full flex items-center gap-3 bg-white rounded-2xl px-3.5 py-3 shadow-[0_1px_6px_rgba(0,0,0,0.06)] active:scale-[0.98] transition-transform text-left"
     >
       {/* Icon */}
@@ -171,9 +177,16 @@ function DocRow({ doc, accentColor }: { doc: EmployeeDocument; accentColor: stri
         className="shrink-0 h-8 w-8 rounded-xl flex items-center justify-center text-white"
         style={{ backgroundColor: accentColor }}
       >
-        <Icon icon="mdi:open-in-new" width={15} />
+        <Icon icon="mdi:eye-outline" width={16} />
       </div>
     </button>
+    <FilePreviewDrawer
+      open={isPreviewOpen}
+      onClose={() => setPreviewOpen(false)}
+      fileUrl={file}
+      fileName={name}
+    />
+    </>
   )
 }
 
