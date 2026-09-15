@@ -275,7 +275,7 @@ export function CopilotPage() {
   )
 
   return (
-    <div className="animate-fade-in-up flex flex-col gap-3 flex-1 min-h-0 pb-[132px]">
+    <div className="animate-fade-in-up flex flex-col gap-3 flex-1 min-h-0 pb-[calc(84px+var(--keyboard-inset))]">
       {messages.length === 0 && (
         <div className="flex flex-col gap-3 pt-6">
           <div className="flex flex-col items-center gap-2 text-center">
@@ -321,11 +321,17 @@ export function CopilotPage() {
 
       <div ref={bottom} />
 
-      <div className="fixed bottom-[68px] left-0 right-0 z-20 px-4 pb-2 pt-2 bg-[var(--app-bg)]/95 backdrop-blur-xl">
+      {/* Композер стоит на клавиатуре, а без неё — на нижней кромке экрана.
+          В iOS-вебвью клавиатура не сжимает layout viewport, поэтому `fixed`
+          сам по себе уехал бы под неё; высоту считает main.tsx. */}
+      <div className="fixed bottom-[var(--keyboard-inset)] left-0 right-0 z-20 px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 bg-[var(--app-bg)]/95 backdrop-blur-xl">
         <div className="flex items-end gap-2">
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            // Клавиатура выезжает поверх переписки — довести её до низа сами:
+            // iOS докручивает до инпута, но не до последнего сообщения.
+            onFocus={() => setTimeout(() => bottom.current?.scrollIntoView(), 300)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()

@@ -126,7 +126,11 @@ export function AppShell() {
           className={
             pathname === '/org-structure'
               ? 'flex-1 pb-[84px] flex flex-col'
-              : 'flex-1 px-4 pt-4 pb-[100px] flex flex-col gap-4'
+              : pathname === '/copilot'
+                // Чат — единственный экран без таббара, поэтому и запас под
+                // него не нужен: композер сам держит отступ снизу.
+                ? 'flex-1 px-4 pt-4 flex flex-col gap-4'
+                : 'flex-1 px-4 pt-4 pb-[100px] flex flex-col gap-4'
           }
         >
           <Routes>
@@ -156,7 +160,10 @@ export function AppShell() {
         </main>
 
         <CopilotFab />
-        <AppTabbar />
+        {/* На экране чата таббар прячем: с открытой клавиатурой он всё равно
+            уходит под неё, а его высота отъедала место у переписки. Назад —
+            стрелкой в шапке. */}
+        {pathname !== '/copilot' && <AppTabbar />}
       </Page>
     </App>
   )
