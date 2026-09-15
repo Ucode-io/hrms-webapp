@@ -21,6 +21,12 @@ export function MorePage() {
 
   const services: ServiceCard[] = [
     {
+      label: 'AI-помощник',
+      desc: 'Спросить про отпуск, зарплату, график',
+      icon: 'mdi:robot-happy-outline',
+      onClick: () => navigate('/copilot'),
+    },
+    {
       label: 'Спорт',
       desc: 'Посещение спорта',
       icon: 'mdi:dumbbell',

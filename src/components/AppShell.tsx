@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Icon } from '@iconify/react'
 import { App, Page } from 'konsta/react'
 import { useAuth } from '../context/AuthContext'
 import { AppHeader } from './AppHeader'
@@ -22,6 +23,7 @@ import { SurveyTakePage } from '../pages/SurveyTakePage'
 import { TrainingsPage } from '../pages/TrainingsPage'
 import { TrainingDetailPage } from '../pages/TrainingDetailPage'
 import { KnowledgePage } from '../pages/KnowledgePage'
+import { CopilotPage } from '../pages/CopilotPage'
 import { KnowledgeArticlePage } from '../pages/KnowledgeArticlePage'
 import { hasPendingTaskId } from '../telegram/startParam'
 
@@ -48,6 +50,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/surveys': 'Опросы',
   '/trainings': 'Тренинги',
   '/knowledge': 'База знаний',
+  '/copilot': 'AI-помощник',
 }
 
 function CurrentHeader() {
@@ -76,11 +79,35 @@ function CurrentHeader() {
     pathname === '/surveys' ||
     pathname === '/trainings' ||
     pathname === '/knowledge' ||
+    pathname === '/copilot' ||
     isSurveyTake ||
     isTrainingDetail ||
     isKnowledgeArticle ||
     !Object.keys(PAGE_TITLES).includes(pathname)
   return <PageHeader title={title} showBack={shouldShowBack} />
+}
+
+/**
+ * Кнопка AI-помощника поверх контента, над таббаром.
+ *
+ * Не шестой таб: пять уже есть, шестой сжал бы подписи. На самой странице чата
+ * прячется — она перекрывала бы поле ввода и вела бы туда, где уже находишься.
+ */
+function CopilotFab() {
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  if (pathname === '/copilot') return null
+
+  return (
+    <button
+      type="button"
+      onClick={() => navigate('/copilot')}
+      aria-label="AI-помощник"
+      className="fixed right-4 bottom-[84px] z-30 w-13 h-13 rounded-full bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/30 flex items-center justify-center active:scale-90 transition"
+    >
+      <Icon icon="mdi:robot-happy-outline" width={26} />
+    </button>
+  )
 }
 
 export function AppShell() {
@@ -123,10 +150,12 @@ export function AppShell() {
             <Route path="/trainings/:id" element={<TrainingDetailPage />} />
             <Route path="/knowledge" element={<KnowledgePage />} />
             <Route path="/knowledge/:id" element={<KnowledgeArticlePage />} />
+            <Route path="/copilot" element={<CopilotPage />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </main>
 
+        <CopilotFab />
         <AppTabbar />
       </Page>
     </App>
