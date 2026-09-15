@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import {
   streamChat,
@@ -394,7 +395,7 @@ function Bubble({
               : 'bg-white border border-[var(--line)]/70 text-[var(--text-main)] rounded-bl-md'
           }`}
         >
-          {message.content}
+          {renderCitations(message.content)}
         </div>
       )}
 
@@ -434,6 +435,30 @@ function Bubble({
         ))}
     </div>
   )
+}
+
+/**
+ * Разметка в ответе — только ссылка на статью базы знаний: копилот пишет
+ * `[Аллерайз](kb:<guid>)`, а куда это ведёт, решает клиент. В админке своя
+ * страница статьи, здесь своя — поэтому в тексте не путь, а ссылка вида `kb:`.
+ *
+ * Остальной markdown тут намеренно не разбирается: жирное и списки читаются
+ * как есть, а ссылка без разбора осталась бы скобками с гуидом посреди фразы.
+ */
+function renderCitations(text: string): React.ReactNode[] {
+  return text.split(/(\[[^\]]+\]\(kb:[^)\s]+\))/g).map((part, i) => {
+    const link = /^\[([^\]]+)\]\(kb:([^)\s]+)\)$/.exec(part)
+    if (!link) return <span key={i}>{part}</span>
+    return (
+      <Link
+        key={i}
+        to={`/knowledge/${encodeURIComponent(link[2])}`}
+        className="font-medium text-[var(--accent)] underline underline-offset-2"
+      >
+        {link[1]}
+      </Link>
+    )
+  })
 }
 
 function ResultTable({ table }: { table: CopilotTable }) {
