@@ -10,11 +10,17 @@ import {
   normalizeActionStatus,
   normalizeTime,
   normalizeWorkflowStatus,
+  parseIsoDate,
   toIsoDate,
   type AttendanceRecord,
 } from '../api/attendanceService'
 import { resolveCompaniesId } from '../api/adminRequest'
 import { reportsService } from '../api/reportsService'
+import shiftsService, {
+  formatShiftRange,
+  isNightShift,
+  type ShiftRecord,
+} from '../api/shiftsService'
 // Единый формат сумм по всему приложению — чтобы валюта не разъезжалась
 // между экранами «Зарплата» и «Учёт времени».
 import { formatAmount } from '../api/payrollService'
@@ -526,6 +532,58 @@ function formatMinutes(total: number): string {
 }
 
 
+/* ── Мои смены ───────────────────────────────────────── */
+/**
+ * Что запланировано, а не что уже случилось: остальной экран смотрит назад
+ * (журнал, опоздания, штраф), а это — единственный блок про будущее.
+ *
+ * Только read-only и только свои: открытые смены сюда не приходят, записаться
+ * на смену из mini app нельзя. Планирование остаётся за админкой.
+ */
+function ShiftRow({ shift, todayIso }: { shift: ShiftRecord; todayIso: string }) {
+  const iso = String(shift.date || '')
+  const date = parseIsoDate(iso)
+  const isPast = iso < todayIso
+  const night = isNightShift(shift)
+
+  const place = shift.locations_id_data?.title || ''
+  const project = (shift.project || '').trim()
+  const meta = [place, project].filter(Boolean).join(' · ')
+
+  return (
+    <div className={`flex items-center gap-3 px-4 py-3 ${isPast ? 'opacity-50' : ''}`}>
+      <div
+        className={`flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-xl ${
+          night ? 'bg-violet-50' : 'bg-indigo-50'
+        }`}
+      >
+        <span className="text-[14px] font-extrabold leading-none text-[var(--text-main)]">
+          {date ? date.getDate() : '—'}
+        </span>
+        <span className="mt-0.5 text-[9px] font-semibold uppercase leading-none text-[var(--text-muted)]">
+          {date ? date.toLocaleDateString('ru-RU', { weekday: 'short' }) : ''}
+        </span>
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="m-0 truncate text-[14px] font-bold text-[var(--text-main)]">
+          {formatShiftRange(shift)}
+          {night && (
+            <span className="ml-2 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-600">
+              ночная
+            </span>
+          )}
+        </p>
+        {(meta || shift.comment) && (
+          <p className="m-0 mt-0.5 truncate text-[12px] text-[var(--text-muted)]">
+            {meta || shift.comment}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* ── Stats card ──────────────────────────────────────── */
 function StatCard({ icon, iconBg, value, label, sub, valueColor }: {
   icon: string; iconBg: string; value: string; label: string; sub?: string; valueColor?: string
@@ -597,6 +655,19 @@ export function TimePage() {
     () => allRecords.filter((r) => recordDateIso(r).startsWith(monthPrefix)).sort((a, b) => recordDateIso(b).localeCompare(recordDateIso(a))),
     [allRecords, monthPrefix],
   )
+
+  /* Смены выбранного месяца: границы, а не перечисление дней. */
+  const monthRange = useMemo(
+    () => ({ from: isoForDay(monthKey, 1), to: isoForDay(monthKey, daysInMonth(monthKey)) }),
+    [monthKey],
+  )
+
+  const { data: myShifts = [] } = useQuery({
+    queryKey: ['my-shifts', employeeGuid, monthKey],
+    queryFn: () => shiftsService.getMine(employeeGuid, monthRange),
+    enabled: Boolean(employeeGuid),
+    staleTime: 60_000,
+  })
 
   /* Опоздания и штраф за месяц — считает сервер: нужны оклад, график работы,
      рабочие дни по календарю праздников и настройки компании (коэффициент и
@@ -727,6 +798,25 @@ export function TimePage() {
               value={latenessPenaltyLabel} label="Штраф за опоздания"
               valueColor={(lateness?.penalty_amount ?? 0) > 0 ? 'text-rose-600' : undefined}
               sub={latenessPenaltyHint} />
+          </div>
+        )}
+
+        {/* ── Мои смены ─────────────────────────────── */}
+        {/* Карточки нет, когда смен нет вовсе: в компаниях, где планировщиком
+            не пользуются, пустой блок был бы шумом на каждом открытии. */}
+        {myShifts.length > 0 && (
+          <div className="rounded-3xl bg-white overflow-hidden shadow-[0_1px_8px_rgba(0,0,0,0.06)]">
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--line)]">
+              <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">Мои смены</p>
+              <span className="rounded-full bg-[var(--app-bg)] px-2.5 py-0.5 text-[12px] font-semibold text-[var(--text-muted)]">
+                {myShifts.length}
+              </span>
+            </div>
+            <div className="divide-y divide-[var(--line)]">
+              {myShifts.map((shift) => (
+                <ShiftRow key={shift.guid} shift={shift} todayIso={todayIso} />
+              ))}
+            </div>
           </div>
         )}
 
