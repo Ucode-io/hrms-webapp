@@ -21,6 +21,16 @@ declare global {
         // Из неподписанной части берём только start_param — он решает, какой
         // экран открыть, и подделывать в нём нечего.
         initDataUnsafe?: { start_param?: string }
+        // Bot API 8.0. Внутри Telegram это единственный источник координат:
+        // navigator.geolocation вебвью не отдаёт, его колбэк не приходит вовсе.
+        LocationManager?: {
+          isLocationAvailable?: boolean
+          isAccessGranted?: boolean
+          init: (callback?: () => void) => unknown
+          getLocation: (
+            callback: (location: { latitude: number; longitude: number } | null) => void,
+          ) => unknown
+        }
       }
     }
   }

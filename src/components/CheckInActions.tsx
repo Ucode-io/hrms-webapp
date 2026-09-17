@@ -45,9 +45,43 @@ function captureFrame(video: HTMLVideoElement): Promise<File | null> {
 }
 
 /** `lat,long`, шесть знаков — как ждёт ссылка на карты. Порядок как в Google/Яндексе. */
-function formatLocation(position: GeolocationPosition): string {
-  const { latitude, longitude } = position.coords
+function formatLocation(latitude: number, longitude: number): string {
   return `${latitude.toFixed(6)},${longitude.toFixed(6)}`
+}
+
+/**
+ * Координаты: сначала Telegram, потом браузер.
+ *
+ * Внутри мини-аппа `navigator.geolocation` молчит — колбэк не приходит ни
+ * успехом, ни ошибкой, поэтому единственный рабочий источник там
+ * LocationManager (Bot API 8.0). Вне Telegram его нет, и работает обычная
+ * браузерная геолокация. Возвращаем пустую строку вместо ошибки: отсутствие
+ * координат отметку не отменяет.
+ */
+function requestLocation(onResult: (location: string) => void): void {
+  const manager = window.Telegram?.WebApp?.LocationManager
+
+  if (manager) {
+    manager.init(() => {
+      if (manager.isLocationAvailable === false) {
+        onResult('')
+        return
+      }
+      manager.getLocation((location) => {
+        onResult(location ? formatLocation(location.latitude, location.longitude) : '')
+      })
+    })
+    return
+  }
+
+  navigator.geolocation?.getCurrentPosition(
+    (position) => onResult(formatLocation(position.coords.latitude, position.coords.longitude)),
+    () => onResult(''),
+    // enableHighAccuracy: false намеренно — GPS-фикс в помещении ищется
+    // десятками секунд, а координаты по Wi-Fi приходят почти сразу и для
+    // вопроса «человек в офисе или дома» точны более чем достаточно.
+    { enableHighAccuracy: false, timeout: GEO_DEADLINE_MS, maximumAge: 60_000 },
+  )
 }
 
 function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => void }) {
@@ -83,21 +117,17 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
       })
       .catch(() => { if (!cancelled) setCameraReady(false) })
 
-    // Свой дедлайн поверх геолокации: опция timeout отсчитывает только поиск
-    // координат, а ожидание разрешения — нет. В Telegram-вебвью диалог может
-    // не появиться вовсе, и тогда без этого таймера плашка «Определяем…»
-    // висела бы вечно. Координата, пришедшая после дедлайна, всё равно
-    // подставится — человек обычно жмёт не в первую секунду.
+    // Свой дедлайн поверх геолокации: ни браузер, ни Telegram не обязаны
+    // ответить — диалог разрешения может висеть неотвеченным сколько угодно.
+    // Без таймера плашка «Определяем…» застревала бы навсегда. Координата,
+    // пришедшая позже, всё равно подставится: человек жмёт не в первую секунду.
     const deadline = window.setTimeout(() => { if (!cancelled) setGeoChecked(true) }, GEO_DEADLINE_MS)
 
-    navigator.geolocation?.getCurrentPosition(
-      (position) => { if (!cancelled) { setLocation(formatLocation(position)); setGeoChecked(true) } },
-      () => { if (!cancelled) setGeoChecked(true) },
-      // enableHighAccuracy: false намеренно — GPS-фикс в помещении ищется
-      // десятками секунд, а координаты по Wi-Fi приходят почти сразу и для
-      // вопроса «человек в офисе или дома» точны более чем достаточно.
-      { enableHighAccuracy: false, timeout: GEO_DEADLINE_MS, maximumAge: 60_000 },
-    )
+    requestLocation((result) => {
+      if (cancelled) return
+      if (result) setLocation(result)
+      setGeoChecked(true)
+    })
 
     return () => {
       cancelled = true
