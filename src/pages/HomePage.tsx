@@ -9,9 +9,9 @@ export function HomePage() {
     <>
       {/* <ProfileBanner /> */}
       {/* <QuickActions /> */}
-      <CheckInActions />
       <UpcomingEvents />
       <NewsFeed />
+      <CheckInActions />
     </>
   )
 }

@@ -5,6 +5,7 @@ import { Icon } from '@iconify/react'
 import { useAuth } from '../context/AuthContext'
 import { resolveCompaniesId } from '../api/adminRequest'
 import { uploadFile } from '../api/dashboardService'
+import pico from '../lib/pico.js'
 import {
   attendanceService,
   buildMarkTimes,
@@ -17,7 +18,50 @@ const GEO_DEADLINE_MS = 8_000
 const PHOTO_MAX_SIDE = 720
 const PHOTO_QUALITY = 0.7
 
+// Каскад лежит в public/ и качается по сети (≈234 КБ, кэшируется браузером), а
+// не импортируется: бинарь незачем тащить в граф модулей и в хеш сборки.
+const CASCADE_URL = '/facefinder'
+const DETECT_INTERVAL_MS = 250 // 4 к/с — детектору хватает, батарею не жжёт
+const DETECT_MAX_SIDE = 320 // кадр для pico: 320×240 ≈ 77 тыс. пикселей на проход
+const COUNTDOWN_MS = 3_000
+const COUNTDOWN_STEP_MS = 60 // кольцо заполняется плавно, а не рывками по секунде
+
+const RING_TICKS = 72
+const RING_BOX = 1.8 // сторона svg относительно рамки лица: с запасом под кольцо
+// Доля кольца, набираемая ещё до отсчёта: видно, что детектор «схватил» лицо.
+const RING_ARMED = 0.3
+
+// Ручки калибровки. Камеры и освещение в офисах разные, цифры подобраны на
+// столе: если автоснимок срабатывает сам по себе — поднимать FACE_MIN_QUALITY
+// (до ~70) и FACE_STABLE_TICKS; если не срабатывает вовсе — опускать.
+const FACE_MIN_QUALITY = 50 // порог pico при памяти на 5 кадров
+const FACE_MIN_SIZE = 100 // сторона лица в пикселях кадра 320 — отсекает прохожего
+const FACE_MAX_OFFSET = 0.25 // смещение от центра кадра, в долях ширины
+const FACE_STABLE_TICKS = 5 // 5 × 250 мс = 1.25 с непрерывного лица
+
 const ACTION_LABEL: Record<MarkAction, string> = { IN: 'Приход', OUT: 'Уход' }
+
+type Classify = ReturnType<typeof pico.unpack_cascade>
+
+/**
+ * Каскад грузится один раз на загрузку страницы и переживает открытие-закрытие
+ * шторки. Промис кэшируем, а на ошибке сбрасываем — следующая шторка попробует
+ * снова. Отказ не фатален: без каскада просто нет авторежима.
+ */
+let cascadePromise: Promise<Classify> | null = null
+function loadCascade(): Promise<Classify> {
+  cascadePromise ??= fetch(CASCADE_URL)
+    .then((response) => {
+      if (!response.ok) throw new Error(`facefinder ${response.status}`)
+      return response.arrayBuffer()
+    })
+    .then((buffer) => pico.unpack_cascade(new Int8Array(buffer)))
+    .catch((loadError) => {
+      cascadePromise = null
+      throw loadError
+    })
+  return cascadePromise
+}
 
 function showTime(value: unknown): string {
   const text = String(value || '')
@@ -33,7 +77,16 @@ function captureFrame(video: HTMLVideoElement): Promise<File | null> {
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(w * scale)
   canvas.height = Math.round(h * scale)
-  canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+  // Фронтальная камера отдаёт зеркальный кадр — разворачиваем обратно, чтобы
+  // на снимке текст читался, а не отражался. Превью зеркалим тем же способом
+  // (CSS на <video>), иначе картинка в кадре и в файле разъедутся.
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    ctx.translate(canvas.width, 0)
+    ctx.scale(-1, 1)
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+  }
 
   return new Promise((resolve) => {
     canvas.toBlob(
@@ -84,6 +137,148 @@ function requestLocation(onResult: (location: string) => void): void {
   )
 }
 
+/** Рамка лица в CSS-пикселях элемента `<video>`: центр и диаметр кольца. */
+type FaceBox = { x: number; y: number; d: number }
+
+/**
+ * Лицо того, кто держит телефон, — или null.
+ *
+ * Зеркалить кадр для детектора не нужно — pico симметричен, а проверка «по
+ * центру» тем более. Лицо принимаем только крупное и близкое к центру: так
+ * постер на дальней стене и прохожий за спиной отсекаются без всякой логики
+ * поверх — они мелкие и сбоку.
+ */
+function detectFace(video: HTMLVideoElement, canvas: HTMLCanvasElement, classify: Classify,
+  remember: (dets: ReturnType<typeof pico.run_cascade>) => ReturnType<typeof pico.run_cascade>): FaceBox | null {
+  // getUserMedia резолвится раньше первого кадра: videoWidth там 0, а pico на
+  // пустом буфере честно находит «лица».
+  if (!video.videoWidth || video.readyState < 2) return null
+
+  const ncols = DETECT_MAX_SIDE
+  const nrows = Math.round((DETECT_MAX_SIDE * video.videoHeight) / video.videoWidth)
+  if (canvas.width !== ncols || canvas.height !== nrows) {
+    canvas.width = ncols
+    canvas.height = nrows
+  }
+
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) return null
+  ctx.drawImage(video, 0, 0, ncols, nrows)
+
+  const { data } = ctx.getImageData(0, 0, ncols, nrows)
+  const pixels = new Uint8Array(ncols * nrows)
+  for (let i = 0; i < pixels.length; i += 1) {
+    const p = i * 4
+    pixels[i] = (data[p] * 299 + data[p + 1] * 587 + data[p + 2] * 114) / 1000
+  }
+
+  const dets = pico.cluster_detections(
+    remember(pico.run_cascade(
+      { pixels, nrows, ncols, ldim: ncols },
+      classify,
+      { shiftfactor: 0.1, minsize: FACE_MIN_SIZE, maxsize: 1000, scalefactor: 1.1 },
+    )),
+    0.2,
+  )
+
+  // Из нескольких подходящих берём самое крупное — это тот, кто ближе к камере.
+  const face = dets
+    .filter(([row, col, size, quality]) =>
+      quality > FACE_MIN_QUALITY
+      && size >= FACE_MIN_SIZE
+      && Math.hypot(col - ncols / 2, row - nrows / 2) < FACE_MAX_OFFSET * ncols)
+    .sort((a, b) => b[2] - a[2])[0]
+  if (!face) return null
+
+  // Координаты детектора → CSS-пиксели элемента. Учитываем и object-cover
+  // (кадр обрезан по короткой стороне), и CSS-зеркало превью: детектор работает
+  // по неотражённому кадру, поэтому X разворачиваем обратно.
+  const [row, col, size] = face
+  const rect = video.getBoundingClientRect()
+  const cover = Math.max(rect.width / video.videoWidth, rect.height / video.videoHeight)
+  const frameScale = (video.videoWidth / ncols) * cover
+  const x = (col * frameScale - (video.videoWidth * cover) / 2) + rect.width / 2
+
+  return {
+    x: rect.width - x,
+    y: (row * frameScale - (video.videoHeight * cover) / 2) + rect.height / 2,
+    d: size * frameScale,
+  }
+}
+
+/**
+ * Кольцо-индикатор вокруг лица: чёрточки загораются по мере готовности к снимку.
+ * Единственное, что даёт pico, — рамка, поэтому здесь рамка и рисуется; сетки
+ * точек по лицу быть не может, для неё нужна модель ландмарков.
+ */
+function DetectRing({ face, progress }: { face: FaceBox; progress: number }) {
+  const box = face.d * RING_BOX
+  const lit = Math.round(progress * RING_TICKS)
+  // Радиусы в единицах viewBox (полуширина = 50 = 0.9 диаметра лица):
+  // пунктир по краю лица, риски с зазором снаружи, бледный обод по краю.
+  const [dotted, tickFrom, tickTo, halo] = [29.5, 33, 41, 49]
+
+  // Риски рисуем двумя группами, а не по одной с фильтром на каждой: свечение
+  // на 72 элемента — это 72 прохода фильтра, а на группе он один.
+  const ticks = Array.from({ length: RING_TICKS }, (_, i) => {
+    // От «12 часов» по часовой стрелке — как заполняется циферблат.
+    const angle = (i / RING_TICKS) * 2 * Math.PI - Math.PI / 2
+    return [Math.cos(angle), Math.sin(angle)] as const
+  })
+
+  const line = ([cos, sin]: readonly [number, number], i: number) => (
+    <line key={i} x1={cos * tickFrom} y1={sin * tickFrom} x2={cos * tickTo} y2={sin * tickTo} />
+  )
+
+  return (
+    <>
+      {/* Затемняем всё вокруг лица одной тенью наружу: маска без маски. */}
+      <div
+        className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-100 ease-linear"
+        style={{
+          left: face.x,
+          top: face.y,
+          width: face.d,
+          height: face.d,
+          boxShadow: '0 0 0 9999px rgba(11,18,32,0.55)',
+        }}
+      />
+
+      <svg
+        viewBox="-50 -50 100 100"
+        className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2 transition-all duration-100 ease-linear"
+        // Размер через style, а не атрибутами: так он тоже едет с переходом и
+        // кольцо не дёргается на каждом кадре детектора.
+        style={{ left: face.x, top: face.y, width: box, height: box }}
+      >
+        <circle
+          r={dotted}
+          fill="none"
+          stroke="rgba(255,255,255,0.5)"
+          strokeWidth={0.5}
+          strokeDasharray="0.4 2.2"
+          strokeLinecap="round"
+        />
+        <circle r={halo} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={0.8} />
+
+        <g stroke="rgba(255,255,255,0.1)" strokeWidth={0.8} strokeLinecap="round">
+          {ticks.slice(lit).map((tick, i) => line(tick, i + lit))}
+        </g>
+        <g
+          stroke="#7ed957"
+          strokeWidth={0.8}
+          strokeLinecap="round"
+          // Свечение в единицах viewBox, а его растягивает вместе с кольцом:
+          // 1.5 давало вокруг зелёного мутный ореол в полкадра.
+          style={{ filter: 'drop-shadow(0 0 0.6px rgba(126,217,87,0.85))' }}
+        >
+          {ticks.slice(0, lit).map(line)}
+        </g>
+      </svg>
+    </>
+  )
+}
+
 function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => void }) {
   const { profile, session } = useAuth()
   const queryClient = useQueryClient()
@@ -91,9 +286,25 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
   const streamRef = useRef<MediaStream | null>(null)
   const [cameraReady, setCameraReady] = useState(false)
   const [location, setLocation] = useState('')
-  const [geoChecked, setGeoChecked] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState('')
+
+  // Автоснимок. Взводится, когда готовы камера, каскад и гео (см. geoSettled),
+  // и выключается насовсем по любому касанию экрана.
+  const [cascadeReady, setCascadeReady] = useState(false)
+  const [geoSettled, setGeoSettled] = useState(false)
+  const [countdown, setCountdown] = useState<number | null>(null)
+  const [autoOff, setAutoOff] = useState(false)
+  const [face, setFace] = useState<FaceBox | null>(null)
+  const [progress, setProgress] = useState(0)
+  const classifyRef = useRef<Classify | null>(null)
+  const memoryRef = useRef<ReturnType<typeof pico.instantiate_detection_memory> | null>(null)
+  const grayRef = useRef<HTMLCanvasElement | null>(null)
+  const stableRef = useRef(0)
+  // isSending — состояние, и внутри одного тика оно устаревшее. Отметка
+  // необратима (триггер AFTER CREATE сразу шлёт карточку в Telegram, удаления
+  // из приложения нет), поэтому вход в submit сторожит ref, а не рендер.
+  const sendingRef = useRef(false)
 
   const employeeGuid =
     (typeof profile?.guid === 'string' && profile.guid) ||
@@ -117,28 +328,84 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
       })
       .catch(() => { if (!cancelled) setCameraReady(false) })
 
-    // Свой дедлайн поверх геолокации: ни браузер, ни Telegram не обязаны
-    // ответить — диалог разрешения может висеть неотвеченным сколько угодно.
-    // Без таймера плашка «Определяем…» застревала бы навсегда. Координата,
-    // пришедшая позже, всё равно подставится: человек жмёт не в первую секунду.
-    const deadline = window.setTimeout(() => { if (!cancelled) setGeoChecked(true) }, GEO_DEADLINE_MS)
+    // Гео — мягкий шлюз автоснимка: ждём координату, но не дольше дедлайна.
+    // Внутри Telegram LocationManager может не позвать колбэк вообще (не
+    // ошибкой, а молчанием), а GEO_DEADLINE_MS ограничивает только браузерную
+    // ветку — поэтому свой таймер. Вышло время — отметка уходит без `map`,
+    // ровно как при ручном нажатии.
+    const geoTimer = window.setTimeout(() => { if (!cancelled) setGeoSettled(true) }, GEO_DEADLINE_MS)
 
     requestLocation((result) => {
       if (cancelled) return
       if (result) setLocation(result)
-      setGeoChecked(true)
+      setGeoSettled(true)
     })
 
     return () => {
       cancelled = true
-      window.clearTimeout(deadline)
+      window.clearTimeout(geoTimer)
       streamRef.current?.getTracks().forEach((t) => t.stop())
       streamRef.current = null
     }
   }, [])
 
+  // Каскад. Молча падаем в ручной режим: без него просто нет автоснимка.
+  useEffect(() => {
+    let alive = true
+    loadCascade()
+      .then((classify) => {
+        if (!alive) return
+        classifyRef.current = classify
+        setCascadeReady(true)
+      })
+      .catch((cascadeError) => console.warn('Каскад детектора не загрузился', cascadeError))
+    return () => { alive = false }
+  }, [])
+
+  // Детект. Все условия — в зависимостях, поэтому цикл физически останавливается
+  // на отмене, на отправке и при размонтировании: внутри тика нет ни одной
+  // проверки «а я ещё нужен». Во время отсчёта цикл продолжает крутиться —
+  // только ради того, чтобы кольцо ехало за лицом, а не висело на месте, где
+  // лицо было секунду назад. Взводить отсчёт заново он при этом не может.
+  useEffect(() => {
+    if (!cameraReady || !cascadeReady || !geoSettled || autoOff || isSending) return
+
+    memoryRef.current ??= pico.instantiate_detection_memory(5)
+    grayRef.current ??= document.createElement('canvas')
+    stableRef.current = 0
+
+    const timer = window.setInterval(() => {
+      const video = videoRef.current
+      const classify = classifyRef.current
+      const remember = memoryRef.current
+      const canvas = grayRef.current
+      if (!video || !classify || !remember || !canvas) return
+
+      const found = detectFace(video, canvas, classify, remember)
+      setFace(found)
+      stableRef.current = found ? stableRef.current + 1 : 0
+
+      // Кольцо набирает RING_ARMED за время стабилизации — человек видит, что
+      // его уже нашли, задолго до того, как пойдёт отсчёт. Дальше кольцо
+      // принадлежит отсчёту, и тик в него больше не лезет.
+      setProgress((prev) => (prev > RING_ARMED
+        ? prev
+        : Math.min(1, stableRef.current / FACE_STABLE_TICKS) * RING_ARMED))
+
+      // Через функцию, а не по значению из замыкания: иначе тик видел бы
+      // countdown таким, каким тот был на момент запуска цикла, и перезаводил
+      // бы отсчёт с тройки на каждом кадре.
+      if (stableRef.current >= FACE_STABLE_TICKS) {
+        setCountdown((current) => current ?? Math.ceil(COUNTDOWN_MS / 1000))
+      }
+    }, DETECT_INTERVAL_MS)
+
+    return () => window.clearInterval(timer)
+  }, [cameraReady, cascadeReady, geoSettled, autoOff, isSending])
+
   const submit = async () => {
-    if (isSending) return
+    if (sendingRef.current) return
+    sendingRef.current = true
     setIsSending(true)
     setError('')
 
@@ -178,33 +445,87 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
       console.error('Отметка не записалась', submitError)
       setError('Не удалось отметиться. Попробуйте ещё раз.')
     } finally {
+      sendingRef.current = false
       setIsSending(false)
     }
   }
+
+  // Отсчёт. Считаем по часам, а не по числу тиков: цифра обновляется раз в
+  // секунду, кольцо — каждые 60 мс, и оба берут одно и то же время. Зависимость
+  // — булев `isCounting`, иначе смена цифры перезапускала бы отсчёт заново.
+  // Отмена — countdown = null: очистка эффекта гасит таймер, отдельного пути
+  // прерывания не нужно.
+  const isCounting = countdown !== null
+  useEffect(() => {
+    if (!isCounting) return
+    const startedAt = performance.now()
+    const timer = window.setInterval(() => {
+      const elapsed = performance.now() - startedAt
+      setProgress(RING_ARMED + (1 - RING_ARMED) * Math.min(1, elapsed / COUNTDOWN_MS))
+      setCountdown(Math.max(1, Math.ceil((COUNTDOWN_MS - elapsed) / 1000)))
+      if (elapsed < COUNTDOWN_MS) return
+      window.clearInterval(timer)
+      setCountdown(null)
+      void submit()
+    }, COUNTDOWN_STEP_MS)
+    return () => window.clearInterval(timer)
+    // submit пересоздаётся каждый рендер и перезапускал бы отсчёт; повторный
+    // вход всё равно закрыт sendingRef.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCounting])
+
+  // Любое касание шторки выключает авторежим до конца сессии. Повторное
+  // взведение было бы ловушкой: человек гасит отсчёт, а он начинается снова.
+  // Новая шторка — новый монтаж, так что «до конца сессии» получается само.
+  const stopAuto = () => {
+    setCountdown(null)
+    setAutoOff(true)
+    setProgress(0)
+    setFace(null)
+  }
+
+  const isArmed = cameraReady && cascadeReady && !autoOff && !isCounting && !isSending
 
   return (
     <Drawer.Root open onOpenChange={(open) => { if (!open && !isSending) onClose() }}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-40 bg-black/60" />
-        <Drawer.Content className="fixed inset-0 z-50 flex flex-col bg-[#0b1220] outline-none">
+        {/* Перехват на фазе capture: гасим авто раньше любого дочернего
+            обработчика, но тап всё равно доходит до кнопки под пальцем — жать
+            «Отметить» вручную в тот же момент можно. */}
+        <Drawer.Content
+          onPointerDownCapture={stopAuto}
+          className="fixed inset-0 z-50 flex flex-col bg-[#0b1220] outline-none"
+        >
           <Drawer.Title className="sr-only">Отметить {ACTION_LABEL[action].toLowerCase()}</Drawer.Title>
           <Drawer.Description className="sr-only">Снимок и геолокация в момент отметки</Drawer.Description>
 
           <div className="relative flex flex-1 items-center justify-center overflow-hidden">
-            <div className="absolute top-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1.5 text-[12px] text-amber-300">
-              {!geoChecked ? 'Определяем геолокацию…' : location || 'Геолокация недоступна'}
-            </div>
-
             <video
               ref={videoRef}
               autoPlay
               playsInline
               muted
-              className={`absolute inset-0 h-full w-full object-cover ${cameraReady ? '' : 'hidden'}`}
+              className={`absolute inset-0 h-full w-full -scale-x-100 object-cover ${cameraReady ? '' : 'hidden'}`}
             />
 
-            {/* Овал — подсказка кадрирования, не валидация: лицо никто не сверяет. */}
-            <div className="pointer-events-none relative z-10 flex h-[62%] w-[72%] max-w-[320px] items-center justify-center rounded-[50%] border border-white/70 px-6 text-center">
+            {face && (
+              <>
+                <p className="absolute top-8 left-1/2 z-10 m-0 -translate-x-1/2 text-[15px] font-semibold text-white">
+                  Готово {Math.round(progress * 100)}%
+                </p>
+                <DetectRing face={face} progress={progress} />
+              </>
+            )}
+
+            {/* Овал — подсказка кадрирования, не валидация: лицо никто не
+                сверяет. Пока детектор лицо не нашёл, он и есть ориентир; как
+                только нашёл — его место занимает кольцо вокруг лица. */}
+            <div
+              className={`pointer-events-none relative z-10 flex h-[62%] w-[72%] max-w-[320px] items-center justify-center rounded-[50%] border border-white/70 px-6 text-center transition-opacity duration-300 ${
+                face ? 'opacity-0' : 'opacity-100'
+              }`}
+            >
               {!cameraReady && (
                 <div className="flex flex-col items-center gap-3 text-white/60">
                   <Icon icon="mdi:camera-outline" width={34} />
@@ -226,6 +547,30 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
             )}
 
             {error && <p className="m-0 text-center text-[13px] text-rose-400">{error}</p>}
+
+            {/* Плашки «загружаем детектор» намеренно нет: продукт здесь —
+                кнопка, автоснимок лишь бонус, и его отсутствие не новость. */}
+            {isArmed && (
+              <p className={`m-0 text-center text-[12px] ${face ? 'text-[#7ed957]' : 'text-white/50'}`}>
+                {face ? 'Лицо в кадре — не двигайтесь' : 'Смотрите в камеру — снимем автоматически'}
+              </p>
+            )}
+
+            {countdown !== null && (
+              <p className="m-0 text-center text-[13px] font-semibold text-[#7ed957]">
+                Снимаем через {countdown}…
+              </p>
+            )}
+
+            {countdown !== null && (
+              <button
+                type="button"
+                onClick={stopAuto}
+                className="w-full rounded-2xl bg-white/10 py-3 text-[14px] font-semibold text-white"
+              >
+                Отменить автоснимок
+              </button>
+            )}
 
             <button
               type="button"
@@ -271,33 +616,30 @@ export function CheckInActions() {
     staleTime: 60_000,
   })
 
-  // Обе кнопки всегда активны: приход мог пройти через турникет, а уход — из
-  // дома. Вместо запрета показываем факт, чтобы не жали «на всякий случай».
   const today = useMemo(() => {
     const iso = buildMarkTimes(new Date()).date
     return (records as AttendanceRecord[]).find((record) => String(record.date || '').slice(0, 10) === iso)
   }, [records])
 
+  // Есть приход за сегодня — значит следующий осмысленный шаг только уход.
+  // Повторный уход не блокируем: смена могла закрыться турникетом, а уточнить
+  // время человек всё равно вправе.
+  const nextAction: MarkAction = showTime(today?.check_in_time) === '—' ? 'IN' : 'OUT'
+
   return (
-    <section className="animate-fade-in-up">
-      <div className="grid grid-cols-2 gap-2.5">
-        <button
-          type="button"
-          onClick={() => setAction('IN')}
-          className="flex items-center justify-center gap-2 rounded-[20px] bg-emerald-500 py-4 text-[15px] font-bold text-white shadow-sm transition-transform duration-150 active:scale-[0.97]"
-        >
-          <Icon icon="mdi:check-circle-outline" width={20} />
-          Приход
-        </button>
-        <button
-          type="button"
-          onClick={() => setAction('OUT')}
-          className="flex items-center justify-center gap-2 rounded-[20px] bg-amber-500 py-4 text-[15px] font-bold text-white shadow-sm transition-transform duration-150 active:scale-[0.97]"
-        >
-          <Icon icon="mdi:clock-outline" width={20} />
-          Уход
-        </button>
-      </div>
+    // Лента новостей растёт без предела, поэтому кнопка липкая: смещение снизу —
+    // высота таббара, иначе она уезжает под него.
+    <section className="animate-fade-in-up sticky bottom-[calc(env(safe-area-inset-bottom)+62px)] z-20 -mx-4 mt-auto bg-[var(--app-bg)] px-4 pt-3 pb-1">
+      <button
+        type="button"
+        onClick={() => setAction(nextAction)}
+        className={`flex w-full items-center justify-center gap-2 rounded-[20px] py-4 text-[15px] font-bold text-white shadow-sm transition-transform duration-150 active:scale-[0.97] ${
+          nextAction === 'IN' ? 'bg-emerald-500' : 'bg-amber-500'
+        }`}
+      >
+        <Icon icon={nextAction === 'IN' ? 'mdi:check-circle-outline' : 'mdi:clock-outline'} width={20} />
+        {ACTION_LABEL[nextAction]}
+      </button>
 
       <p className="mt-2 mb-0 text-center text-[12px] text-[var(--text-muted)]">
         Сегодня: приход {showTime(today?.check_in_time)} · уход {showTime(today?.check_out_time)}
