@@ -117,7 +117,7 @@ function requestLocation(onResult: (location: string) => void): void {
   const manager = window.Telegram?.WebApp?.LocationManager
 
   if (manager) {
-    manager.init(() => {
+    const read = () => {
       if (manager.isLocationAvailable === false) {
         onResult('')
         return
@@ -125,7 +125,14 @@ function requestLocation(onResult: (location: string) => void): void {
       manager.getLocation((location) => {
         onResult(location ? formatLocation(location.latitude, location.longitude) : '')
       })
-    })
+    }
+
+    // `init` зовёт колбэк только на первой инициализации за сессию мини-аппа.
+    // Второй раз он молчит — и приход проходил, а уход в том же сеансе висел
+    // до таймаута, пока приложение не перезапустят. Инициализирован — идём
+    // сразу за координатой.
+    if (manager.isInited) read()
+    else manager.init(read)
     return
   }
 

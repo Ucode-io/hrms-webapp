@@ -26,6 +26,10 @@ declare global {
         LocationManager?: {
           isLocationAvailable?: boolean
           isAccessGranted?: boolean
+          // Колбэк `init` приходит только на первой инициализации за сессию
+          // мини-аппа, поэтому нужен и сам флаг: по нему видно, что звать
+          // `init` второй раз бессмысленно и можно идти сразу за координатой.
+          isInited?: boolean
           init: (callback?: () => void) => unknown
           getLocation: (
             callback: (location: { latitude: number; longitude: number } | null) => void,
