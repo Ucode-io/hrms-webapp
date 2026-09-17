@@ -245,7 +245,9 @@ export const attendanceService = {
         action: [action],
         source: 'webapp',
         ...(picture ? { picture } : {}),
-        ...(location ? { location } : {}),
+        // Ключ `map`, а не `location`: ucode умеет показывать это поле на карте,
+        // и координаты становятся кликабельными прямо в его интерфейсе.
+        ...(location ? { map: location } : {}),
       },
     })
   },
