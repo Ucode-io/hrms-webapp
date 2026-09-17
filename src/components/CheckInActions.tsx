@@ -13,6 +13,7 @@ import {
 } from '../api/attendanceService'
 
 const UPLOAD_TIMEOUT_MS = 10_000
+const GEO_DEADLINE_MS = 8_000
 const PHOTO_MAX_SIDE = 720
 const PHOTO_QUALITY = 0.7
 
@@ -82,14 +83,25 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
       })
       .catch(() => { if (!cancelled) setCameraReady(false) })
 
+    // Свой дедлайн поверх геолокации: опция timeout отсчитывает только поиск
+    // координат, а ожидание разрешения — нет. В Telegram-вебвью диалог может
+    // не появиться вовсе, и тогда без этого таймера плашка «Определяем…»
+    // висела бы вечно. Координата, пришедшая после дедлайна, всё равно
+    // подставится — человек обычно жмёт не в первую секунду.
+    const deadline = window.setTimeout(() => { if (!cancelled) setGeoChecked(true) }, GEO_DEADLINE_MS)
+
     navigator.geolocation?.getCurrentPosition(
       (position) => { if (!cancelled) { setLocation(formatLocation(position)); setGeoChecked(true) } },
       () => { if (!cancelled) setGeoChecked(true) },
-      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+      // enableHighAccuracy: false намеренно — GPS-фикс в помещении ищется
+      // десятками секунд, а координаты по Wi-Fi приходят почти сразу и для
+      // вопроса «человек в офисе или дома» точны более чем достаточно.
+      { enableHighAccuracy: false, timeout: GEO_DEADLINE_MS, maximumAge: 60_000 },
     )
 
     return () => {
       cancelled = true
+      window.clearTimeout(deadline)
       streamRef.current?.getTracks().forEach((t) => t.stop())
       streamRef.current = null
     }
