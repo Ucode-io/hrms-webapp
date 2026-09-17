@@ -1,6 +1,11 @@
 import adminRequest, { getCompaniesId } from './adminRequest'
 
 const ATTENDANCE_COLLECTION = 'attendance'
+// Сырой поток событий прохода: сюда же пишет интеграция с турникетами.
+// Запись именно через объектное API — на ней висит custom_event AFTER CREATE,
+// который апсертит день в `attendance` и шлёт карточку в Telegram.
+const ATTENDANCE_RECORDS_COLLECTION = 'attendance_records'
+const COMPANY_TIME_ZONE = 'Asia/Tashkent'
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/
 
 export type AttendanceWorkflowStatus = 'accepted' | 'rejected' | 'requested' | 'unknown'
@@ -103,6 +108,48 @@ export function resolveActionStatusFromCheckIn(checkInTime: string): Exclude<Att
   return computeDelayTimeFromCheckIn(normalized) === '00:00' ? 'present' : 'late'
 }
 
+export type MarkAction = 'IN' | 'OUT'
+
+export interface MarkTimes {
+  date: string
+  event_time: string
+  action_time: string
+}
+
+/**
+ * Три поля времени события из одного среза.
+ *
+ * Часы берём с устройства, а пояс — нет: у человека с телефоном в московском
+ * поясе 09:02 превратились бы в 08:02, и опоздание молча исчезло. По той же
+ * причине дату берём отсюда же, а не из `toIsoDate` — около полуночи они
+ * разъезжаются на сутки.
+ *
+ * Аргументом принимает момент, а не зовёт `new Date()` внутри: так полночь и
+ * чужой пояс проверяются подстановкой.
+ */
+export function buildMarkTimes(now: Date): MarkTimes {
+  const parts = new Intl.DateTimeFormat('ru-RU', {
+    timeZone: COMPANY_TIME_ZONE,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hourCycle: 'h23',
+  })
+    .formatToParts(now)
+    .reduce<Record<string, string>>((acc, part) => {
+      acc[part.type] = part.value
+      return acc
+    }, {})
+
+  const { year, month, day, hour, minute, second } = parts
+
+  return {
+    date: `${year}-${month}-${day}`,
+    event_time: `${hour}:${minute}:${second}`,
+    // Формат ровно как у турникетных строк, иначе колонка в админке станет разнобоем.
+    action_time: `${day}.${month}.${year} ${hour}:${minute}`,
+  }
+}
+
 export const attendanceService = {
   getByEmployee: async (userBaseId: string): Promise<AttendanceRecord[]> => {
     if (!userBaseId) return []
@@ -165,6 +212,40 @@ export const attendanceService = {
         delay_time: delay,
         status: ['requested'],
         action_status: [actionStatus],
+      },
+    })
+  },
+
+  /**
+   * Отметка «я сейчас пришёл/ушёл» из webapp — событие того же веса, что проход
+   * через турникет, без согласования. Дальше всё делает триггер AFTER CREATE.
+   *
+   * `hikvision_id` не заполняем: терминала у такого события нет.
+   */
+  createMark: async ({
+    userBaseId,
+    companyId,
+    action,
+    picture,
+    location,
+    now = new Date(),
+  }: {
+    userBaseId: string
+    companyId?: string
+    action: MarkAction
+    picture?: string
+    location?: string
+    now?: Date
+  }): Promise<unknown> => {
+    return adminRequest.post(`/v2/items/${ATTENDANCE_RECORDS_COLLECTION}`, {
+      data: {
+        user_base_id: userBaseId,
+        companies_id: companyId || getCompaniesId(),
+        ...buildMarkTimes(now),
+        action: [action],
+        source: 'webapp',
+        ...(picture ? { picture } : {}),
+        ...(location ? { location } : {}),
       },
     })
   },
