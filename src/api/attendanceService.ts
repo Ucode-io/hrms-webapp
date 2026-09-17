@@ -26,6 +26,28 @@ export interface AttendanceRecord {
   [key: string]: unknown
 }
 
+/** Строка потока событий: одна отметка, а не сводка дня. */
+export interface AttendanceMark {
+  guid: string
+  date?: string
+  event_time?: string
+  action?: string[] | string
+  created_at?: string
+  [key: string]: unknown
+}
+
+/** Ключ сортировки отметок: время события, а при его отсутствии — момент записи. */
+function markOrder(mark: AttendanceMark): string {
+  return String(mark.event_time || '') || String(mark.created_at || '')
+}
+
+/** 'IN' | 'OUT' из MULTISELECT-поля, где лежит либо массив, либо строка. */
+export function readMarkAction(mark: AttendanceMark): MarkAction | '' {
+  const raw = Array.isArray(mark.action) ? mark.action[0] : mark.action
+  const value = String(raw || '').toUpperCase()
+  return value === 'IN' || value === 'OUT' ? value : ''
+}
+
 function encodeData(data: Record<string, unknown>): string {
   return encodeURIComponent(JSON.stringify(data))
 }
@@ -151,6 +173,34 @@ export function buildMarkTimes(now: Date): MarkTimes {
 }
 
 export const attendanceService = {
+  /**
+   * Сырые отметки за один день, свежие сверху.
+   *
+   * Агрегат `attendance` для чередования не годится: там всего две колонки, и
+   * второй приход за день в них уже не виден. Чтобы понимать, что человек
+   * нажмёт следующим, нужен сам поток событий — в нём и турникет, и webapp.
+   */
+  getMarksForDate: async (userBaseId: string, date: string): Promise<AttendanceMark[]> => {
+    if (!userBaseId || !date) return []
+
+    const res = await adminRequest.get(`/v2/items/${ATTENDANCE_RECORDS_COLLECTION}`, {
+      params: {
+        data: encodeData({
+          user_base_id: userBaseId,
+          // Диапазон из одного дня, а не равенство: так же это поле фильтрует
+          // админка, и на DATE-колонке это единственный проверенный способ.
+          date: { $gte: date, $lte: date },
+          with_relations: true,
+          limit: 200,
+          offset: 0,
+        }),
+      },
+    })
+
+    return extractList<AttendanceMark>(res).sort((a, b) =>
+      markOrder(b).localeCompare(markOrder(a)))
+  },
+
   getByEmployee: async (userBaseId: string): Promise<AttendanceRecord[]> => {
     if (!userBaseId) return []
 
