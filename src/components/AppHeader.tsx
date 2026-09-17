@@ -1,6 +1,7 @@
 import { useCompany } from '../context/CompanyContext'
 import { useNavigate } from 'react-router-dom'
 import { useAuth, getDisplayName, getInitials } from '../context/AuthContext'
+import { Icon } from '@iconify/react'
 import { BellIcon } from './Icons'
 
 export function AppHeader() {
@@ -27,30 +28,39 @@ export function AppHeader() {
             <span>{company.name.slice(0, 2).toUpperCase()}</span>
           )}
         </div>
-        <div className="min-w-0">
-          <p className="m-0 text-base font-extrabold text-[var(--text-main)] leading-tight tracking-tight truncate">
-            {company.name}
-          </p>
-          <p className="m-0 mt-0.5 text-[11px] font-medium text-[var(--text-muted)] leading-tight">
-            Employee Portal
-          </p>
-        </div>
+        <p className="m-0 min-w-0 text-base font-extrabold text-[var(--text-main)] leading-tight tracking-tight truncate">
+          {company.name}
+        </p>
       </div>
 
       {/* Actions */}
       <div className="flex items-center gap-2 shrink-0">
-        <button
-          type="button"
-          aria-label="Уведомления"
-          className="relative w-10 h-10 rounded-xl bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center border-0 cursor-pointer transition-transform active:scale-95"
-        >
-          <BellIcon size={20} />
-          {notificationCount > 0 && (
-            <span className="absolute top-0.5 right-0.5 min-w-[17px] h-[17px] px-1 text-[10px] font-bold leading-[17px] text-center rounded-full bg-red-500 text-white shadow-[0_0_0_2px_white]">
-              {notificationCount}
-            </span>
-          )}
-        </button>
+        {/* Сегмент на две кнопки: AI-помощник живёт здесь, а не плавающей
+            кнопкой над таббаром — та перекрывала «+» на половине страниц. */}
+        <div className="flex items-center gap-1 rounded-2xl bg-[var(--accent-light)]/60 p-1">
+          <button
+            type="button"
+            onClick={() => navigate('/home')}
+            className="relative flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 border-0 bg-transparent text-[13px] font-semibold text-[var(--text-main)] cursor-pointer transition-transform active:scale-95"
+          >
+            <BellIcon size={16} />
+            Новости
+            {notificationCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 text-[10px] font-bold leading-[17px] text-center rounded-full bg-red-500 text-white shadow-[0_0_0_2px_white]">
+                {notificationCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/copilot')}
+            className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 border-0 bg-transparent text-[13px] font-semibold text-[var(--text-main)] cursor-pointer transition-transform active:scale-95"
+          >
+            <Icon icon="mdi:auto-awesome" width={16} className="text-[var(--accent)]" />
+            ИИ Помощник
+          </button>
+        </div>
 
         <button
           type="button"

@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
-import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
-import { Icon } from '@iconify/react'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { App, Page } from 'konsta/react'
 import { useAuth } from '../context/AuthContext'
 import { AppHeader } from './AppHeader'
@@ -87,29 +86,6 @@ function CurrentHeader() {
   return <PageHeader title={title} showBack={shouldShowBack} />
 }
 
-/**
- * Кнопка AI-помощника поверх контента, над таббаром.
- *
- * Не шестой таб: пять уже есть, шестой сжал бы подписи. На самой странице чата
- * прячется — она перекрывала бы поле ввода и вела бы туда, где уже находишься.
- */
-function CopilotFab() {
-  const navigate = useNavigate()
-  const { pathname } = useLocation()
-  if (pathname === '/copilot') return null
-
-  return (
-    <button
-      type="button"
-      onClick={() => navigate('/copilot')}
-      aria-label="AI-помощник"
-      className="fixed right-4 bottom-[84px] z-30 w-13 h-13 rounded-full bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/30 flex items-center justify-center active:scale-90 transition"
-    >
-      <Icon icon="mdi:robot-happy-outline" width={26} />
-    </button>
-  )
-}
-
 export function AppShell() {
   const { isAuthorized } = useAuth()
   const konstaTheme = useMemo(() => detectKonstaTheme(), [])
@@ -159,7 +135,6 @@ export function AppShell() {
           </Routes>
         </main>
 
-        <CopilotFab />
         {/* На экране чата таббар прячем: с открытой клавиатурой он всё равно
             уходит под неё, а его высота отъедала место у переписки. Назад —
             стрелкой в шапке. */}
