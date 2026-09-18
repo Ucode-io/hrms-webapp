@@ -605,18 +605,18 @@ function useToday() {
 export function CheckInSummary() {
   const { checkIn, checkOut } = useToday()
 
+  // Одной строкой, а не столбиком: над лентой это две подписи и два времени,
+  // ради которых незачем занимать высоту в два ряда.
   const card = (label: string, time: string, icon: string, tone: string) => (
-    <div className={`flex-1 rounded-[20px] px-4 py-2.5 text-center ${tone}`}>
-      <p className="m-0 flex items-center justify-center gap-1.5 text-[13px] font-semibold">
-        <Icon icon={icon} width={16} />
-        {label}
-      </p>
-      <p className="mt-0.5 mb-0 text-[17px] font-bold tabular-nums">{time}</p>
+    <div className={`flex flex-1 items-center justify-center gap-1.5 rounded-2xl px-2.5 py-1.5 ${tone}`}>
+      <Icon icon={icon} width={14} className="shrink-0" />
+      <span className="text-[12px] font-semibold">{label}</span>
+      <span className="text-[14px] font-bold tabular-nums">{time}</span>
     </div>
   )
 
   return (
-    <section className="animate-fade-in-up flex gap-2.5">
+    <section className="animate-fade-in-up flex gap-2">
       {card('Приход', checkIn, 'mdi:login', 'bg-emerald-500/15 text-emerald-500')}
       {card('Уход', checkOut, 'mdi:logout', 'bg-amber-500/15 text-amber-500')}
     </section>
@@ -641,11 +641,11 @@ export function CheckInActions() {
       <button
         type="button"
         onClick={() => setAction(nextAction)}
-        className={`flex w-full items-center justify-center gap-2 rounded-[20px] py-4 text-[15px] font-bold text-white shadow-sm transition-transform duration-150 active:scale-[0.97] ${
+        className={`flex w-full items-center justify-center gap-2 rounded-2xl py-2.5 text-[14px] font-bold text-white shadow-sm transition-transform duration-150 active:scale-[0.97] ${
           nextAction === 'IN' ? 'bg-emerald-500' : 'bg-amber-500'
         }`}
       >
-        <Icon icon={nextAction === 'IN' ? 'mdi:login' : 'mdi:logout'} width={20} />
+        <Icon icon={nextAction === 'IN' ? 'mdi:login' : 'mdi:logout'} width={18} />
         {ACTION_LABEL[nextAction]}
       </button>
 

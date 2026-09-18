@@ -7,7 +7,10 @@ import { MiniApps } from '../components/MiniApps'
 
 export function HomePage() {
   return (
-    <>
+    // Свой шаг вместо общего `gap-4` из AppShell: на главной над сеткой
+    // приложений стоят четыре блока подряд, и лишние 4 px между каждым
+    // стоят целого ряда мини-приложений на маленьком экране.
+    <div className="flex flex-col gap-2.5">
       {/* <ProfileBanner /> */}
       {/* <QuickActions /> */}
       <HomeGreeting />
@@ -15,6 +18,6 @@ export function HomePage() {
       <CheckInActions />
       <UpcomingEvents />
       <MiniApps />
-    </>
+    </div>
   )
 }

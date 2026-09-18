@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Preloader } from 'konsta/react'
-import { Icon } from '@iconify/react'
 import { useAuth } from '../context/AuthContext'
 import { CalendarOffIcon } from './Icons'
 import { useUpcomingEventsQuery, type UpcomingEventItem } from '../api/dashboardService'
@@ -11,10 +10,7 @@ type DayChip = {
   dateKey: string
   dayLabel: string
   dateLabel: string
-  isWeekend: boolean
 }
-
-type DayChipStatus = 'holiday' | 'weekend' | 'working_holiday' | null
 
 const DAY_CHIPS_COUNT = 30
 
@@ -34,12 +30,10 @@ const addDays = (value: Date, days: number): Date => {
 const buildDayChips = (base: Date, count: number): DayChip[] =>
   Array.from({ length: count }, (_, idx) => {
     const day = addDays(base, idx)
-    const dayOfWeek = day.getDay()
     return {
       dateKey: toIsoDate(day),
       dayLabel: day.toLocaleDateString('ru-RU', { weekday: 'short' }).replace('.', ''),
       dateLabel: day.toLocaleDateString('ru-RU', { day: '2-digit' }),
-      isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
     }
   })
 
@@ -75,25 +69,31 @@ const getTypeBadge = (type: UpcomingEventItem['type']): { label: string; classNa
   }
 }
 
-const getDayChipStatus = (items: UpcomingEventItem[] | undefined, isWeekend: boolean): DayChipStatus => {
-  if (items?.some((item) => item.type === 'holiday')) return 'holiday'
-  if (isWeekend || items?.some((item) => item.type === 'weekend')) return 'weekend'
-  if (items?.some((item) => item.type === 'working_holiday')) return 'working_holiday'
-  return null
-}
-
+/**
+ * Подпись дня в ленте — её решает смена, а не день недели.
+ *
+ * День без смены — выходной, даже будний: «не работает» в схеме выражается
+ * именно отсутствием строки (docs/shift-table.md). Обратное тоже верно —
+ * смена в субботу заведена осознанно, и календарь её не отменяет. Та же
+ * развязка уже стоит в «Табеле» → «Мой график».
+ *
+ * Праздник перебивает слово «Выходной» только у нерабочего дня: суббота и так
+ * видна по дате, а 8 марта — нет.
+ */
 const getDayChipStatusMeta = (
-  status: DayChipStatus,
+  items: UpcomingEventItem[] | undefined,
   shift: ShiftRecord | undefined,
 ): { label: string; colorClass: string } => {
-  if (status === 'holiday') return { label: 'Праздник', colorClass: 'text-rose-500' }
-  if (status === 'weekend') return { label: 'Выходной', colorClass: 'text-amber-500' }
-  if (status === 'working_holiday') return { label: 'Рабочий', colorClass: 'text-violet-500' }
-  const range = shift ? formatShiftRange(shift) : ''
-  return {
-    label: range && range !== '—' ? range : 'Р/д',
-    colorClass: 'text-emerald-500',
+  if (shift) {
+    const range = formatShiftRange(shift)
+    return {
+      label: range !== '—' ? range : 'Р/д',
+      colorClass: 'text-emerald-500',
+    }
   }
+  const holiday = items?.find((item) => item.type === 'holiday' || item.type === 'working_holiday')
+  if (holiday) return { label: 'Праздник', colorClass: 'text-rose-500' }
+  return { label: 'Выходной', colorClass: 'text-amber-500' }
 }
 
 export function UpcomingEvents() {
@@ -114,7 +114,6 @@ export function UpcomingEvents() {
   const {
     data: events = [],
     isLoading,
-    isFetching,
     isError,
     refetch,
   } = useUpcomingEventsQuery({
@@ -138,7 +137,7 @@ export function UpcomingEvents() {
     return map
   }, [events])
 
-  const { data: shifts = [] } = useQuery({
+  const { data: shifts = [], isLoading: shiftsLoading } = useQuery({
     queryKey: ['my-shifts-week', userBaseId, dateFrom, dateTo],
     queryFn: () => shiftsService.getMine(userBaseId, { from: dateFrom, to: dateTo }),
     enabled: Boolean(userBaseId),
@@ -158,71 +157,73 @@ export function UpcomingEvents() {
   const selectedEvents = eventsByDate.get(selectedDate) || []
 
   return (
-    <section className="animate-fade-in-up animate-delay-2 rounded-[22px] border border-[var(--line)] bg-[var(--surface)] px-4 py-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="m-0 text-[17px] font-extrabold text-[var(--text-main)] tracking-tight">
-            Предстоящие события
-          </p>
-          <p className="m-0 mt-1 text-xs font-medium text-[var(--text-muted)]">
-            Праздники и выходные на ближайшие дни
-          </p>
-        </div>
-        <div className="h-10 w-10 shrink-0 rounded-xl bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center">
-          <CalendarOffIcon size={20} />
-        </div>
+    <section className="animate-fade-in-up animate-delay-2 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 shadow-sm">
+      {/* Подзаголовка нет намеренно: строка «праздники и выходные на ближайшие
+          дни» пересказывала ленту, которая и так под ней. */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="m-0 text-[14px] font-extrabold text-[var(--text-main)] tracking-tight">
+          Предстоящие события
+        </p>
+        <span className="shrink-0 text-[var(--accent)]">
+          <CalendarOffIcon size={16} />
+        </span>
       </div>
 
-      <div className="mt-3.5 flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide">
+      <div className="mt-2 flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
         {dayChips.map((day) => {
           const isSelected = selectedDate === day.dateKey
           const dayEvents = eventsByDate.get(day.dateKey) || []
-          const dayStatus = getDayChipStatus(dayEvents, day.isWeekend)
-          const statusMeta = getDayChipStatusMeta(dayStatus, shiftByDate.get(day.dateKey))
+          // Пока смены не приехали, «Выходной» был бы враньём на полсекунды.
+          const statusMeta = shiftsLoading
+            ? { label: '—', colorClass: 'text-[var(--text-muted)]' }
+            : getDayChipStatusMeta(dayEvents, shiftByDate.get(day.dateKey))
 
           return (
             <button
               key={day.dateKey}
               type="button"
               onClick={() => setSelectedDate(day.dateKey)}
-              className={`w-[92px] shrink-0 rounded-2xl px-2 py-3 text-center transition-all duration-150 ${
+              className={`w-[68px] shrink-0 rounded-xl px-1 py-1.5 text-center transition-all duration-150 ${
                 isSelected
                   ? 'bg-[var(--accent)] text-white shadow-sm'
                   : 'border border-[var(--line)] bg-[var(--surface)] text-[var(--text-main)] active:scale-[0.98]'
               }`}
             >
-              <p className={`m-0 text-[10px] font-bold uppercase tracking-[0.08em] ${isSelected ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>
+              <p className={`m-0 text-[9px] font-bold uppercase tracking-[0.06em] ${isSelected ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>
                 {day.dayLabel}
               </p>
-              <p className="m-0 mt-1 text-xl font-black leading-none">{day.dateLabel}</p>
-              <div className={`mt-2 border-t border-dashed pt-2 ${isSelected ? 'border-white/30' : 'border-[var(--line)]'}`}>
-                <p className={`m-0 flex items-center justify-center gap-1 whitespace-nowrap text-[10px] font-bold ${isSelected ? 'text-white/90' : statusMeta.colorClass}`}>
-                  <Icon icon="mdi:clock-outline" width={11} className="shrink-0" />
-                  {statusMeta.label}
-                </p>
-              </div>
+              <p className="m-0 text-[16px] font-black leading-tight">{day.dateLabel}</p>
+              <p className={`m-0 whitespace-nowrap text-[9px] font-bold leading-tight ${isSelected ? 'text-white/90' : statusMeta.colorClass}`}>
+                {statusMeta.label}
+              </p>
             </button>
           )
         })}
       </div>
 
-      <div className="mt-3 rounded-2xl border border-[var(--line)] bg-[var(--app-bg)] px-3.5 py-3">
+      {/* Панель дня видна всегда — она и есть ответ на тап по чипу. В пустой
+          день от неё остаётся одна строка: дата и «Без событий». Счётчика
+          рядом со списком нет намеренно — события под ним и так пересчитаны
+          глазом, а «1 событий» пришлось бы склонять. */}
+      <div className="mt-2 rounded-xl border border-[var(--line)] bg-[var(--app-bg)] px-2.5 py-2">
         <div className="flex items-center justify-between gap-2">
-          <p className="m-0 text-[13px] font-bold text-[var(--text-main)] capitalize">
+          <p className="m-0 text-[11px] font-bold capitalize text-[var(--text-main)]">
             {formatHumanDate(selectedDate)}
           </p>
-          <span className="text-[11px] font-semibold text-[var(--text-muted)]">
-            {selectedEvents.length > 0 ? `${selectedEvents.length} событий` : 'Без событий'}
-          </span>
+          {!isLoading && !isError && selectedEvents.length === 0 && (
+            <span className="shrink-0 text-[10px] font-semibold text-[var(--text-muted)]">
+              Без событий
+            </span>
+          )}
         </div>
 
         {isLoading ? (
-          <div className="py-7 flex justify-center">
+          <div className="flex justify-center py-2">
             <Preloader />
           </div>
         ) : isError ? (
-          <div className="mt-2 rounded-xl border border-[var(--error-line)] bg-[var(--error-bg)] px-3 py-2.5">
-            <p className="m-0 text-xs font-semibold text-[var(--error-text)]">
+          <div className="mt-1.5 rounded-lg border border-[var(--error-line)] bg-[var(--error-bg)] px-2.5 py-1.5">
+            <p className="m-0 text-[11px] font-semibold text-[var(--error-text)]">
               Не удалось загрузить календарь событий
             </p>
             <button
@@ -230,38 +231,30 @@ export function UpcomingEvents() {
               onClick={() => {
                 void refetch()
               }}
-              className="mt-2 rounded-lg bg-[var(--error-text)] text-white text-xs font-bold px-2.5 py-1.5"
+              className="mt-1.5 rounded-lg bg-[var(--error-text)] px-2.5 py-1 text-[11px] font-bold text-white"
             >
               Повторить
             </button>
           </div>
-        ) : selectedEvents.length === 0 ? (
-          <p className="m-0 mt-2 text-sm text-[var(--text-muted)]">
-            На выбранный день нет праздников и выходных.
-          </p>
-        ) : (
-          <div className="mt-2.5 flex flex-col gap-2">
+        ) : selectedEvents.length > 0 ? (
+          <div className="mt-1.5 flex flex-col gap-1.5">
             {selectedEvents.map((item) => {
               const badge = getTypeBadge(item.type)
               return (
                 <div
                   key={item.id}
-                  className="rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 flex items-center justify-between gap-2"
+                  className="flex items-center justify-between gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 py-1.5"
                 >
-                  <p className="m-0 text-[13px] font-semibold text-[var(--text-main)] leading-snug">
+                  <p className="m-0 text-[12px] font-semibold leading-snug text-[var(--text-main)]">
                     {item.title}
                   </p>
-                  <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${badge.className}`}>
+                  <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${badge.className}`}>
                     {badge.label}
                   </span>
                 </div>
               )
             })}
           </div>
-        )}
-
-        {isFetching && !isLoading ? (
-          <p className="m-0 mt-2 text-[11px] font-medium text-[var(--text-muted)]">Обновление...</p>
         ) : null}
       </div>
     </section>

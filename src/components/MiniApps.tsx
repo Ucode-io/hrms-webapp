@@ -9,20 +9,24 @@ interface MiniApp {
   to: string
 }
 
+// Порядок задан вручную и означает частоту, а не алфавит: первая тройка —
+// то, за чем открывают приложение каждый день.
 const MINI_APPS: MiniApp[] = [
-  { label: 'Компания', icon: 'mdi:office-building-outline', bg: 'rgba(59,108,245,0.14)', fg: '#6c9bff', to: '/company' },
   { label: 'Задачи', icon: 'mdi:checkbox-marked-outline', bg: 'rgba(16,185,129,0.14)', fg: '#34d399', to: '/tasks' },
   { label: 'Время', icon: 'mdi:clock-outline', bg: 'rgba(217,119,6,0.14)', fg: '#f0b34d', to: '/time' },
-  { label: 'Зарплата', icon: 'mdi:wallet-outline', bg: 'rgba(16,185,129,0.14)', fg: '#34d399', to: '/payroll' },
-  { label: 'Отчёты', icon: 'mdi:chart-bar', bg: 'rgba(139,92,246,0.14)', fg: '#a78bfa', to: '/reports' },
   { label: 'Календарь', icon: 'mdi:calendar-blank-outline', bg: 'rgba(59,108,245,0.14)', fg: '#6c9bff', to: '/calendar' },
-  { label: 'Календарь задач', icon: 'mdi:calendar-check-outline', bg: 'rgba(16,185,129,0.14)', fg: '#34d399', to: '/tasks-calendar' },
+  { label: 'Компания', icon: 'mdi:office-building-outline', bg: 'rgba(59,108,245,0.14)', fg: '#6c9bff', to: '/company' },
+  { label: 'Контакты', icon: 'mdi:account-box-multiple-outline', bg: 'rgba(59,108,245,0.14)', fg: '#6c9bff', to: '/contacts' },
+  { label: 'Орг структура', icon: 'mdi:sitemap-outline', bg: 'rgba(139,92,246,0.14)', fg: '#a78bfa', to: '/org-structure' },
+  { label: 'База знаний', icon: 'mdi:book-open-page-variant-outline', bg: 'rgba(16,185,129,0.14)', fg: '#34d399', to: '/knowledge' },
+  { label: 'Зарплата', icon: 'mdi:wallet-outline', bg: 'rgba(16,185,129,0.14)', fg: '#34d399', to: '/payroll' },
   { label: 'Документы', icon: 'mdi:file-document-outline', bg: 'rgba(59,108,245,0.14)', fg: '#6c9bff', to: '/documents' },
   { label: 'KPI', icon: 'mdi:target-arrow', bg: 'rgba(139,92,246,0.14)', fg: '#a78bfa', to: '/kpi' },
   { label: 'Опросы', icon: 'mdi:clipboard-text-outline', bg: 'rgba(16,185,129,0.14)', fg: '#34d399', to: '/surveys' },
   { label: 'Тренинги', icon: 'mdi:school-outline', bg: 'rgba(217,119,6,0.14)', fg: '#f0b34d', to: '/trainings' },
-  { label: 'База знаний', icon: 'mdi:book-open-page-variant-outline', bg: 'rgba(16,185,129,0.14)', fg: '#34d399', to: '/knowledge' },
   { label: 'Имущество', icon: 'mdi:package-variant-closed', bg: 'rgba(225,29,72,0.14)', fg: '#fb7185', to: '/property' },
+  { label: 'Календарь задач', icon: 'mdi:calendar-check-outline', bg: 'rgba(16,185,129,0.14)', fg: '#34d399', to: '/tasks-calendar' },
+  { label: 'Отчёты', icon: 'mdi:chart-bar', bg: 'rgba(139,92,246,0.14)', fg: '#a78bfa', to: '/reports' },
 ]
 
 export function MiniApps() {
