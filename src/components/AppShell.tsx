@@ -12,6 +12,7 @@ import { MorePage } from '../pages/MorePage'
 import { ProfilePage } from '../pages/ProfilePage'
 import { SportPage } from '../pages/SportPage'
 import { OrgStructurePage } from '../pages/OrgStructurePage'
+import { ContactsPage } from '../pages/ContactsPage'
 import { TimePage } from '../pages/TimePage'
 import { KpiPage } from '../pages/KpiPage'
 import { TasksPage } from '../pages/TasksPage'
@@ -47,6 +48,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/profile': 'Профиль',
   '/sport': 'Спорт',
   '/org-structure': 'Орг структура',
+  '/contacts': 'Контакты',
   '/kpi': 'KPI',
   '/tasks': 'Задачи',
   '/documents': 'Документы',
@@ -90,6 +92,7 @@ function CurrentHeader() {
     pathname === '/payroll' ||
     pathname === '/sport' ||
     pathname === '/org-structure' ||
+    pathname === '/contacts' ||
     pathname === '/kpi' ||
     pathname === '/tasks' ||
     pathname === '/documents' ||
@@ -177,6 +180,7 @@ export function AppShell() {
             <Route path="/tasks-calendar" element={<TasksCalendarPage />} />
             <Route path="/sport" element={<SportPage />} />
             <Route path="/org-structure" element={<OrgStructurePage />} />
+            <Route path="/contacts" element={<ContactsPage />} />
             <Route path="/kpi" element={<KpiPage />} />
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/documents" element={<DocumentsPage />} />

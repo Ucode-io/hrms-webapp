@@ -33,6 +33,12 @@ export function MorePage() {
       onClick: () => navigate('/sport'),
     },
     {
+      label: 'Контакты',
+      desc: 'Телефоны и почта коллег',
+      icon: 'mdi:account-box-multiple-outline',
+      onClick: () => navigate('/contacts'),
+    },
+    {
       label: 'Орг структура',
       desc: 'Отделы и сотрудники',
       icon: 'mdi:office-building-outline',
