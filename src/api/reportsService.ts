@@ -370,6 +370,13 @@ export const reportsService = {
     return invokeReports<{ linked: boolean }>('telegram_link', { init_data: initData })
   },
 
+  // Отметка «Последний вход» в админке. guid шлём явно: у человека в
+  // нескольких компаниях карточек несколько, и отметка должна попасть в ту,
+  // под которой он залогинен.
+  touchLogin: async (guid: string): Promise<{ touched: boolean }> => {
+    return invokeReports<{ touched: boolean }>('login_touch', { guid })
+  },
+
   getKpiTable: async (data: {
     period_type: KpiPeriodType
     date_from: string

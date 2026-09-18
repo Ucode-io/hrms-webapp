@@ -169,6 +169,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void reportsService.linkTelegram(initData).catch(() => {})
   }, [isAuthorized])
 
+  // «Последний вход» в админке. Отдельно от привязки Telegram: та требует
+  // подписанный initData и обновляет одну строку из нескольких у человека в
+  // нескольких компаниях, из-за чего часть входов до админки не доходила.
+  // Один раз на запуск приложения — и после свежего входа, и после
+  // восстановленной сессии, то есть ровно «человек открыл приложение».
+  const loginTouchedRef = useRef(false)
+  useEffect(() => {
+    if (!isAuthorized || !userGuid || loginTouchedRef.current) return
+    loginTouchedRef.current = true
+    void reportsService.touchLogin(userGuid).catch(() => {})
+  }, [isAuthorized, userGuid])
+
   return (
     <AuthContext.Provider
       value={{
