@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Icon } from '@iconify/react'
 import { useAuth } from '../context/AuthContext'
@@ -75,16 +75,16 @@ function LineRow({ record }: { record: CompensationRecord }) {
   return (
     <div className="flex items-center justify-between py-3 border-b border-[var(--line)] last:border-0">
       <div className="flex items-center gap-2.5 min-w-0">
-        <div className="w-7 h-7 shrink-0 rounded-lg flex items-center justify-center"
-          style={{ background: isIncome ? '#ecfdf5' : '#fff1f2', color: isIncome ? '#059669' : '#e11d48' }}>
-          <Icon icon={isIncome ? 'mdi:trending-up' : 'mdi:trending-down'} width={14} />
+        <div className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center"
+          style={{ background: isIncome ? 'rgba(16,185,129,0.15)' : 'rgba(225,29,72,0.15)', color: isIncome ? '#34d399' : '#fb7185' }}>
+          <Icon icon={isIncome ? 'mdi:cash-plus' : 'mdi:cash-minus'} width={18} />
         </div>
         <div className="min-w-0">
           <p className="m-0 text-[13px] font-semibold text-[var(--text-main)] truncate">{record.typeTitle || OPERATION_LABELS[record.operationType]}</p>
           {record.description && <p className="m-0 text-[11px] text-[var(--text-muted)] truncate">{record.description}</p>}
         </div>
       </div>
-      <p className="m-0 ml-3 text-[13px] font-bold shrink-0" style={{ color: isIncome ? '#059669' : '#e11d48' }}>
+      <p className="m-0 ml-3 text-[13px] font-bold shrink-0" style={{ color: isIncome ? '#34d399' : '#fb7185' }}>
         {isIncome ? '+' : '−'}{formatAmount(record.amount)}
       </p>
     </div>
@@ -94,7 +94,7 @@ function LineRow({ record }: { record: CompensationRecord }) {
 /* ── Month detail section ──────────────────────────── */
 function MonthDetail({ group, color }: { group: MonthGroup; color: string }) {
   return (
-    <div className="rounded-2xl border border-[var(--line)] bg-white overflow-hidden">
+    <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] overflow-hidden">
       {/* Earnings */}
       {group.income.length > 0 && (
         <div className="px-4 pt-4">
@@ -102,7 +102,7 @@ function MonthDetail({ group, color }: { group: MonthGroup; color: string }) {
           {group.income.map(r => <LineRow key={r.guid} record={r} />)}
           <div className="flex items-center justify-between py-3 border-t border-[var(--line)]">
             <p className="m-0 text-[13px] font-bold text-[var(--text-main)]">Итого начислений</p>
-            <p className="m-0 text-[14px] font-extrabold text-emerald-600">+{formatAmount(group.totalIncome)}</p>
+            <p className="m-0 text-[14px] font-extrabold text-emerald-500">+{formatAmount(group.totalIncome)}</p>
           </div>
         </div>
       )}
@@ -114,7 +114,7 @@ function MonthDetail({ group, color }: { group: MonthGroup; color: string }) {
           {group.deductions.map(r => <LineRow key={r.guid} record={r} />)}
           <div className="flex items-center justify-between py-3 border-t border-[var(--line)]">
             <p className="m-0 text-[13px] font-bold text-[var(--text-main)]">Итого удержаний</p>
-            <p className="m-0 text-[14px] font-extrabold text-rose-600">−{formatAmount(group.totalDeductions)}</p>
+            <p className="m-0 text-[14px] font-extrabold text-rose-500">−{formatAmount(group.totalDeductions)}</p>
           </div>
         </div>
       )}
@@ -128,49 +128,32 @@ function MonthDetail({ group, color }: { group: MonthGroup; color: string }) {
   )
 }
 
-/* ── Net history bars ──────────────────────────────── */
-function NetHistory({ groups, selectedKey, color, onSelect }: {
-  groups: MonthGroup[]; selectedKey: string; color: string; onSelect: (k: string) => void
+/* ── Month navigator ───────────────────────────────── */
+function MonthNav({ monthKey, income, deductions, color, canGoNext, onPrev, onNext }: {
+  monthKey: string; income: number; deductions: number; color: string
+  canGoNext: boolean; onPrev: () => void; onNext: () => void
 }) {
-  const maxNet = Math.max(...groups.map(g => g.net), 1)
   return (
-    <div className="rounded-2xl border border-[var(--line)] bg-white p-4">
-      <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)] mb-4">История выплат</p>
-      <div className="flex flex-col gap-3">
-        {groups.map(g => {
-          const pct = Math.min((g.net / maxNet) * 100, 100)
-          const isSelected = g.key === selectedKey
-          return (
-            <button key={g.key} type="button" onClick={() => onSelect(g.key)}
-              className="w-full text-left cursor-pointer border-0 bg-transparent p-0 active:opacity-70">
-              <div className="flex items-center justify-between mb-1">
-                <p className={`m-0 text-[13px] font-semibold ${isSelected ? 'text-[var(--text-main)]' : 'text-[var(--text-secondary)]'}`}
-                  style={isSelected ? { color } : undefined}>
-                  {monthKeyLabel(g.key)}
-                </p>
-                <p className={`m-0 text-[13px] font-bold ${isSelected ? '' : 'text-[var(--text-secondary)]'}`}
-                  style={isSelected ? { color } : undefined}>
-                  {formatAmount(g.net)}
-                </p>
-              </div>
-              <div className="h-[6px] rounded-full bg-gray-100 overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${pct}%`, background: isSelected ? color : `${color}60` }} />
-              </div>
-            </button>
-          )
-        })}
-      </div>
-      {groups.length > 0 && (
-        <div className="mt-4 pt-3 border-t border-[var(--line)] flex items-center justify-between">
-          <p className="m-0 text-[12px] text-[var(--text-muted)] font-semibold">Всего за период</p>
-          <p className="m-0 text-[14px] font-extrabold" style={{ color }}>{formatAmount(groups.reduce((s, g) => s + g.net, 0))}</p>
+    <div className="rounded-3xl overflow-hidden" style={{ background: `linear-gradient(135deg, ${color}f0 0%, ${color}90 100%)` }}>
+      <div className="flex items-center justify-between px-4 py-4">
+        <button type="button" onClick={onPrev}
+          className="h-9 w-9 rounded-2xl bg-white/20 flex items-center justify-center active:scale-90 transition-transform">
+          <Icon icon="mdi:chevron-left" width={20} className="text-white" />
+        </button>
+        <div className="text-center">
+          <p className="m-0 text-[18px] font-extrabold text-white leading-snug">{monthKeyLabel(monthKey)}</p>
+          <p className="m-0 mt-0.5 text-[11.5px] text-white/70">
+            Начислено {formatAmount(income)} · Удержано {formatAmount(deductions)}
+          </p>
         </div>
-      )}
+        <button type="button" onClick={onNext} disabled={!canGoNext}
+          className="h-9 w-9 rounded-2xl bg-white/20 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30">
+          <Icon icon="mdi:chevron-right" width={20} className="text-white" />
+        </button>
+      </div>
     </div>
   )
 }
-
 
 /* ── Main Page ─────────────────────────────────────── */
 
@@ -191,15 +174,14 @@ export function PayrollPage() {
     return [fn, ln].filter(Boolean).join(' ') || 'Сотрудник'
   }, [session])
 
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthKey())
-  const pillsRef = useRef<HTMLDivElement>(null)
+  const currentMonthKey = getCurrentMonthKey()
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthKey)
 
-  // Auto-scroll pills to the right (current month) on mount
-  useEffect(() => {
-    if (pillsRef.current) {
-      pillsRef.current.scrollLeft = pillsRef.current.scrollWidth
-    }
-  }, [])
+  const shiftMonth = (delta: number) => {
+    const [year, month] = selectedMonth.split('-').map(Number)
+    const d = new Date(year, month - 1 + delta, 1)
+    setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
 
   const {
     data: records = [],
@@ -221,19 +203,6 @@ export function PayrollPage() {
   const groups = useMemo(() => groupByMonth(records), [records])
   const selectedGroup = useMemo(() => groups.find(g => g.key === selectedMonth) ?? null, [groups, selectedMonth])
 
-  /* ── Month pills — 6 months: oldest on left, current on right ── */
-  const monthPills = useMemo(() => {
-    const pills: string[] = []
-    const now = new Date()
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      pills.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
-    }
-    return pills // oldest first, current last
-  }, [])
-
-
-
   if (error) return (
     <div className="rounded-2xl border border-[var(--error-line)] bg-[var(--error-bg)] text-[var(--error-text)] px-4 py-8 text-center text-sm animate-fade-in-up">
       Не удалось загрузить данные
@@ -243,26 +212,20 @@ export function PayrollPage() {
   return (
     <>
       <div className="flex flex-col gap-4 animate-fade-in-up">
-        {/* Month pills — auto-scrolled to current month on right */}
-        <div ref={pillsRef} className="flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4">
-          {monthPills.map(k => {
-            const d = new Date(k + '-01')
-            const label = isNaN(d.getTime()) ? k : d.toLocaleDateString('ru-RU', { month: 'short' })
-            const active = k === selectedMonth
-            return (
-              <button key={k} type="button" onClick={() => setSelectedMonth(k)}
-                className={`shrink-0 px-3.5 py-2 rounded-xl text-[12px] font-bold border cursor-pointer transition-all active:scale-95 ${active ? 'border-transparent text-white' : 'border-[var(--line)] bg-white text-[var(--text-secondary)]'}`}
-                style={active ? { background: company.mainColor } : undefined}>
-                {label}
-              </button>
-            )
-          })}
-        </div>
+        <MonthNav
+          monthKey={selectedMonth}
+          income={selectedGroup?.totalIncome ?? 0}
+          deductions={selectedGroup?.totalDeductions ?? 0}
+          color={company.mainColor}
+          canGoNext={selectedMonth < currentMonthKey}
+          onPrev={() => shiftMonth(-1)}
+          onNext={() => shiftMonth(1)}
+        />
 
         {isLoadingMonth ? (
           <div className="flex flex-col gap-4 animate-pulse">
-            <div className="h-[140px] rounded-2xl bg-gray-200" />
-            <div className="h-[200px] rounded-2xl bg-gray-200" />
+            <div className="h-[140px] rounded-2xl bg-[var(--surface-muted)]" />
+            <div className="h-[200px] rounded-2xl bg-[var(--surface-muted)]" />
           </div>
         ) : (
           <>
@@ -270,7 +233,7 @@ export function PayrollPage() {
             {selectedGroup ? (
               <PayslipHeader group={selectedGroup} color={company.mainColor} name={employeeName} />
             ) : (
-              <div className="rounded-2xl border border-[var(--line)] bg-white py-10 text-center flex flex-col items-center gap-2">
+              <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] py-10 text-center flex flex-col items-center gap-2">
                 <span className="text-3xl">📅</span>
                 <p className="m-0 text-[14px] font-semibold text-[var(--text-main)]">
                   {new Date(selectedMonth + '-01').toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}
@@ -285,15 +248,7 @@ export function PayrollPage() {
             )}
           </>
         )}
-
-        {/* History bars */}
-        {groups.length > 1 && (
-          <NetHistory groups={groups} selectedKey={selectedMonth} color={company.mainColor} onSelect={setSelectedMonth} />
-        )}
-
-
       </div>
-
     </>
   )
 }

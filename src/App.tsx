@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, HashRouter } from 'react-router-dom'
 import { CompanyProvider } from './context/CompanyContext'
+import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { AppShell } from './components/AppShell'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -47,14 +48,16 @@ function AuthGate() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <HashRouter>
-        {/* AuthProvider снаружи: брендинг компании зависит от залогиненного пользователя. */}
-        <AuthProvider>
-          <CompanyProvider>
-            <AuthGate />
-          </CompanyProvider>
-        </AuthProvider>
-      </HashRouter>
+      <ThemeProvider>
+        <HashRouter>
+          {/* AuthProvider снаружи: брендинг компании зависит от залогиненного пользователя. */}
+          <AuthProvider>
+            <CompanyProvider>
+              <AuthGate />
+            </CompanyProvider>
+          </AuthProvider>
+        </HashRouter>
+      </ThemeProvider>
     </QueryClientProvider>
   )
 }

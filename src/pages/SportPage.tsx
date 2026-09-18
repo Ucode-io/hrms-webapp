@@ -234,7 +234,7 @@ export function SportPage() {
   return (
     <>
       <div className="animate-fade-in-up flex flex-col gap-3.5 pb-[88px]">
-        <section className="rounded-2xl border border-[var(--line)] bg-white overflow-hidden">
+        <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] overflow-hidden">
           <div className="px-4 py-3 border-b border-[var(--line)] flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center bg-[var(--accent-soft)] text-[var(--accent)]">
@@ -264,7 +264,7 @@ export function SportPage() {
                     className={`shrink-0 px-3.5 py-2 rounded-xl text-[12px] font-bold border cursor-pointer transition-all active:scale-95 ${
                       isActive
                         ? 'border-transparent text-white'
-                        : 'border-[var(--line)] bg-white text-[var(--text-secondary)]'
+                        : 'border-[var(--line)] bg-[var(--surface)] text-[var(--text-secondary)]'
                     }`}
                     style={isActive ? { background: company.mainColor } : undefined}
                   >
@@ -291,7 +291,7 @@ export function SportPage() {
             ) : (
               <div className="flex flex-col gap-2.5">
                 {filteredRecords.map((record) => (
-                  <article key={record.guid} className="rounded-xl border border-[var(--line)] bg-white px-3 py-3">
+                  <article key={record.guid} className="rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-3">
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
                         <p className="m-0 text-[13px] font-bold text-[var(--text-main)]">
@@ -306,7 +306,7 @@ export function SportPage() {
                           <button
                             type="button"
                             onClick={() => window.open(record.video, '_blank', 'noopener,noreferrer')}
-                            className="h-8 px-2.5 rounded-lg border border-[var(--line)] bg-white text-[11px] font-semibold text-[var(--text-secondary)]"
+                            className="h-8 px-2.5 rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[11px] font-semibold text-[var(--text-secondary)]"
                           >
                             Видео
                           </button>
@@ -314,7 +314,7 @@ export function SportPage() {
                         <button
                           type="button"
                           onClick={() => openEdit(record)}
-                          className="h-8 px-2.5 rounded-lg border border-[var(--line)] bg-white text-[11px] font-semibold text-[var(--text-secondary)]"
+                          className="h-8 px-2.5 rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[11px] font-semibold text-[var(--text-secondary)]"
                         >
                           Изм.
                         </button>
@@ -352,7 +352,7 @@ export function SportPage() {
       <Drawer.Root open={showForm} onOpenChange={setShowForm} handleOnly>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[28px] outline-none max-h-[90vh] flex flex-col">
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)] rounded-t-[28px] outline-none max-h-[90vh] flex flex-col">
             <div className="flex justify-center pt-3 pb-1"><Drawer.Handle className="!w-10 !h-[4px] !bg-gray-300" /></div>
             <div className="px-5 pt-2 pb-[calc(18px+env(safe-area-inset-bottom))] overflow-y-auto">
               <h3 className="m-0 text-[18px] font-extrabold text-[var(--text-main)]">
@@ -366,7 +366,7 @@ export function SportPage() {
                     type="date"
                     value={form.date}
                     onChange={(event) => setForm((prev) => ({ ...prev, date: event.target.value }))}
-                    className="mobile-input h-10 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-[13px] text-[var(--text-main)]"
+                    className="mobile-input h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-[13px] text-[var(--text-main)]"
                   />
                 </label>
                 <label className="block">
@@ -375,7 +375,7 @@ export function SportPage() {
                     type="time"
                     value={form.time}
                     onChange={(event) => setForm((prev) => ({ ...prev, time: event.target.value }))}
-                    className="h-10 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-[13px] text-[var(--text-main)]"
+                    className="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-[13px] text-[var(--text-main)]"
                   />
                 </label>
               </div>
@@ -396,7 +396,7 @@ export function SportPage() {
                   />
                 </label>
                 {form.video ? (
-                  <div className="mt-2 rounded-lg border border-[var(--line)] bg-white px-3 py-2">
+                  <div className="mt-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2">
                     <button
                       type="button"
                       onClick={() => window.open(form.video, '_blank', 'noopener,noreferrer')}
@@ -419,7 +419,7 @@ export function SportPage() {
                   type="button"
                   onClick={closeForm}
                   disabled={isBusy}
-                  className="h-10 flex-1 rounded-xl border border-[var(--line)] bg-white text-[13px] font-semibold text-[var(--text-secondary)]"
+                  className="h-10 flex-1 rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[13px] font-semibold text-[var(--text-secondary)]"
                 >
                   Отмена
                 </button>

@@ -89,7 +89,7 @@ export default function DateField({
   const todayIso = toIsoDate(new Date())
 
   const fieldCls =
-    'mobile-input flex h-12 w-full items-center justify-between rounded-2xl border border-[var(--line)] bg-gray-50 px-4 text-[14px] font-medium text-[var(--text-main)] outline-none focus:border-[var(--accent)] transition-colors'
+    'mobile-input flex h-12 w-full items-center justify-between rounded-2xl border border-[var(--line)] bg-[var(--surface-muted)] px-4 text-[14px] font-medium text-[var(--text-main)] outline-none focus:border-[var(--accent)] transition-colors'
 
   return (
     <div ref={wrapRef} className="relative">
@@ -103,7 +103,7 @@ export default function DateField({
 
       {open && (
         <div
-          className={`absolute top-[calc(100%+6px)] z-[60] w-[300px] max-w-[calc(100vw-40px)] rounded-2xl border border-[var(--line)] bg-white p-3 shadow-xl ${
+          className={`absolute top-[calc(100%+6px)] z-[60] w-[300px] max-w-[calc(100vw-40px)] rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3 shadow-xl ${
             align === 'right' ? 'right-0' : 'left-0'
           }`}
         >

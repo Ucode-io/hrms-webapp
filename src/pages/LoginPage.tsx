@@ -47,7 +47,7 @@ export function LoginPage() {
           {/* Logo + name */}
           <div className="relative z-10 flex flex-col items-center text-center px-5 pt-10 pb-[50px] text-white">
             <div className="w-[72px] h-[72px] rounded-[20px] bg-white/20 border-2 border-white/25 backdrop-blur-md flex items-center justify-center mb-4">
-              <div className="w-[52px] h-[52px] rounded-[14px] bg-white flex items-center justify-center overflow-hidden font-extrabold text-base shadow-lg"
+              <div className="w-[52px] h-[52px] rounded-[14px] bg-[#fff] flex items-center justify-center overflow-hidden font-extrabold text-base shadow-lg"
                 style={{ color: company.mainColor }}>
                 {company.logo ? (
                   <img src={company.logo} alt={company.name} className="w-full h-full object-contain" />
@@ -65,7 +65,7 @@ export function LoginPage() {
         {/* Запас снизу на высоту клавиатуры (--keyboard-inset считает main.tsx):
             без него скроллить некуда и инпут остаётся под клавиатурой. */}
         <div className="relative z-10 flex-1 flex flex-col items-center px-4 pb-[calc(1.5rem+var(--keyboard-inset))] -mt-8">
-          <div className="w-full max-w-[440px] bg-white rounded-[24px] border border-[var(--line)] shadow-xl shadow-black/10 p-6">
+          <div className="w-full max-w-[440px] bg-[var(--surface)] rounded-[24px] border border-[var(--line)] shadow-xl shadow-black/10 p-6">
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               {/* Header */}
               <div className="text-center">
@@ -97,7 +97,7 @@ export function LoginPage() {
                     onChange={(e) => setUsername(e.target.value)}
                     disabled={isSubmitting}
                     autoComplete="username"
-                    className="w-full h-12 rounded-xl border border-[var(--line)] bg-white px-3.5 text-sm font-normal text-[var(--text-main)] outline-none transition-all duration-150 focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)] disabled:opacity-65"
+                    className="w-full h-12 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3.5 text-sm font-normal text-[var(--text-main)] outline-none transition-all duration-150 focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)] disabled:opacity-65"
                   />
                 </div>
 
@@ -115,7 +115,7 @@ export function LoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       disabled={isSubmitting}
                       autoComplete="current-password"
-                      className="w-full h-12 rounded-xl border border-[var(--line)] bg-white px-3.5 pr-[52px] text-sm font-normal text-[var(--text-main)] outline-none transition-all duration-150 focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)] disabled:opacity-65"
+                      className="w-full h-12 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3.5 pr-[52px] text-sm font-normal text-[var(--text-main)] outline-none transition-all duration-150 focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)] disabled:opacity-65"
                     />
                     <button
                       type="button"

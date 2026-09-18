@@ -77,14 +77,16 @@ function StatTile({
   icon: string
   tone: 'neutral' | 'accent' | 'danger'
 }) {
+  // Подложка иконки — не готовый светлый пастель, а прозрачная подмешка самого
+  // тона: так плитка остаётся читаемой и на белой карточке, и на тёмной.
   const palette = {
-    neutral: { bg: '#eef1f6', color: '#64748b' },
+    neutral: { bg: 'var(--surface-sunken)', color: 'var(--text-secondary)' },
     accent: { bg: 'var(--accent-light)', color: 'var(--accent)' },
-    danger: { bg: '#ffe4e6', color: '#e11d48' },
+    danger: { bg: 'color-mix(in srgb, #f43f5e 18%, transparent)', color: '#f43f5e' },
   }[tone]
 
   return (
-    <div className="flex items-center gap-2 rounded-2xl border border-black/[0.04] bg-white px-2.5 py-2.5 shadow-[0_1px_2px_rgba(12,26,46,0.05)]">
+    <div className="flex items-center gap-2 rounded-2xl border border-black/[0.04] bg-[var(--surface)] px-2.5 py-2.5 shadow-[0_1px_2px_rgba(12,26,46,0.05)]">
       <span
         className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
         style={{ background: palette.bg, color: palette.color }}
@@ -203,7 +205,7 @@ export function TasksPage() {
 
   if (!employeeGuid) {
     return (
-      <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-10 text-center">
+      <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-10 text-center">
         <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent-soft)]">
           <Icon icon="mdi:account-question-outline" width={26} className="text-[var(--accent)]" />
         </div>
@@ -231,7 +233,7 @@ export function TasksPage() {
         <div className="flex min-h-0 flex-1 gap-2.5">
           <div className="flex h-full w-[84%] shrink-0 flex-col gap-2 rounded-2xl bg-gray-200/50 p-2 pt-12">
             {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="h-[104px] animate-pulse rounded-2xl bg-white/80" />
+              <div key={index} className="h-[104px] animate-pulse rounded-2xl bg-[var(--surface)]/80" />
             ))}
           </div>
           <div className="h-full flex-1 rounded-l-2xl bg-gray-200/50" />
@@ -256,7 +258,7 @@ export function TasksPage() {
             <button
               type="button"
               onClick={() => void refetch()}
-              className="mt-2 inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[var(--error-line)] bg-white px-3 py-1.5 text-[12px] font-bold text-[var(--error-text)] active:scale-95"
+              className="mt-2 inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[var(--error-line)] bg-[var(--surface)] px-3 py-1.5 text-[12px] font-bold text-[var(--error-text)] active:scale-95"
             >
               <Icon icon="mdi:refresh" width={13} />
               Повторить
@@ -303,7 +305,7 @@ export function TasksPage() {
     // растянули бы страницу и скроллилась бы она целиком, а не колонка.
     <div className="animate-fade-in-up flex min-h-0 flex-1 flex-col gap-3">
       {/* Сегмент-контрол вида */}
-      <div className="flex shrink-0 rounded-2xl bg-[#e4e9f3] p-1">
+      <div className="flex shrink-0 rounded-2xl bg-[var(--surface-sunken)] p-1">
         {VIEW_TABS.map((tab) => {
           const isActive = tab.key === view
           return (
@@ -313,7 +315,7 @@ export function TasksPage() {
               onClick={() => setView(tab.key)}
               className={`flex-1 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border-0 px-3 py-2 text-[12.5px] font-bold transition-all ${
                 isActive
-                  ? 'bg-white text-[var(--text-main)] shadow-[0_1px_4px_rgba(12,26,46,0.10)]'
+                  ? 'bg-[var(--surface)] text-[var(--text-main)] shadow-[0_1px_4px_rgba(12,26,46,0.10)]'
                   : 'bg-transparent text-[var(--text-secondary)]'
               }`}
             >
@@ -343,7 +345,7 @@ export function TasksPage() {
       </section>
 
       {total === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-10 text-center">
+        <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)] px-4 py-10 text-center">
           <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent-soft)]">
             <Icon
               icon="mdi:checkbox-marked-circle-outline"

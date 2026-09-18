@@ -1,11 +1,10 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
-  HomeIcon, CalendarOffIcon, ClockIcon, WalletIcon, EllipsisIcon,
+  HomeIcon, ClockIcon, WalletIcon, EllipsisIcon,
 } from './Icons'
 
 const tabs = [
   { path: '/home',    label: 'Главная',  Icon: HomeIcon },
-  { path: '/absence', label: 'Отпуск',   Icon: CalendarOffIcon },
   { path: '/time',    label: 'Время',    Icon: ClockIcon },
   { path: '/payroll', label: 'Зарплата', Icon: WalletIcon },
   { path: '/more',    label: 'Ещё',      Icon: EllipsisIcon },
@@ -16,7 +15,7 @@ export function AppTabbar() {
   const { pathname } = useLocation()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--line)]/60 bg-white/90 backdrop-blur-2xl pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--line)]/60 bg-[var(--surface)]/90 backdrop-blur-2xl pb-[env(safe-area-inset-bottom)]">
       <div className="flex items-stretch">
         {tabs.map(({ path, label, Icon }) => {
           const isActive = pathname === path || (pathname === '/' && path === '/home')

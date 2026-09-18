@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Preloader } from 'konsta/react'
+import { Icon } from '@iconify/react'
 import { useAuth } from '../context/AuthContext'
 import { CalendarOffIcon } from './Icons'
 import { useUpcomingEventsQuery, type UpcomingEventItem } from '../api/dashboardService'
+import shiftsService, { formatShiftRange, type ShiftRecord } from '../api/shiftsService'
 
 type DayChip = {
   dateKey: string
   dayLabel: string
   dateLabel: string
-  isToday: boolean
   isWeekend: boolean
 }
 
@@ -37,7 +39,6 @@ const buildDayChips = (base: Date, count: number): DayChip[] =>
       dateKey: toIsoDate(day),
       dayLabel: day.toLocaleDateString('ru-RU', { weekday: 'short' }).replace('.', ''),
       dateLabel: day.toLocaleDateString('ru-RU', { day: '2-digit' }),
-      isToday: idx === 0,
       isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
     }
   })
@@ -81,29 +82,18 @@ const getDayChipStatus = (items: UpcomingEventItem[] | undefined, isWeekend: boo
   return null
 }
 
-const getDayChipBadge = (status: DayChipStatus): { label: string; className: string } | null => {
-  if (status === 'holiday') {
-    return {
-      label: 'Праздник',
-      className: 'bg-rose-100 text-rose-700',
-    }
+const getDayChipStatusMeta = (
+  status: DayChipStatus,
+  shift: ShiftRecord | undefined,
+): { label: string; colorClass: string } => {
+  if (status === 'holiday') return { label: 'Праздник', colorClass: 'text-rose-500' }
+  if (status === 'weekend') return { label: 'Выходной', colorClass: 'text-amber-500' }
+  if (status === 'working_holiday') return { label: 'Рабочий', colorClass: 'text-violet-500' }
+  const range = shift ? formatShiftRange(shift) : ''
+  return {
+    label: range && range !== '—' ? range : 'Р/д',
+    colorClass: 'text-emerald-500',
   }
-
-  if (status === 'weekend') {
-    return {
-      label: 'Выходной',
-      className: 'bg-sky-100 text-sky-700',
-    }
-  }
-
-  if (status === 'working_holiday') {
-    return {
-      label: 'Рабочий',
-      className: 'bg-violet-100 text-violet-700',
-    }
-  }
-
-  return null
 }
 
 export function UpcomingEvents() {
@@ -148,10 +138,27 @@ export function UpcomingEvents() {
     return map
   }, [events])
 
+  const { data: shifts = [] } = useQuery({
+    queryKey: ['my-shifts-week', userBaseId, dateFrom, dateTo],
+    queryFn: () => shiftsService.getMine(userBaseId, { from: dateFrom, to: dateTo }),
+    enabled: Boolean(userBaseId),
+    staleTime: 60_000,
+  })
+
+  // Несколько смен на дату в схеме не запрещены — как и в админке, берём
+  // последнюю найденную, а не падаем на неоднозначности.
+  const shiftByDate = useMemo(() => {
+    const map = new Map<string, ShiftRecord>()
+    for (const shift of shifts) {
+      if (shift.date) map.set(shift.date, shift)
+    }
+    return map
+  }, [shifts])
+
   const selectedEvents = eventsByDate.get(selectedDate) || []
 
   return (
-    <section className="animate-fade-in-up animate-delay-2 rounded-[22px] border border-[var(--line)] bg-white px-4 py-4 shadow-sm">
+    <section className="animate-fade-in-up animate-delay-2 rounded-[22px] border border-[var(--line)] bg-[var(--surface)] px-4 py-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="m-0 text-[17px] font-extrabold text-[var(--text-main)] tracking-tight">
@@ -166,39 +173,33 @@ export function UpcomingEvents() {
         </div>
       </div>
 
-      <div className="mt-3.5 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      <div className="mt-3.5 flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide">
         {dayChips.map((day) => {
-          const eventsCount = eventsByDate.get(day.dateKey)?.length || 0
           const isSelected = selectedDate === day.dateKey
           const dayEvents = eventsByDate.get(day.dateKey) || []
           const dayStatus = getDayChipStatus(dayEvents, day.isWeekend)
-          const dayBadge = getDayChipBadge(dayStatus)
+          const statusMeta = getDayChipStatusMeta(dayStatus, shiftByDate.get(day.dateKey))
 
           return (
             <button
               key={day.dateKey}
               type="button"
               onClick={() => setSelectedDate(day.dateKey)}
-              className={`relative min-w-[64px] rounded-2xl border px-2.5 py-2 text-center transition-all duration-150 ${
+              className={`w-[92px] shrink-0 rounded-2xl px-2 py-3 text-center transition-all duration-150 ${
                 isSelected
-                  ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] shadow-sm'
-                  : 'border-[var(--line)] bg-white text-[var(--text-main)] active:scale-[0.98]'
+                  ? 'bg-[var(--accent)] text-white shadow-sm'
+                  : 'border border-[var(--line)] bg-[var(--surface)] text-[var(--text-main)] active:scale-[0.98]'
               }`}
             >
-              <p className="m-0 text-[10px] font-bold uppercase tracking-[0.08em] opacity-80">
+              <p className={`m-0 text-[10px] font-bold uppercase tracking-[0.08em] ${isSelected ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>
                 {day.dayLabel}
               </p>
-              <p className="m-0 mt-0.5 text-base font-black leading-none">{day.dateLabel}</p>
-              <div className="mt-1 min-h-[16px] flex items-center justify-center">
-                {dayBadge ? (
-                  <span className={`inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-none ${dayBadge.className}`}>
-                    {dayBadge.label}
-                  </span>
-                ) : eventsCount > 0 ? (
-                  <span className="text-[9px] font-semibold text-[var(--text-muted)]">События</span>
-                ) : day.isToday ? (
-                  <span className="text-[9px] font-semibold text-[var(--text-muted)]">Сегодня</span>
-                ) : null}
+              <p className="m-0 mt-1 text-xl font-black leading-none">{day.dateLabel}</p>
+              <div className={`mt-2 border-t border-dashed pt-2 ${isSelected ? 'border-white/30' : 'border-[var(--line)]'}`}>
+                <p className={`m-0 flex items-center justify-center gap-1 whitespace-nowrap text-[10px] font-bold ${isSelected ? 'text-white/90' : statusMeta.colorClass}`}>
+                  <Icon icon="mdi:clock-outline" width={11} className="shrink-0" />
+                  {statusMeta.label}
+                </p>
               </div>
             </button>
           )
@@ -245,7 +246,7 @@ export function UpcomingEvents() {
               return (
                 <div
                   key={item.id}
-                  className="rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 flex items-center justify-between gap-2"
+                  className="rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 flex items-center justify-between gap-2"
                 >
                   <p className="m-0 text-[13px] font-semibold text-[var(--text-main)] leading-snug">
                     {item.title}

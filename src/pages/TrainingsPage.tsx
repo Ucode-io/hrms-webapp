@@ -45,6 +45,41 @@ const STATUS_META: Record<
   },
 }
 
+/**
+ * Статус тренинга по датам и домашке — в макете он есть, в данных отдельным
+ * полем нет. Порядок проверок = порядок важности: незакрытое ДЗ («что с меня
+ * требуют») важнее того, идёт тренинг или уже прошёл.
+ */
+const getLifecycleBadge = (
+  training: MyTraining,
+): { label: string; className: string; icon: string } | null => {
+  if (training.homework_required) {
+    const statusMeta = training.submission_status ? STATUS_META[training.submission_status] : null
+    return (
+      statusMeta || {
+        label: 'Нужно сдать ДЗ',
+        className: 'bg-amber-50 text-amber-600',
+        icon: 'mdi:file-upload-outline',
+      }
+    )
+  }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const start = training.starts_at ? new Date(training.starts_at) : null
+  const end = training.ends_at ? new Date(training.ends_at) : start
+  if (end && !Number.isNaN(end.getTime()) && end < today) {
+    return { label: 'Завершён', className: 'bg-green-50 text-green-600', icon: 'mdi:check' }
+  }
+  if (start && !Number.isNaN(start.getTime()) && start > today) {
+    return { label: 'Скоро', className: 'bg-[var(--accent-light)] text-[var(--accent)]', icon: 'mdi:calendar-clock' }
+  }
+  if (start) {
+    return { label: 'Идёт', className: 'bg-violet-50 text-violet-600', icon: 'mdi:play-circle-outline' }
+  }
+  return null
+}
+
 export function TrainingsPage() {
   const navigate = useNavigate()
   const { session, profile } = useAuth()
@@ -65,9 +100,7 @@ export function TrainingsPage() {
   })
 
   const renderCard = (training: MyTraining) => {
-    const statusMeta = training.submission_status
-      ? STATUS_META[training.submission_status]
-      : null
+    const badge = getLifecycleBadge(training)
     const period = formatPeriod(training)
 
     return (
@@ -75,32 +108,30 @@ export function TrainingsPage() {
         key={training.guid}
         type="button"
         onClick={() => navigate(`/trainings/${training.guid}`)}
-        className="flex w-full items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 text-left shadow-sm transition active:scale-[0.99]"
+        className="flex w-full items-center gap-3 rounded-2xl bg-[var(--surface)] p-4 text-left shadow-sm transition active:scale-[0.99]"
       >
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
           <Icon icon="mdi:school-outline" width={22} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-medium text-gray-900">
+          <p className="m-0 text-[14px] font-bold text-[var(--text-main)] leading-snug">
             {training.title || 'Без названия'}
           </p>
-          <p className="truncate text-[13px] text-gray-500">
+          <p className="m-0 mt-0.5 text-[12px] text-[var(--text-muted)] leading-snug">
             {[period, training.location, `${training.materials_count} материал(ов)`]
               .filter(Boolean)
               .join(' · ')}
           </p>
-          {training.homework_required && (
+          {badge && (
             <span
-              className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-medium ${
-                statusMeta ? statusMeta.className : 'bg-amber-50 text-amber-600'
-              }`}
+              className={`mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${badge.className}`}
             >
-              <Icon icon={statusMeta ? statusMeta.icon : 'mdi:file-upload-outline'} width={14} />
-              {statusMeta ? statusMeta.label : 'Нужно сдать ДЗ'}
+              <Icon icon={badge.icon} width={13} />
+              {badge.label}
             </span>
           )}
         </div>
-        <Icon icon="mdi:chevron-right" width={22} className="shrink-0 text-gray-300" />
+        <Icon icon="mdi:chevron-right" width={20} className="shrink-0 text-[var(--text-muted)]" />
       </button>
     )
   }

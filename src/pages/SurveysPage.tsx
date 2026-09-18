@@ -35,8 +35,12 @@ export function SurveysPage() {
     enabled: Boolean(employeeGuid),
   })
 
-  const pending = surveys.filter((survey) => !survey.completed)
-  const completed = surveys.filter((survey) => survey.completed)
+  // Непройденные наверх: список плоский (как в макете), порядок и делает
+  // приоритет очевидным без отдельных заголовков секций.
+  const ordered = useMemo(
+    () => [...surveys].sort((a, b) => Number(a.completed) - Number(b.completed)),
+    [surveys],
+  )
 
   const renderCard = (survey: MySurvey) => (
     <button
@@ -46,7 +50,7 @@ export function SurveysPage() {
         if (!survey.completed) navigate(`/surveys/${survey.guid}`)
       }}
       disabled={survey.completed}
-      className="flex w-full items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 text-left shadow-sm transition active:scale-[0.99] disabled:opacity-70"
+      className="flex w-full items-center gap-3 rounded-2xl bg-[var(--surface)] p-4 text-left shadow-sm transition active:scale-[0.99] disabled:opacity-70"
     >
       <div
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
@@ -59,18 +63,26 @@ export function SurveysPage() {
         />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-medium text-gray-900">
+        <p className="m-0 truncate text-[14px] font-bold text-[var(--text-main)]">
           {survey.title || 'Без названия'}
         </p>
-        <p className="text-[13px] text-gray-500">
+        <p className="m-0 mt-0.5 text-[12px] text-[var(--text-muted)]">
           {survey.completed
             ? `Пройден ${formatDate(survey.completed_at)}`
             : 'Нажмите, чтобы пройти'}
         </p>
       </div>
-      {!survey.completed && (
-        <Icon icon="mdi:chevron-right" width={22} className="shrink-0 text-gray-300" />
-      )}
+      {/* Статус вынесен в бейдж (как в макете): по нему список читается
+          с одного взгляда, не вчитываясь в подписи. */}
+      <span
+        className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${
+          survey.completed
+            ? 'bg-green-50 text-green-600'
+            : 'bg-[var(--accent-light)] text-[var(--accent)]'
+        }`}
+      >
+        {survey.completed ? 'Пройден' : 'Новый'}
+      </span>
     </button>
   )
 
@@ -92,25 +104,7 @@ export function SurveysPage() {
           <p className="text-sm text-gray-500">Вам пока не назначены опросы</p>
         </div>
       ) : (
-        <>
-          {pending.length > 0 && (
-            <section className="space-y-2.5">
-              <h2 className="px-1 text-[13px] font-semibold uppercase tracking-wide text-gray-400">
-                Ожидают прохождения
-              </h2>
-              {pending.map(renderCard)}
-            </section>
-          )}
-
-          {completed.length > 0 && (
-            <section className="space-y-2.5">
-              <h2 className="px-1 text-[13px] font-semibold uppercase tracking-wide text-gray-400">
-                Пройденные
-              </h2>
-              {completed.map(renderCard)}
-            </section>
-          )}
-        </>
+        <section className="space-y-2.5">{ordered.map(renderCard)}</section>
       )}
     </div>
   )

@@ -15,12 +15,12 @@ export function AppHeader() {
     (typeof profile?.avatar === 'string' && profile.avatar.trim()) || ''
 
   return (
-    <header className="shrink-0 sticky top-0 z-20 flex items-center justify-between gap-3 px-4 py-2.5 border-b border-white/60 bg-white/85 backdrop-blur-xl">
+    <header className="shrink-0 sticky top-0 z-20 flex items-center justify-between gap-3 px-4 py-2.5 border-b border-[var(--line)] bg-[var(--surface)]/85 backdrop-blur-xl">
       {/* Brand */}
       <div className="flex items-center gap-2.5 min-w-0">
         <div
           aria-hidden="true"
-          className="w-10 h-10 shrink-0 rounded-xl bg-[var(--accent-light)] border border-[var(--accent-soft)] flex items-center justify-center overflow-hidden font-extrabold text-[13px] text-[var(--accent)]"
+          className="w-10 h-10 shrink-0 rounded-2xl bg-[var(--accent-light)] border border-[var(--accent-soft)] flex items-center justify-center overflow-hidden font-extrabold text-[13px] text-[var(--accent)]"
         >
           {company.logo ? (
             <img src={company.logo} alt={company.name} className="w-full h-full object-contain" />
@@ -28,44 +28,47 @@ export function AppHeader() {
             <span>{company.name.slice(0, 2).toUpperCase()}</span>
           )}
         </div>
-        <p className="m-0 min-w-0 text-base font-extrabold text-[var(--text-main)] leading-tight tracking-tight truncate">
-          {company.name}
-        </p>
+        <div className="min-w-0">
+          <p className="m-0 text-base font-extrabold text-[var(--text-main)] leading-tight tracking-tight truncate">
+            {company.name}
+          </p>
+          <p className="m-0 text-[11px] font-medium text-[var(--text-muted)] leading-tight truncate">
+            Employee Portal
+          </p>
+        </div>
       </div>
 
       {/* Actions */}
       <div className="flex items-center gap-2 shrink-0">
-        {/* Сегмент на две кнопки: AI-помощник живёт здесь, а не плавающей
-            кнопкой над таббаром — та перекрывала «+» на половине страниц. */}
-        <div className="flex items-center gap-1 rounded-2xl bg-[var(--accent-light)]/60 p-1">
-          <button
-            type="button"
-            onClick={() => navigate('/home')}
-            className="relative flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 border-0 bg-transparent text-[13px] font-semibold text-[var(--text-main)] cursor-pointer transition-transform active:scale-95"
-          >
-            <BellIcon size={16} />
-            Новости
-            {notificationCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 text-[10px] font-bold leading-[17px] text-center rounded-full bg-red-500 text-white shadow-[0_0_0_2px_white]">
-                {notificationCount}
-              </span>
-            )}
-          </button>
+        {/* AI-помощник живёт здесь, а не плавающей кнопкой над таббаром —
+            та перекрывала «+» на половине страниц. */}
+        <button
+          type="button"
+          onClick={() => navigate('/news')}
+          aria-label="Новости"
+          className="relative flex items-center justify-center w-9 h-9 rounded-full border border-[var(--line)] bg-[var(--surface-muted)] text-[var(--text-main)] cursor-pointer transition-transform active:scale-95"
+        >
+          <BellIcon size={17} />
+          {notificationCount > 0 && (
+            <span className="absolute top-1 right-1.5 min-w-[15px] h-[15px] px-1 text-[9px] font-bold leading-[15px] text-center rounded-full bg-red-500 text-white shadow-[0_0_0_2px_var(--surface)]">
+              {notificationCount}
+            </span>
+          )}
+        </button>
 
-          <button
-            type="button"
-            onClick={() => navigate('/copilot')}
-            className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 border-0 bg-transparent text-[13px] font-semibold text-[var(--text-main)] cursor-pointer transition-transform active:scale-95"
-          >
-            <Icon icon="mdi:auto-awesome" width={16} className="text-[var(--accent)]" />
-            ИИ Помощник
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => navigate('/copilot')}
+          aria-label="ИИ Помощник"
+          className="flex items-center justify-center w-9 h-9 rounded-full border border-[var(--line)] bg-[var(--surface-muted)] text-[var(--text-main)] cursor-pointer transition-transform active:scale-95"
+        >
+          <Icon icon="mdi:auto-awesome" width={17} className="text-[var(--text-main)]" />
+        </button>
 
         <button
           type="button"
           onClick={() => navigate('/profile')}
-          className="w-10 h-10 rounded-full border-0 flex items-center justify-center overflow-hidden font-extrabold text-sm text-white cursor-pointer transition-transform active:scale-95 shadow-md"
+          className="w-10 h-10 rounded-2xl border-0 flex items-center justify-center overflow-hidden font-extrabold text-sm text-white cursor-pointer transition-transform active:scale-95 shadow-md"
           style={{ background: `linear-gradient(135deg, var(--gradient-start), var(--gradient-end))` }}
         >
           {avatar ? (

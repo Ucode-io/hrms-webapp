@@ -18,11 +18,42 @@ export interface ShiftRecord {
   date?: string
   start_time?: string | null
   end_time?: string | null
+  /** Длительность без привязки к часам суток. Взаимоисключающа с парой времён. */
+  hours_per_day?: number | string | null
   positions_id_data?: { title?: string } | null
   locations_id_data?: { title?: string } | null
   project?: string | null
   comment?: string | null
   [key: string]: unknown
+}
+
+/**
+ * Вид смены — то же прочтение, что в админке: ночь выводится из времени,
+ * удалёнка из локации, «выходной» — из отсутствия смены. Хранимого поля нет,
+ * поэтому расходиться с гридом планировщика тут нечему.
+ */
+export type ShiftKind = 'day' | 'night' | 'remote' | 'off'
+
+export const SHIFT_KIND_META: Record<ShiftKind, { label: string; color: string; soft: string }> = {
+  day: { label: 'Дневная', color: '#2563eb', soft: '#eff6ff' },
+  night: { label: 'Ночная', color: '#7c3aed', soft: '#f5f3ff' },
+  remote: { label: 'Удалённо', color: '#0e7490', soft: '#ecfeff' },
+  off: { label: 'Выходной', color: '#94a3b8', soft: '#f8fafc' },
+}
+
+/** Локация считается удалённой по названию — отдельного флага у `locations` нет. */
+const REMOTE_LOCATION = /удал|remote|дом/i
+
+export function shiftKind(shift: ShiftRecord): ShiftKind {
+  if (isNightShift(shift)) return 'night'
+  if (REMOTE_LOCATION.test(String(shift.locations_id_data?.title || ''))) return 'remote'
+  return 'day'
+}
+
+/** Длительность смены, заданной объёмом («8 часов в день»), а не временем. */
+export function shiftHoursPerDay(shift: ShiftRecord): number | null {
+  const raw = Number(shift.hours_per_day)
+  return Number.isFinite(raw) && raw > 0 ? raw : null
 }
 
 function encodeData(data: Record<string, unknown>): string {
@@ -61,8 +92,10 @@ export function isNightShift(shift: ShiftRecord): boolean {
 export function formatShiftRange(shift: ShiftRecord): string {
   const start = normalizeShiftTime(shift.start_time)
   const end = normalizeShiftTime(shift.end_time)
-  if (!start || !end) return '—'
-  return `${start}–${end}`
+  if (start && end) return `${start}–${end}`
+  // Смена может быть задана объёмом: тогда известно сколько, но не когда.
+  const hours = shiftHoursPerDay(shift)
+  return hours != null ? `${hours}ч/день` : '—'
 }
 
 const shiftsService = {

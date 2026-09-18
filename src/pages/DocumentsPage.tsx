@@ -16,11 +16,10 @@ import { FilePreviewDrawer } from '../components/FilePreviewDrawer'
 /* ── Type config ─────────────────────────────────────── */
 const TYPE_CONFIG: Record<
   DocumentType,
-  { icon: string; bg: string; iconColor: string; badgeText: string; badgeBg: string; badgeText2: string }
+  { icon: string; iconColor: string; badgeText: string; badgeBg: string; badgeText2: string }
 > = {
   pdf: {
     icon: 'mdi:file-pdf-box',
-    bg: 'from-rose-50 to-red-50',
     iconColor: '#ef4444',
     badgeText: 'PDF',
     badgeBg: '#ef4444',
@@ -28,7 +27,6 @@ const TYPE_CONFIG: Record<
   },
   image: {
     icon: 'mdi:image',
-    bg: 'from-sky-50 to-blue-50',
     iconColor: '#3b82f6',
     badgeText: 'IMG',
     badgeBg: '#3b82f6',
@@ -36,7 +34,6 @@ const TYPE_CONFIG: Record<
   },
   docx: {
     icon: 'mdi:file-word',
-    bg: 'from-indigo-50 to-violet-50',
     iconColor: '#6366f1',
     badgeText: 'DOC',
     badgeBg: '#6366f1',
@@ -44,7 +41,6 @@ const TYPE_CONFIG: Record<
   },
   other: {
     icon: 'mdi:file-outline',
-    bg: 'from-gray-50 to-slate-50',
     iconColor: '#94a3b8',
     badgeText: 'FILE',
     badgeBg: '#94a3b8',
@@ -52,15 +48,24 @@ const TYPE_CONFIG: Record<
   },
 }
 
+/**
+ * Заливка плитки файла — прозрачная подмешка его же тона. Раньше рядом лежала
+ * пара светлых стопов градиента; в тёмной теме они оставались пастельными
+ * (ремап утилит в index.css до градиентных стопов не достаёт), и плитка
+ * светилась белым. Теперь тон один и тема учитывается сама.
+ */
+const toneFill = (color: string): string =>
+  `linear-gradient(to bottom right, color-mix(in srgb, ${color} 20%, transparent), color-mix(in srgb, ${color} 10%, transparent))`
+
 /* ── Skeleton card ───────────────────────────────────── */
 function SkeletonCard() {
   return (
-    <div className="rounded-2xl bg-white overflow-hidden shadow-[0_1px_8px_rgba(0,0,0,0.06)]">
-      <div className="h-[88px] bg-gradient-to-br from-slate-100 to-slate-50 animate-pulse" />
+    <div className="rounded-2xl bg-[var(--surface)] overflow-hidden shadow-[0_1px_8px_rgba(0,0,0,0.06)]">
+      <div className="h-[88px] bg-[var(--surface-sunken)] animate-pulse" />
       <div className="p-3 space-y-2">
-        <div className="h-3 rounded-full bg-slate-100 animate-pulse w-4/5" />
-        <div className="h-3 rounded-full bg-slate-100 animate-pulse w-3/5" />
-        <div className="h-8 rounded-xl bg-slate-100 animate-pulse mt-3" />
+        <div className="h-3 rounded-full bg-[var(--surface-sunken)] animate-pulse w-4/5" />
+        <div className="h-3 rounded-full bg-[var(--surface-sunken)] animate-pulse w-3/5" />
+        <div className="h-8 rounded-xl bg-[var(--surface-sunken)] animate-pulse mt-3" />
       </div>
     </div>
   )
@@ -80,7 +85,7 @@ function DocCard({ doc, accentColor }: { doc: EmployeeDocument; accentColor: str
     <button
       type="button"
       onClick={() => { if (file) setPreviewOpen(true) }}
-      className="w-full text-left rounded-2xl bg-white overflow-hidden shadow-[0_1px_8px_rgba(0,0,0,0.07)] active:scale-[0.97] transition-transform"
+      className="w-full text-left rounded-2xl bg-[var(--surface)] overflow-hidden shadow-[0_1px_8px_rgba(0,0,0,0.07)] active:scale-[0.97] transition-transform"
     >
       {/* Preview area */}
       {type === 'image' && doc.file ? (
@@ -95,7 +100,7 @@ function DocCard({ doc, accentColor }: { doc: EmployeeDocument; accentColor: str
           </span>
         </div>
       ) : (
-        <div className={`h-[88px] w-full flex items-center justify-center bg-gradient-to-br ${cfg.bg} relative`}>
+        <div className="h-[88px] w-full flex items-center justify-center relative" style={{ background: toneFill(cfg.iconColor) }}>
           <Icon icon={cfg.icon} width={44} style={{ color: cfg.iconColor }} />
           <span
             className="absolute top-2.5 right-2.5 rounded-md px-1.5 py-0.5 text-[10px] font-black tracking-wide"
@@ -152,11 +157,12 @@ function DocRow({ doc, accentColor }: { doc: EmployeeDocument; accentColor: stri
     <button
       type="button"
       onClick={() => { if (file) setPreviewOpen(true) }}
-      className="w-full flex items-center gap-3 bg-white rounded-2xl px-3.5 py-3 shadow-[0_1px_6px_rgba(0,0,0,0.06)] active:scale-[0.98] transition-transform text-left"
+      className="w-full flex items-center gap-3 bg-[var(--surface)] rounded-2xl px-3.5 py-3 shadow-[0_1px_6px_rgba(0,0,0,0.06)] active:scale-[0.98] transition-transform text-left"
     >
       {/* Icon */}
       <div
-        className={`h-11 w-11 shrink-0 rounded-xl flex items-center justify-center bg-gradient-to-br ${cfg.bg}`}
+        className="h-11 w-11 shrink-0 rounded-xl flex items-center justify-center"
+        style={{ background: toneFill(cfg.iconColor) }}
       >
         <Icon icon={cfg.icon} width={24} style={{ color: cfg.iconColor }} />
       </div>
@@ -209,7 +215,7 @@ function FolderChip({
       type="button"
       onClick={onClick}
       className={`shrink-0 inline-flex items-center gap-1.5 h-9 rounded-full px-4 text-[12.5px] font-bold border transition-all active:scale-[0.95] ${
-        active ? 'text-white border-transparent' : 'bg-white border-[var(--line)] text-[var(--text-secondary)]'
+        active ? 'text-white border-transparent' : 'bg-[var(--surface)] border-[var(--line)] text-[var(--text-secondary)]'
       }`}
       style={active ? { backgroundColor: accentColor, borderColor: accentColor } : {}}
     >
@@ -297,7 +303,7 @@ export function DocumentsPage() {
           value={search}
           onChange={(e) => { setSearch(e.target.value); setActiveFolderId('all') }}
           placeholder="Поиск по названию..."
-          className="h-11 w-full rounded-2xl border border-[var(--line)] bg-white pl-10 pr-10 text-[13.5px] text-[var(--text-main)] outline-none shadow-[0_1px_4px_rgba(0,0,0,0.05)] transition-shadow focus:shadow-[0_1px_8px_rgba(0,0,0,0.1)]"
+          className="h-11 w-full rounded-2xl border border-[var(--line)] bg-[var(--surface)] pl-10 pr-10 text-[13.5px] text-[var(--text-main)] outline-none shadow-[0_1px_4px_rgba(0,0,0,0.05)] transition-shadow focus:shadow-[0_1px_8px_rgba(0,0,0,0.1)]"
           style={{ '--tw-ring-color': accentColor } as React.CSSProperties}
         />
         {search && (
@@ -314,7 +320,7 @@ export function DocumentsPage() {
 
       {/* ── Folder chips ──────────────────────────────── */}
       {folders.length > 0 && !search && (
-        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pb-0.5">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-0.5">
           <FolderChip
             label="Все"
             count={documents.length}
@@ -341,7 +347,7 @@ export function DocumentsPage() {
           {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-3xl bg-white px-6 py-14 text-center shadow-[0_1px_8px_rgba(0,0,0,0.06)]">
+        <div className="flex flex-col items-center gap-3 rounded-3xl bg-[var(--surface)] px-6 py-14 text-center shadow-[0_1px_8px_rgba(0,0,0,0.06)]">
           <div className="h-16 w-16 rounded-2xl bg-[var(--app-bg)] flex items-center justify-center">
             <Icon icon="mdi:file-search-outline" width={32} className="text-[var(--text-muted)] opacity-50" />
           </div>

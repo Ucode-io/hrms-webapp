@@ -92,7 +92,7 @@ export function FilePreviewDrawer({
     <Drawer.Root open={open} onOpenChange={(o) => { if (!o) onClose() }}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" />
-        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[92dvh] flex-col rounded-t-[28px] bg-white outline-none">
+        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[92dvh] flex-col rounded-t-[28px] bg-[var(--surface)] outline-none">
           <Drawer.Title className="sr-only">{fileName}</Drawer.Title>
           <Drawer.Description className="sr-only">Предпросмотр файла</Drawer.Description>
 
@@ -130,19 +130,19 @@ export function FilePreviewDrawer({
               // ponytail: plain iframe. Some in-app webviews render PDFs as a
               // blank frame — the "Открыть" button above is the escape hatch;
               // swap in a gview embed if that turns out to be the common case.
-              <iframe src={fileUrl} title={fileName} className="h-[70dvh] w-full rounded-2xl border-0 bg-white" />
+              <iframe src={fileUrl} title={fileName} className="h-[70dvh] w-full rounded-2xl border-0 bg-[var(--surface)]" />
             ) : kind === 'office' ? (
               <iframe
                 src={officeViewerUrl(fileUrl)}
                 title={fileName}
-                className="h-[70dvh] w-full rounded-2xl border-0 bg-white"
+                className="h-[70dvh] w-full rounded-2xl border-0 bg-[var(--surface)]"
               />
             ) : kind === 'video' ? (
               <video src={fileUrl} controls className="w-full rounded-2xl" />
             ) : kind === 'audio' ? (
               <audio src={fileUrl} controls className="w-full" />
             ) : kind === 'text' ? (
-              <div className="rounded-2xl bg-white p-3">
+              <div className="rounded-2xl bg-[var(--surface)] p-3">
                 {isLoading && (
                   <p className="m-0 py-8 text-center text-[13px] text-[var(--text-muted)]">Загрузка…</p>
                 )}
@@ -163,7 +163,7 @@ export function FilePreviewDrawer({
                   href={fileUrl}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-white px-4 text-[12.5px] font-semibold text-[var(--text-main)] no-underline"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--surface)] px-4 text-[12.5px] font-semibold text-[var(--text-main)] no-underline"
                 >
                   <Icon icon="mdi:open-in-new" width={14} />
                   Открыть файл

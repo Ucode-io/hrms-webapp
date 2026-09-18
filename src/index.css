@@ -5,8 +5,13 @@
 /* ── Design tokens (JS can override --accent, --gradient-* dynamically) ── */
 :root {
   --accent:          #3b6cf5;
-  --accent-light:    #e8eeff;
-  --accent-soft:     rgba(59,108,245,0.08);
+  /* Производные от акцента, а не отдельные константы: подмешиваются к фону
+     приложения, поэтому в светлой теме дают бледную плашку, а в тёмной —
+     тёмную того же оттенка. Тему знать не нужно, `--app-bg` уже её знает.
+     CompanyContext подставляет только `--accent` — эти два пересчитываются
+     сами и остаются в бренде компании. */
+  --accent-light:    color-mix(in srgb, var(--accent) 16%, var(--app-bg));
+  --accent-soft:     color-mix(in srgb, var(--accent) 8%, transparent);
   --gradient-start:  #4f7df7;
   --gradient-end:    #6c5ce7;
   --text-main:       #0c1a2e;
@@ -14,6 +19,13 @@
   --text-muted:      #8896a8;
   --line:            #dce4f0;
   --surface:         #ffffff;
+  --surface-muted:   #f9fafb;
+  /* «Утопленная» поверхность — подложка сегмент-контролов, дорожек и колонок
+     канбана: она на ступень ГЛУБЖЕ карточки, а не светлее её. В светлой теме
+     это серо-голубой ниже белого, в тёмной — наоборот выше фона приложения,
+     потому что «глубже» на тёмном читается как «светлее». Одним токеном
+     `--surface-muted` не обойтись: тот в светлой теме почти белый. */
+  --surface-sunken:  #e4e9f3;
   --app-bg:          #f0f4fa;
   --error-bg:        #fff1f0;
   --error-line:      #ffccc7;
@@ -29,11 +41,95 @@
   --keyboard-inset:  0px;
 }
 
+/* ── Dark theme overrides (ThemeContext sets data-theme on <html>) ──────── */
+:root[data-theme='dark'] {
+  --text-main:       #f3f6fb;
+  --text-secondary:  #a8b4c8;
+  --text-muted:      #6b7889;
+  --line:            #232c40;
+  --surface:         #141b2d;
+  --surface-muted:   #1c2540;
+  --surface-sunken:  #1c2540;
+  --app-bg:          #0b1220;
+  --error-bg:        #2a1416;
+  --error-line:      #4a2226;
+  --error-text:      #ff6b6b;
+}
+
+/* ── Dark theme: remap the hardcoded light palette ─────────────────────────
+   Экраны писались под светлую тему и держат палитру в классах (`bg-white`,
+   `text-gray-500`, пастельные бейджи `bg-emerald-50`). В тёмной они светились
+   белыми плашками поверх тёмного фона. Чинится здесь, а не правкой ~180 мест
+   по страницам: одно правило закрывает и то, что уже написано, и то, что
+   напишут потом.
+
+   ponytail: маппинг утилит вместо переписывания классов; если появится
+   настоящая дизайн-система с семантическими классами — блок уходит целиком.
+
+   `bg-white/15` и прочие прозрачные варианты Tailwind генерирует отдельными
+   селекторами (`.bg-white\/15`), поэтому белое поверх градиентов не задето. */
+:root[data-theme='dark'] {
+  /* Поверхности */
+  .bg-white                                { background-color: var(--surface) !important; }
+  .bg-gray-50, .bg-gray-100, .bg-slate-50,
+  .bg-slate-100, .bg-gray-200              { background-color: var(--surface-muted) !important; }
+
+  /* Скелетоны и ручки шторок держат серый с прозрачностью — у Tailwind это
+     отдельные селекторы, общее правило `.bg-gray-200` их не ловит. */
+  .bg-gray-300                             { background-color: var(--line) !important; }
+  .bg-gray-200\/50, .bg-gray-200\/60,
+  .bg-gray-200\/70, .bg-gray-200\/80,
+  .bg-gray-50\/40, .bg-gray-50\/60,
+  .bg-white\/70                            { background-color: var(--surface-muted) !important; }
+
+  /* Границы и разделители */
+  .border-gray-100, .border-gray-200,
+  .border-gray-300, .border-slate-200      { border-color: var(--line) !important; }
+  .divide-gray-100 > * + *,
+  .divide-gray-200 > * + *                 { border-color: var(--line) !important; }
+
+  /* Текст: 300–500 — вторичный/приглушённый, 600–900 — основной */
+  .text-gray-300, .text-gray-400,
+  .text-slate-400                          { color: var(--text-muted) !important; }
+  .text-gray-500, .text-slate-500          { color: var(--text-secondary) !important; }
+  .text-gray-600, .text-gray-700,
+  .text-gray-800, .text-gray-900,
+  .text-slate-600, .text-slate-700         { color: var(--text-main) !important; }
+  .placeholder\:text-gray-400::placeholder { color: var(--text-muted) !important; }
+
+  /* Пастельные бейджи статусов: на тёмном фоне светлая заливка выжигает
+     карточку. Заменяем её на тонированную прозрачную того же тона, а текст
+     подсвечиваем — как в макете (тёмно-зелёная плашка, светло-зелёный текст). */
+  .bg-emerald-50, .bg-green-50   { background-color: color-mix(in srgb, #10b981 16%, transparent) !important; }
+  .bg-amber-50, .bg-yellow-50    { background-color: color-mix(in srgb, #f59e0b 16%, transparent) !important; }
+  .bg-rose-50, .bg-red-50        { background-color: color-mix(in srgb, #f43f5e 16%, transparent) !important; }
+  .bg-violet-50, .bg-purple-50   { background-color: color-mix(in srgb, #8b5cf6 18%, transparent) !important; }
+  .bg-blue-50, .bg-indigo-50     { background-color: color-mix(in srgb, #6366f1 18%, transparent) !important; }
+
+  .text-emerald-600, .text-emerald-700,
+  .text-green-600, .text-green-700         { color: #4ade80 !important; }
+  .text-amber-600, .text-amber-700         { color: #fbbf24 !important; }
+  .text-rose-600, .text-rose-700,
+  .text-red-600, .text-red-700             { color: #fb7185 !important; }
+  .text-violet-600, .text-violet-700       { color: #a78bfa !important; }
+  .border-emerald-200                      { border-color: color-mix(in srgb, #10b981 34%, transparent) !important; }
+  .border-amber-200                        { border-color: color-mix(in srgb, #f59e0b 34%, transparent) !important; }
+  .border-rose-200                         { border-color: color-mix(in srgb, #f43f5e 34%, transparent) !important; }
+  .border-violet-200                       { border-color: color-mix(in srgb, #8b5cf6 34%, transparent) !important; }
+
+  /* `ring-white` обводит точки таймлайна «под цвет карточки», а не белым. */
+  .ring-white                              { --tw-ring-color: var(--surface) !important; }
+
+  /* Тени под светлую тему на тёмном фоне не читаются — только грязнят край. */
+  .shadow-sm, .shadow, .shadow-md          { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important; }
+}
+
 /* ── Tailwind theme tokens ─────────────────────────────────────────────── */
 @theme inline {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --color-app-bg:   var(--app-bg);
   --color-surface:  var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
   --color-accent:   var(--accent);
   --color-accent-light: var(--accent-light);
   --color-line:     var(--line);
@@ -105,6 +201,13 @@ input, select, textarea { font-size: 16px; }
     background: rgba(233, 238, 246, 0.62);
   }
 
+  :root[data-theme='dark'] body {
+    background: #05070d;
+  }
+  :root[data-theme='dark'] body::after {
+    background: rgba(5, 7, 13, 0.72);
+  }
+
   #root {
     /* На всю ширину: колонку центрирует сам `.mobile-frame` (margin: auto).
        Так страницы без контейнера — например логин — занимают всё окно. */
@@ -127,6 +230,10 @@ input, select, textarea { font-size: 16px; }
        карточка поверх. Тени (тёмной) здесь намеренно нет. */
     box-shadow: 0 0 90px 40px rgba(233, 238, 246, 0.75);
     transform: translateZ(0);
+  }
+
+  :root[data-theme='dark'] .mobile-frame {
+    box-shadow: 0 0 90px 40px rgba(5, 7, 13, 0.85);
   }
 
   .mobile-frame-scroll {
@@ -247,7 +354,7 @@ input, select, textarea { font-size: 16px; }
    Панель колонки чуть темнее фона приложения: белые карточки на ней читаются
    как «лежащие в колонке» — классическая канбан-иерархия поверхностей. */
 .kanban-panel {
-  background: color-mix(in srgb, var(--line) 38%, var(--app-bg));
+  background: var(--surface-sunken);
 }
 /* Колонка, над которой сейчас держат карточку. */
 .kanban-panel-over {
@@ -325,7 +432,7 @@ input[type="date"].mobile-input::-webkit-clear-button {
 
 /* Заголовок опроса: убираем синюю полосу, ставим тонкий разделитель. */
 .sd-root-modern .sd-title.sd-container-modern__title {
-  box-shadow: inset 0 -1px 0 #f3f4f6;
+  box-shadow: inset 0 -1px 0 var(--line);
 }
 
 /* h3 заголовка опроса игнорирует --sjs-font-surveytitle-* в этой разметке —
@@ -334,10 +441,10 @@ input[type="date"].mobile-input::-webkit-clear-button {
   font-size: 24px;
   font-weight: 700;
   line-height: 1.3;
-  color: #111827;
+  color: var(--text-main);
 }
 
 .sd-root-modern .sd-container-modern__title .sd-description {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-secondary);
 }

@@ -52,7 +52,7 @@ const deadlinePill = (
   return {
     text: formatDeadline(task.deadline),
     icon: 'mdi:calendar-blank-outline',
-    className: 'bg-gray-50 text-[var(--text-muted)]',
+    className: 'bg-[var(--surface-muted)] text-[var(--text-muted)]',
   }
 }
 
@@ -121,7 +121,7 @@ export function TaskCard({ task, onOpen, showStatus, overlay, plain }: TaskCardP
             }
           : undefined
       }
-      className={`kanban-card w-full cursor-pointer rounded-2xl border border-black/[0.04] bg-white p-3 text-left shadow-[0_1px_2px_rgba(12,26,46,0.06)] ${
+      className={`kanban-card w-full cursor-pointer rounded-2xl border border-black/[0.04] bg-[var(--surface)] p-3 text-left shadow-[0_1px_2px_rgba(12,26,46,0.06)] ${
         overlay ? '' : 'transition-transform active:scale-[0.985]'
       }`}
     >
@@ -134,7 +134,7 @@ export function TaskCard({ task, onOpen, showStatus, overlay, plain }: TaskCardP
           {task.priorityTitle ? (
             <span
               className="inline-flex shrink-0 items-center gap-0.5 text-[10px] font-bold"
-              style={{ color: task.priorityColor || '#8896a8' }}
+              style={{ color: task.priorityColor || 'var(--text-muted)' }}
             >
               <Icon icon="mdi:flag-variant" width={11} />
               {task.priorityTitle}
@@ -153,13 +153,13 @@ export function TaskCard({ task, onOpen, showStatus, overlay, plain }: TaskCardP
             <span
               className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] font-bold"
               style={{
-                background: task.statusColor ? `${task.statusColor}1A` : '#f3f4f6',
-                color: task.statusColor || '#4b5563',
+                background: task.statusColor ? `${task.statusColor}1A` : 'var(--surface-sunken)',
+                color: task.statusColor || 'var(--text-secondary)',
               }}
             >
               <span
                 className="h-1.5 w-1.5 rounded-full"
-                style={{ background: task.statusColor || '#9ca3af' }}
+                style={{ background: task.statusColor || 'var(--text-muted)' }}
               />
               {task.statusTitle}
             </span>
@@ -174,8 +174,8 @@ export function TaskCard({ task, onOpen, showStatus, overlay, plain }: TaskCardP
               key={tag.id}
               className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold"
               style={{
-                background: tag.color ? `${tag.color}1A` : '#f3f4f6',
-                color: tag.color || '#6b7280',
+                background: tag.color ? `${tag.color}1A` : 'var(--surface-sunken)',
+                color: tag.color || 'var(--text-secondary)',
               }}
             >
               {tag.title}

@@ -294,7 +294,7 @@ export function CopilotPage() {
                 key={s}
                 type="button"
                 onClick={() => send(s)}
-                className="text-left text-[13px] px-3.5 py-3 rounded-2xl bg-white border border-[var(--line)]/70 text-[var(--text-main)] active:scale-[0.98] transition"
+                className="text-left text-[13px] px-3.5 py-3 rounded-2xl bg-[var(--surface)] border border-[var(--line)]/70 text-[var(--text-main)] active:scale-[0.98] transition"
               >
                 {s}
               </button>
@@ -342,7 +342,7 @@ export function CopilotPage() {
             rows={1}
             maxLength={8000}
             placeholder="Спросите что-нибудь…"
-            className="flex-1 resize-none max-h-28 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-[14px] outline-none focus:border-[var(--accent)]"
+            className="flex-1 resize-none max-h-28 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-[14px] outline-none focus:border-[var(--accent)]"
           />
           <button
             type="button"
@@ -392,7 +392,7 @@ function Bubble({
           className={`max-w-[85%] whitespace-pre-wrap text-[14px] leading-relaxed px-3.5 py-2.5 rounded-2xl ${
             isUser
               ? 'bg-[var(--accent)] text-white rounded-br-md'
-              : 'bg-white border border-[var(--line)]/70 text-[var(--text-main)] rounded-bl-md'
+              : 'bg-[var(--surface)] border border-[var(--line)]/70 text-[var(--text-main)] rounded-bl-md'
           }`}
         >
           {renderCitations(message.content)}
@@ -402,7 +402,7 @@ function Bubble({
       {message.kpis && message.kpis.length > 0 && (
         <div className="w-full grid grid-cols-2 gap-2">
           {message.kpis.map((kpi) => (
-            <div key={kpi.label} className="rounded-2xl bg-white border border-[var(--line)]/70 px-3 py-2.5">
+            <div key={kpi.label} className="rounded-2xl bg-[var(--surface)] border border-[var(--line)]/70 px-3 py-2.5">
               <p className="text-[11px] text-[var(--text-muted)]">{kpi.label}</p>
               <p className="text-[17px] font-semibold text-[var(--text-main)]">{kpi.value}</p>
             </div>
@@ -463,7 +463,7 @@ function renderCitations(text: string): React.ReactNode[] {
 
 function ResultTable({ table }: { table: CopilotTable }) {
   return (
-    <div className="w-full rounded-2xl bg-white border border-[var(--line)]/70 overflow-hidden">
+    <div className="w-full rounded-2xl bg-[var(--surface)] border border-[var(--line)]/70 overflow-hidden">
       <div className="px-3.5 py-2.5 border-b border-[var(--line)]/60">
         <p className="text-[13px] font-semibold text-[var(--text-main)]">{table.title}</p>
         {table.subtitle && <p className="text-[11px] text-[var(--text-muted)]">{table.subtitle}</p>}
@@ -511,7 +511,7 @@ function ActionCard({
   busy: boolean
 }) {
   return (
-    <div className="w-full rounded-2xl bg-white border border-[var(--line)] px-3.5 py-3 flex flex-col gap-2">
+    <div className="w-full rounded-2xl bg-[var(--surface)] border border-[var(--line)] px-3.5 py-3 flex flex-col gap-2">
       <div className="flex items-start gap-2">
         <Icon icon="mdi:alert-circle-outline" className="text-[var(--accent)] shrink-0 mt-0.5" width={18} />
         <div>

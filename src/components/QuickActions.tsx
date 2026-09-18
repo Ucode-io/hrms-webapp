@@ -22,7 +22,7 @@ export function QuickActions() {
             key={qa.label}
             type="button"
             onClick={() => navigate(qa.path)}
-            className="flex flex-col gap-2 p-4 rounded-[20px] border border-[var(--line)] bg-white cursor-pointer text-left transition-transform duration-150 shadow-sm active:scale-[0.97]"
+            className="flex flex-col gap-2 p-4 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] cursor-pointer text-left transition-transform duration-150 shadow-sm active:scale-[0.97]"
           >
             <div className={`w-[42px] h-[42px] rounded-xl flex items-center justify-center ${qa.bg} ${qa.color}`}>
               <qa.Icon size={22} />

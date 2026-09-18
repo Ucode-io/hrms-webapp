@@ -54,7 +54,7 @@ export function KpiCard({
 
   return (
     <article
-      className={`rounded-2xl border border-[var(--line)] bg-white overflow-hidden ${
+      className={`rounded-2xl border border-[var(--line)] bg-[var(--surface)] overflow-hidden ${
         isRoot ? 'shadow-[0_1px_2px_rgba(15,30,60,0.04)]' : ''
       }`}
     >
@@ -63,7 +63,7 @@ export function KpiCard({
         type="button"
         onClick={() => (isLeaf ? onEdit(node) : onToggle(node.id))}
         disabled={isSaving}
-        className={`block w-full text-left bg-white border-0 cursor-pointer active:bg-gray-50 disabled:opacity-60 ${
+        className={`block w-full text-left bg-[var(--surface)] border-0 cursor-pointer active:bg-gray-50 disabled:opacity-60 ${
           compact ? 'px-3 pt-2.5 pb-2' : 'px-3.5 pt-3 pb-2.5'
         }`}
       >
@@ -158,7 +158,7 @@ export function KpiCard({
 
       {/* Action row */}
       {isLeaf ? (
-        <div className="border-t border-[var(--line)]/70 bg-gradient-to-b from-white to-gray-50/50">
+        <div className="border-t border-[var(--line)]/70 bg-[var(--surface)]">
           <button
             type="button"
             onClick={() => onEdit(node)}

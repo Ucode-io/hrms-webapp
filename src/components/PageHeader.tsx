@@ -10,7 +10,7 @@ export function PageHeader({ title, showBack = true, rightSlot }: PageHeaderProp
   const navigate = useNavigate()
 
   return (
-    <header className="shrink-0 sticky top-0 z-20 flex items-center h-[52px] px-4 border-b border-[var(--line)]/60 bg-white/90 backdrop-blur-xl">
+    <header className="shrink-0 sticky top-0 z-20 flex items-center h-[52px] px-4 border-b border-[var(--line)]/60 bg-[var(--surface)]/90 backdrop-blur-xl">
       {/* Left */}
       <div className="w-10 flex items-center justify-start">
         {showBack && (

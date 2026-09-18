@@ -67,7 +67,7 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
     <Drawer.Root open={open} onOpenChange={(v) => (!v && !saving ? onClose() : undefined)}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[2px]" />
-        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[28px] outline-none max-h-[94vh] flex flex-col">
+        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)] rounded-t-[28px] outline-none max-h-[94vh] flex flex-col">
           <Drawer.Title className="sr-only">Ввод факта по KPI</Drawer.Title>
           <Drawer.Description className="sr-only">
             Введите фактическое значение для конечного KPI
@@ -87,7 +87,7 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
                 type="button"
                 onClick={onClose}
                 disabled={saving}
-                className="shrink-0 -mt-0.5 -mr-1 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-gray-100 border-0 text-[var(--text-secondary)] cursor-pointer active:bg-gray-200 disabled:opacity-60"
+                className="shrink-0 -mt-0.5 -mr-1 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-muted)] border-0 text-[var(--text-secondary)] cursor-pointer active:bg-gray-200 disabled:opacity-60"
                 aria-label="Закрыть"
               >
                 <Icon icon="mdi:close" width={18} />
@@ -99,7 +99,7 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
             </p>
 
             {node.description ? (
-              <div className="mb-4 rounded-2xl border border-[var(--line)] bg-gray-50 px-3.5 py-2.5">
+              <div className="mb-4 rounded-2xl border border-[var(--line)] bg-[var(--surface-muted)] px-3.5 py-2.5">
                 <p className="m-0 text-[12.5px] text-[var(--text-secondary)] leading-relaxed">
                   {node.description}
                 </p>
@@ -107,7 +107,7 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
             ) : null}
 
             {/* Plan / projected progress */}
-            <div className="rounded-2xl border border-[var(--line)] bg-white p-3.5">
+            <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3.5">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="m-0 text-[10.5px] uppercase tracking-wider text-[var(--text-muted)] font-semibold">
@@ -164,7 +164,7 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
                   }}
                   inputMode="decimal"
                   placeholder="0"
-                  className="w-full h-14 rounded-2xl border border-[var(--line)] bg-white px-4 pr-12 text-[22px] font-extrabold text-[var(--text-main)] outline-none focus:border-[var(--accent)]"
+                  className="w-full h-14 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 pr-12 text-[22px] font-extrabold text-[var(--text-main)] outline-none focus:border-[var(--accent)]"
                 />
                 {symbol ? (
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[14px] font-bold text-[var(--text-muted)]">
@@ -218,7 +218,7 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
                 type="button"
                 onClick={onClose}
                 disabled={saving}
-                className="flex-1 h-12 rounded-2xl border border-[var(--line)] bg-white text-[14px] font-bold text-[var(--text-secondary)] cursor-pointer active:bg-gray-50 disabled:opacity-60"
+                className="flex-1 h-12 rounded-2xl border border-[var(--line)] bg-[var(--surface)] text-[14px] font-bold text-[var(--text-secondary)] cursor-pointer active:bg-[var(--surface-muted)] disabled:opacity-60"
               >
                 Отмена
               </button>

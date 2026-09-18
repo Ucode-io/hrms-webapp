@@ -76,20 +76,36 @@ const initials = (name: string): string =>
     .map((part) => part.charAt(0).toUpperCase())
     .join('') || '—'
 
-/** Иконка и тон файла по типу — вложения перестают быть безликим списком. */
-const fileVisual = (mime: string, name: string): { icon: string; bg: string; color: string } => {
+/**
+ * Иконка и тон файла по типу — вложения перестают быть безликим списком.
+ * Подложка не задаётся отдельной светлой константой, а подмешивается из самого
+ * тона: иначе в тёмной теме плитки оставались пастельно-белыми. Заодно пара
+ * «фон + цвет» больше не может разъехаться — фон выводится из цвета.
+ */
+const fileTone = (mime: string, name: string): { icon: string; color: string } => {
   const lower = (mime || '').toLowerCase()
   const ext = name.split('.').pop()?.toLowerCase() || ''
-  if (lower.startsWith('image/')) return { icon: 'mdi:image-outline', bg: '#e0f2fe', color: '#0284c7' }
+  if (lower.startsWith('image/')) return { icon: 'mdi:image-outline', color: '#0ea5e9' }
   if (lower.includes('pdf') || ext === 'pdf')
-    return { icon: 'mdi:file-pdf-box', bg: '#ffe4e6', color: '#e11d48' }
+    return { icon: 'mdi:file-pdf-box', color: '#f43f5e' }
   if (lower.includes('zip') || ['zip', 'rar', '7z'].includes(ext))
-    return { icon: 'mdi:folder-zip-outline', bg: '#fef3c7', color: '#d97706' }
+    return { icon: 'mdi:folder-zip-outline', color: '#f59e0b' }
   if (['doc', 'docx'].includes(ext))
-    return { icon: 'mdi:file-word-outline', bg: '#dbeafe', color: '#2563eb' }
+    return { icon: 'mdi:file-word-outline', color: '#3b82f6' }
   if (['xls', 'xlsx', 'csv'].includes(ext))
-    return { icon: 'mdi:file-excel-outline', bg: '#dcfce7', color: '#16a34a' }
-  return { icon: 'mdi:file-outline', bg: '#eef1f6', color: '#64748b' }
+    return { icon: 'mdi:file-excel-outline', color: '#22c55e' }
+  return { icon: 'mdi:file-outline', color: 'var(--text-secondary)' }
+}
+
+const fileVisual = (mime: string, name: string): { icon: string; bg: string; color: string } => {
+  const tone = fileTone(mime, name)
+  return {
+    ...tone,
+    bg:
+      tone.color.startsWith('var(')
+        ? 'var(--surface-sunken)'
+        : `color-mix(in srgb, ${tone.color} 18%, transparent)`,
+  }
 }
 
 /**
@@ -154,7 +170,7 @@ function SubtaskRow({ subtask }: { subtask: TaskSubtask }) {
         icon={done ? 'mdi:check-circle' : 'mdi:circle-outline'}
         width={16}
         className="mt-0.5 shrink-0"
-        style={{ color: done ? '#10b981' : subtask.statusColor || '#cbd5e1' }}
+        style={{ color: done ? '#10b981' : subtask.statusColor || 'var(--text-muted)' }}
       />
       <div className="min-w-0 flex-1">
         <p
@@ -341,12 +357,12 @@ export function TaskDetailSheet({
     <Drawer.Root open={open} onOpenChange={(v) => (!v ? onClose() : undefined)}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[2px]" />
-        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[92vh] flex-col rounded-t-[28px] bg-[#f7f9fc] outline-none">
+        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[92vh] flex-col rounded-t-[28px] bg-[var(--app-bg)] outline-none">
           <Drawer.Title className="sr-only">Детали задачи</Drawer.Title>
           <Drawer.Description className="sr-only">Подробности выбранной задачи</Drawer.Description>
 
           {/* Фикс-шапка: грабер, код и «Закрыть» доступны при любом скролле. */}
-          <div className="shrink-0 rounded-t-[28px] bg-[#f7f9fc]">
+          <div className="shrink-0 rounded-t-[28px] bg-[var(--app-bg)]">
             <div className="flex justify-center pb-1 pt-3">
               <div className="h-[4px] w-10 rounded-full bg-gray-300" />
             </div>
@@ -361,7 +377,7 @@ export function TaskDetailSheet({
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-white text-[var(--text-secondary)] shadow-[0_1px_3px_rgba(12,26,46,0.10)] active:bg-gray-100"
+                className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--surface)] text-[var(--text-secondary)] shadow-[0_1px_3px_rgba(12,26,46,0.10)] active:bg-gray-100"
                 aria-label="Закрыть"
               >
                 <Icon icon="mdi:close" width={17} />
@@ -388,13 +404,13 @@ export function TaskDetailSheet({
                   disabled={busy || statuses.length === 0}
                   className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border-0 px-3 py-1.5 text-[12.5px] font-bold active:scale-95 disabled:opacity-60"
                   style={{
-                    background: task.statusColor ? `${task.statusColor}1A` : '#f3f4f6',
-                    color: task.statusColor || '#4b5563',
+                    background: task.statusColor ? `${task.statusColor}1A` : 'var(--surface-sunken)',
+                    color: task.statusColor || 'var(--text-secondary)',
                   }}
                 >
                   <span
                     className="h-1.5 w-1.5 rounded-full"
-                    style={{ background: task.statusColor || '#9ca3af' }}
+                    style={{ background: task.statusColor || 'var(--text-muted)' }}
                   />
                   {task.statusTitle || 'Без статуса'}
                   {statusMutation.isPending ? (
@@ -417,7 +433,7 @@ export function TaskDetailSheet({
               </div>
 
               {statusPickerOpen ? (
-                <div className="mt-2 flex flex-col gap-0.5 rounded-2xl border border-black/[0.05] bg-white p-1.5 shadow-[0_8px_24px_rgba(12,26,46,0.10)]">
+                <div className="mt-2 flex flex-col gap-0.5 rounded-2xl border border-black/[0.05] bg-[var(--surface)] p-1.5 shadow-[0_8px_24px_rgba(12,26,46,0.10)]">
                   {statusGroups.map((entry) => (
                     <div key={entry.group}>
                       <p className="m-0 px-2.5 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
@@ -439,7 +455,7 @@ export function TaskDetailSheet({
                           >
                             <span
                               className="h-2 w-2 shrink-0 rounded-full"
-                              style={{ background: status.color || '#9ca3af' }}
+                              style={{ background: status.color || 'var(--text-muted)' }}
                             />
                             <span className="flex-1 text-[var(--text-main)]">{status.title}</span>
                             {isCurrent ? (
@@ -477,7 +493,7 @@ export function TaskDetailSheet({
                 Каждое поле редактируется на месте и сохраняется сразу: «Готово»
                 на мобилке лишний шаг, а частичный патч это позволяет. */}
             <Section title="Детали">
-              <div className="divide-y divide-[var(--line)]/70 overflow-hidden rounded-2xl border border-black/[0.05] bg-white shadow-[0_1px_2px_rgba(12,26,46,0.04)]">
+              <div className="divide-y divide-[var(--line)]/70 overflow-hidden rounded-2xl border border-black/[0.05] bg-[var(--surface)] shadow-[0_1px_2px_rgba(12,26,46,0.04)]">
                 <FieldRow icon="mdi:shape-outline" label="Тип">
                   <SelectField
                     value={task.typeId}
@@ -555,8 +571,8 @@ export function TaskDetailSheet({
                       <span
                         className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[12px] font-bold"
                         style={{
-                          background: option.color ? `${option.color}1A` : '#f3f4f6',
-                          color: option.color || '#4b5563',
+                          background: option.color ? `${option.color}1A` : 'var(--surface-sunken)',
+                          color: option.color || 'var(--text-secondary)',
                         }}
                       >
                         <Icon icon="mdi:flag-variant" width={11} />
@@ -633,8 +649,8 @@ export function TaskDetailSheet({
                       <span
                         className="inline-flex rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
                         style={{
-                          background: option.color ? `${option.color}1A` : '#f3f4f6',
-                          color: option.color || '#4b5563',
+                          background: option.color ? `${option.color}1A` : 'var(--surface-sunken)',
+                          color: option.color || 'var(--text-secondary)',
                         }}
                       >
                         {option.title}
@@ -666,7 +682,7 @@ export function TaskDetailSheet({
                     style={{ width: `${checklistPercent}%` }}
                   />
                 </div>
-                <div className="divide-y divide-[var(--line)]/70 overflow-hidden rounded-2xl border border-black/[0.05] bg-white shadow-[0_1px_2px_rgba(12,26,46,0.04)]">
+                <div className="divide-y divide-[var(--line)]/70 overflow-hidden rounded-2xl border border-black/[0.05] bg-[var(--surface)] shadow-[0_1px_2px_rgba(12,26,46,0.04)]">
                   {task.checklist.map((item) => (
                     <button
                       key={item.id}
@@ -706,7 +722,7 @@ export function TaskDetailSheet({
                   </span>
                 }
               >
-                <div className="divide-y divide-[var(--line)]/70 overflow-hidden rounded-2xl border border-black/[0.05] bg-white shadow-[0_1px_2px_rgba(12,26,46,0.04)]">
+                <div className="divide-y divide-[var(--line)]/70 overflow-hidden rounded-2xl border border-black/[0.05] bg-[var(--surface)] shadow-[0_1px_2px_rgba(12,26,46,0.04)]">
                   {task.subtasks.map((subtask) => (
                     <SubtaskRow key={subtask.id} subtask={subtask} />
                   ))}
@@ -727,7 +743,7 @@ export function TaskDetailSheet({
             >
               <div className="flex flex-col gap-1.5">
                 {task.attachments.length > 0 ? (
-                  <div className="divide-y divide-[var(--line)]/70 overflow-hidden rounded-2xl border border-black/[0.05] bg-white shadow-[0_1px_2px_rgba(12,26,46,0.04)]">
+                  <div className="divide-y divide-[var(--line)]/70 overflow-hidden rounded-2xl border border-black/[0.05] bg-[var(--surface)] shadow-[0_1px_2px_rgba(12,26,46,0.04)]">
                     {task.attachments.map((file) => {
                       const visual = fileVisual(file.mime, file.name)
                       return (
@@ -778,7 +794,7 @@ export function TaskDetailSheet({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={busy}
-                  className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[var(--line)] bg-white/60 px-3 py-3 text-[12.5px] font-bold text-[var(--accent)] active:bg-[var(--accent-soft)] disabled:opacity-60"
+                  className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)]/60 px-3 py-3 text-[12.5px] font-bold text-[var(--accent)] active:bg-[var(--accent-soft)] disabled:opacity-60"
                 >
                   {uploading ? (
                     <>
@@ -797,7 +813,7 @@ export function TaskDetailSheet({
 
             {/* Служебные даты — как нижний блок панели «Детали» во front'е */}
             <Section title="Даты">
-              <div className="divide-y divide-[var(--line)]/70 overflow-hidden rounded-2xl border border-black/[0.05] bg-white shadow-[0_1px_2px_rgba(12,26,46,0.04)]">
+              <div className="divide-y divide-[var(--line)]/70 overflow-hidden rounded-2xl border border-black/[0.05] bg-[var(--surface)] shadow-[0_1px_2px_rgba(12,26,46,0.04)]">
                 <DetailRow label="Создана">{plain(formatDateTime(task.createdAt))}</DetailRow>
                 <DetailRow label="Обновлена">{plain(formatDateTime(task.updatedAt))}</DetailRow>
                 {task.beginAt ? (
@@ -847,7 +863,7 @@ export function TaskDetailSheet({
                           {initials(comment.authorName)}
                         </span>
                       )}
-                      <div className="min-w-0 flex-1 rounded-2xl rounded-tl-md border border-black/[0.05] bg-white px-3 py-2 shadow-[0_1px_2px_rgba(12,26,46,0.04)]">
+                      <div className="min-w-0 flex-1 rounded-2xl rounded-tl-md border border-black/[0.05] bg-[var(--surface)] px-3 py-2 shadow-[0_1px_2px_rgba(12,26,46,0.04)]">
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="truncate text-[11.5px] font-bold text-[var(--text-main)]">
                             {comment.authorName}
@@ -874,7 +890,7 @@ export function TaskDetailSheet({
                     onChange={(event) => setCommentDraft(event.target.value)}
                     rows={2}
                     placeholder="Напишите комментарий…"
-                    className="min-h-[44px] flex-1 resize-none rounded-2xl border border-black/[0.05] bg-white px-3.5 py-2.5 text-[13px] text-[var(--text-main)] shadow-[0_1px_2px_rgba(12,26,46,0.04)] outline-none focus:border-[var(--accent)]"
+                    className="min-h-[44px] flex-1 resize-none rounded-2xl border border-black/[0.05] bg-[var(--surface)] px-3.5 py-2.5 text-[13px] text-[var(--text-main)] shadow-[0_1px_2px_rgba(12,26,46,0.04)] outline-none focus:border-[var(--accent)]"
                   />
                   <button
                     type="button"

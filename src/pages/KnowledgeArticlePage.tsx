@@ -74,13 +74,13 @@ export function KnowledgeArticlePage() {
       <div className="animate-fade-in-up mx-auto flex w-full max-w-[760px] flex-col gap-3">
         <div className="h-4 w-2/5 animate-pulse rounded-full bg-gray-200/70" />
 
-        <div className="rounded-2xl bg-white p-5 shadow-sm">
+        <div className="rounded-2xl bg-[var(--surface)] p-5 shadow-sm">
           <div className="h-9 w-9 animate-pulse rounded-xl bg-gray-200/80" />
           <div className="mt-3 h-6 w-3/5 animate-pulse rounded-lg bg-gray-200/80" />
           <div className="mt-2.5 h-3 w-1/3 animate-pulse rounded-full bg-gray-200/60" />
         </div>
 
-        <div className="rounded-2xl bg-white p-5 shadow-sm">
+        <div className="rounded-2xl bg-[var(--surface)] p-5 shadow-sm">
           <div className="h-5 w-2/5 animate-pulse rounded-lg bg-gray-200/80" />
           <div className="mt-3 space-y-2.5">
             {['100%', '92%', '84%'].map((width, index) => (
@@ -113,7 +113,7 @@ export function KnowledgeArticlePage() {
 
   if (articleQuery.isError || !article) {
     return (
-      <div className="mx-auto flex w-full max-w-[760px] flex-col items-center gap-2 rounded-2xl bg-white p-8 text-center shadow-sm">
+      <div className="mx-auto flex w-full max-w-[760px] flex-col items-center gap-2 rounded-2xl bg-[var(--surface)] p-8 text-center shadow-sm">
         <Icon icon="mdi:file-remove-outline" width={40} className="text-gray-300" />
         <p className="m-0 text-sm text-gray-500">Статья не найдена или была удалена</p>
         <button
@@ -156,7 +156,7 @@ export function KnowledgeArticlePage() {
         </div>
       ) : null}
 
-      <header className="rounded-2xl bg-white p-5 shadow-sm">
+      <header className="rounded-2xl bg-[var(--surface)] p-5 shadow-sm">
         <p className="m-0 text-[34px] leading-none">{article.icon}</p>
         <h1 className="m-0 mt-2 text-[22px] font-extrabold leading-snug text-[var(--text-main)]">
           {article.title}
@@ -169,7 +169,7 @@ export function KnowledgeArticlePage() {
         ) : null}
       </header>
 
-      <article className="rounded-2xl bg-white p-5 shadow-sm">
+      <article className="rounded-2xl bg-[var(--surface)] p-5 shadow-sm">
         <ArticleContent
           blocks={article.content}
           onOpenArticle={openArticle}
@@ -178,7 +178,7 @@ export function KnowledgeArticlePage() {
       </article>
 
       {treeLoading ? (
-        <section className="rounded-2xl bg-white p-5 shadow-sm">
+        <section className="rounded-2xl bg-[var(--surface)] p-5 shadow-sm">
           <div className="mb-3 h-3 w-24 animate-pulse rounded-full bg-gray-200/70" />
           <div className="space-y-2">
             {Array.from({ length: 2 }).map((_, index) => (
@@ -187,7 +187,7 @@ export function KnowledgeArticlePage() {
           </div>
         </section>
       ) : children.length > 0 ? (
-        <section className="rounded-2xl bg-white p-5 shadow-sm">
+        <section className="rounded-2xl bg-[var(--surface)] p-5 shadow-sm">
           <h2 className="m-0 mb-3 text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
             Подстатьи ({children.length})
           </h2>

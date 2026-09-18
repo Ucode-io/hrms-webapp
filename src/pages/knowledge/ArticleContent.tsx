@@ -12,39 +12,48 @@ import { FilePreviewButton } from '../../components/FilePreviewDrawer'
  * Незнакомый тип блока не роняет экран — от него берётся текст.
  */
 
-/** Цвета BlockNote приходят именами палитры редактора, а не CSS-значениями. */
-const TEXT_COLORS: Record<string, string> = {
-  gray: '#7d7d7d',
-  brown: '#9f6b53',
-  red: '#e03e3e',
-  orange: '#d9730d',
-  yellow: '#dfab01',
-  green: '#4d6461',
-  blue: '#0b6e99',
-  purple: '#6940a5',
-  pink: '#ad1a72',
+/**
+ * Цвета BlockNote приходят именами палитры редактора, а не CSS-значениями.
+ *
+ * Одна карта на оба применения вместо прежних двух. Раньше рядом жили тёмные
+ * цвета текста (под белый лист) и светлые пастельные фоны — в тёмной теме
+ * первые сливались с фоном, вторые светились белым пятном, да ещё и с белым
+ * текстом поверх. Здесь взяты средние по светлоте тона: они читаются и на
+ * белом, и на тёмном, а фон-заливка выводится из того же тона прозрачной
+ * подмешкой — то есть следует за темой сама.
+ */
+const BLOCK_COLORS: Record<string, string> = {
+  brown: '#b07a5a',
+  red: '#ef4444',
+  orange: '#f97316',
+  yellow: '#eab308',
+  green: '#10b981',
+  blue: '#3b82f6',
+  purple: '#8b5cf6',
+  pink: '#ec4899',
 }
 
-const BACKGROUND_COLORS: Record<string, string> = {
-  gray: '#ebeced',
-  brown: '#e9e5e3',
-  red: '#fbe4e4',
-  orange: '#faebdd',
-  yellow: '#fbf3db',
-  green: '#ddedea',
-  blue: '#ddebf1',
-  purple: '#eae4f2',
-  pink: '#f4dfeb',
-}
+/** Серый — не оттенок, а «приглушённый текст»: берём токен темы. */
+const grayText = 'var(--text-secondary)'
+const grayBackground = 'var(--surface-sunken)'
 
 const inlineStyle = (styles?: KbTextStyles): CSSProperties | undefined => {
   if (!styles) return undefined
   const css: CSSProperties = {}
   if (styles.textColor && styles.textColor !== 'default') {
-    css.color = TEXT_COLORS[styles.textColor] || styles.textColor
+    css.color =
+      styles.textColor === 'gray'
+        ? grayText
+        : BLOCK_COLORS[styles.textColor] || styles.textColor
   }
   if (styles.backgroundColor && styles.backgroundColor !== 'default') {
-    css.background = BACKGROUND_COLORS[styles.backgroundColor] || styles.backgroundColor
+    const tone = BLOCK_COLORS[styles.backgroundColor]
+    css.background =
+      styles.backgroundColor === 'gray'
+        ? grayBackground
+        : tone
+          ? `color-mix(in srgb, ${tone} 18%, transparent)`
+          : styles.backgroundColor
   }
   return Object.keys(css).length > 0 ? css : undefined
 }
@@ -288,7 +297,7 @@ function BlockView({ block, index, onOpenArticle, resolveArticle }: BlockProps) 
       if (!url) return null
       const name = propString(block, 'name') || propString(block, 'caption') || 'Файл'
       return (
-        <div className="my-1 flex items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white p-3">
+        <div className="my-1 flex items-center gap-2.5 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-light)] text-[var(--accent)]">
             <Icon icon="mdi:paperclip" width={18} />
           </span>
@@ -326,7 +335,7 @@ function BlockView({ block, index, onOpenArticle, resolveArticle }: BlockProps) 
         <button
           type="button"
           onClick={() => onOpenArticle(target.id)}
-          className="my-1 flex w-full cursor-pointer items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white p-3 text-left transition active:scale-[0.99]"
+          className="my-1 flex w-full cursor-pointer items-center gap-2.5 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 text-left transition active:scale-[0.99]"
         >
           <span className="text-[18px] leading-none">{target.icon}</span>
           <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-[var(--text-main)]">
@@ -368,7 +377,7 @@ function TableBlock({ block }: { block: KbBlock }) {
   return (
     // Широкая таблица скроллится внутри себя — страница не должна ездить вбок.
     <div className="scrollbar-hide my-1.5 overflow-x-auto rounded-xl border border-[var(--line)]">
-      <table className="w-full border-collapse bg-white">
+      <table className="w-full border-collapse bg-[var(--surface)]">
         <tbody>
           {rows.map((row, rowIndex) => {
             const cells = Array.isArray(row?.cells) ? row.cells : []

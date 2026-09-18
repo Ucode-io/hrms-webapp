@@ -115,7 +115,7 @@ function DetailDrawer({
     <Drawer.Root open={open} onOpenChange={(o) => { if (!o) onClose() }}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" />
-        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[92dvh] flex-col rounded-t-[28px] bg-white outline-none">
+        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[92dvh] flex-col rounded-t-[28px] bg-[var(--surface)] outline-none">
           <Drawer.Title className="sr-only">{item.name}</Drawer.Title>
           <Drawer.Description className="sr-only">Детали имущества</Drawer.Description>
 
@@ -205,22 +205,22 @@ function PropertyCard({ item, onOpen }: { item: PropertyItem; onOpen: () => void
     <button
       type="button"
       onClick={onOpen}
-      className="w-full text-left rounded-2xl border border-[var(--line)] bg-white overflow-hidden active:scale-[0.98] transition-transform"
+      className="w-full text-left rounded-2xl border border-[var(--line)] bg-[var(--surface)] overflow-hidden active:scale-[0.98] transition-transform"
     >
       {/* Photo strip */}
       {item.photo ? (
-        <div className="h-28 w-full overflow-hidden bg-gray-100">
+        <div className="h-44 w-full overflow-hidden bg-gray-100">
           <img src={item.photo} alt={item.name || ''} className="h-full w-full object-cover" />
         </div>
       ) : (
-        <div className="h-20 flex items-center justify-center bg-[var(--app-bg)]">
-          <Icon icon="mdi:package-variant-closed" width={32} className="text-[var(--text-muted)] opacity-30" />
+        <div className="h-44 flex items-center justify-center bg-[var(--app-bg)]">
+          <Icon icon="mdi:package-variant-closed" width={40} className="text-[var(--text-muted)] opacity-30" />
         </div>
       )}
 
       <div className="p-3">
         <div className="flex items-start justify-between gap-2">
-          <p className="m-0 text-[13px] font-bold text-[var(--text-main)] leading-snug line-clamp-2 flex-1">
+          <p className="m-0 text-[14px] font-bold text-[var(--text-main)] leading-snug flex-1">
             {item.name || 'Без названия'}
           </p>
           <StatusBadge status={status} />
@@ -231,7 +231,7 @@ function PropertyCard({ item, onOpen }: { item: PropertyItem; onOpen: () => void
           </span>
         )}
         <div className="mt-2 flex items-center justify-between">
-          <span className="text-[14px] font-extrabold text-[var(--text-main)]">
+          <span className="text-[15px] font-extrabold text-[var(--text-main)]">
             {formatCost(item.cost)}
           </span>
           <Icon icon="mdi:chevron-right" width={16} className="text-[var(--text-muted)]" />
@@ -267,13 +267,13 @@ export function PropertyPage() {
 
       {/* Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-48 rounded-2xl bg-white border border-[var(--line)] animate-pulse" />
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-56 rounded-2xl bg-[var(--surface)] border border-[var(--line)] animate-pulse" />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-white px-6 py-12 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)] px-6 py-12 text-center">
           <Icon icon="mdi:package-variant-closed" width={44} className="text-[var(--text-muted)] opacity-30" />
           <p className="m-0 text-[13px] font-semibold text-[var(--text-muted)]">
             Имущество не закреплено
@@ -283,7 +283,7 @@ export function PropertyPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-3">
           {items.map((item) => (
             <PropertyCard
               key={item.guid}

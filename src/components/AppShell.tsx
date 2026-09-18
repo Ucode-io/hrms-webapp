@@ -2,11 +2,11 @@ import { useMemo } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { App, Page } from 'konsta/react'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import { AppHeader } from './AppHeader'
 import { PageHeader } from './PageHeader'
 import { AppTabbar } from './AppTabbar'
 import { HomePage } from '../pages/HomePage'
-import { AbsencePage } from '../pages/AbsencePage'
 import { PayrollPage } from '../pages/PayrollPage'
 import { MorePage } from '../pages/MorePage'
 import { ProfilePage } from '../pages/ProfilePage'
@@ -24,6 +24,12 @@ import { TrainingDetailPage } from '../pages/TrainingDetailPage'
 import { KnowledgePage } from '../pages/KnowledgePage'
 import { CopilotPage } from '../pages/CopilotPage'
 import { KnowledgeArticlePage } from '../pages/KnowledgeArticlePage'
+import { NewsPage } from '../pages/NewsPage'
+import { MyDataPage } from '../pages/MyDataPage'
+import { LanguageThemePage } from '../pages/LanguageThemePage'
+import { PlaceholderPage } from '../pages/PlaceholderPage'
+import { CalendarPage } from '../pages/CalendarPage'
+import { TasksCalendarPage } from '../pages/TasksCalendarPage'
 import { hasPendingTaskId } from '../telegram/startParam'
 
 function detectKonstaTheme(): 'ios' | 'material' {
@@ -35,8 +41,7 @@ function detectKonstaTheme(): 'ios' | 'material' {
 }
 
 const PAGE_TITLES: Record<string, string> = {
-  '/absence': 'Отпуск',
-  '/time': 'Учёт времени',
+  '/time': 'Время',
   '/payroll': 'Зарплата',
   '/more': 'Ещё',
   '/profile': 'Профиль',
@@ -50,6 +55,18 @@ const PAGE_TITLES: Record<string, string> = {
   '/trainings': 'Тренинги',
   '/knowledge': 'База знаний',
   '/copilot': 'AI-помощник',
+  '/news': 'Новости',
+  '/profile/my-data': 'Мои данные',
+  '/kiosk-mode': 'Режим киоска',
+  '/language-theme': 'Язык и тема',
+  '/tracking-settings': 'Настройки отслеживания',
+  '/change-password': 'Смена пароля',
+  '/privacy-policy': 'Политика конфиденциальности',
+  '/support': 'Поддержка',
+  '/company': 'Компания',
+  '/reports': 'Отчёты',
+  '/calendar': 'Календарь',
+  '/tasks-calendar': 'Календарь задач',
 }
 
 function CurrentHeader() {
@@ -69,6 +86,8 @@ function CurrentHeader() {
         ? 'Статья'
         : PAGE_TITLES[pathname] || ''
   const shouldShowBack =
+    pathname === '/time' ||
+    pathname === '/payroll' ||
     pathname === '/sport' ||
     pathname === '/org-structure' ||
     pathname === '/kpi' ||
@@ -79,6 +98,19 @@ function CurrentHeader() {
     pathname === '/trainings' ||
     pathname === '/knowledge' ||
     pathname === '/copilot' ||
+    pathname === '/news' ||
+    pathname === '/profile' ||
+    pathname === '/profile/my-data' ||
+    pathname === '/kiosk-mode' ||
+    pathname === '/language-theme' ||
+    pathname === '/tracking-settings' ||
+    pathname === '/change-password' ||
+    pathname === '/privacy-policy' ||
+    pathname === '/support' ||
+    pathname === '/company' ||
+    pathname === '/reports' ||
+    pathname === '/calendar' ||
+    pathname === '/tasks-calendar' ||
     isSurveyTake ||
     isTrainingDetail ||
     isKnowledgeArticle ||
@@ -86,15 +118,31 @@ function CurrentHeader() {
   return <PageHeader title={title} showBack={shouldShowBack} />
 }
 
+/**
+ * Маршруты, которым принадлежит глобальный таббар — то есть те, между которыми
+ * он и переключает. Раньше здесь был перевёрнутый список: таббар рисовался
+ * везде, кроме перечисленных исключений, и потому вылезал на внутренних
+ * экранах, где по макету его нет (Опросы, Тренинги, Календарь, Документы,
+ * Имущество, База знаний, KPI — уходят назад стрелкой в шапке).
+ *
+ * Экрану, которому нужны собственные вкладки, глобальный таббар не подходит:
+ * он рисует свои внутри страницы — так устроено «Время» (Заявки/Табель/График)
+ * и так же задуманы «Отчёты» (Обзор/Продажи/Финансы/Операции) в макете.
+ */
+const TABBAR_ROUTES = new Set(['/more'])
+
 export function AppShell() {
   const { isAuthorized } = useAuth()
   const konstaTheme = useMemo(() => detectKonstaTheme(), [])
+  const { resolvedTheme } = useTheme()
   const { pathname } = useLocation()
 
   if (!isAuthorized) return <Navigate to="/login" replace />
 
+  const hasTabbar = TABBAR_ROUTES.has(pathname)
+
   return (
-    <App theme={konstaTheme} safeAreas className="webview-root">
+    <App theme={konstaTheme} dark={resolvedTheme === 'dark'} safeAreas className="webview-root">
       <Page className="flex flex-col min-h-svh bg-[var(--app-bg)]">
         <CurrentHeader />
 
@@ -102,22 +150,31 @@ export function AppShell() {
           className={
             pathname === '/org-structure'
               ? 'flex-1 pb-[84px] flex flex-col'
-              : pathname === '/copilot'
-                // Чат — единственный экран без таббара, поэтому и запас под
-                // него не нужен: композер сам держит отступ снизу.
-                ? 'flex-1 px-4 pt-4 flex flex-col gap-4'
-                : 'flex-1 px-4 pt-4 pb-[100px] flex flex-col gap-4'
+              : // Запас снизу — ровно под таббар, и только там, где он есть.
+                // Без этого страницы без таббара упирались в пустые 100px.
+                `flex-1 px-4 pt-4 flex flex-col gap-4 ${hasTabbar ? 'pb-[100px]' : 'pb-6'}`
           }
         >
           <Routes>
             {/* Deep link из уведомления приходит на «/» — ведём сразу на задачи. */}
             <Route index element={<Navigate to={hasPendingTaskId() ? '/tasks' : '/home'} replace />} />
             <Route path="/home" element={<HomePage />} />
-            <Route path="/absence" element={<AbsencePage />} />
+            <Route path="/absence" element={<Navigate to="/time" replace />} />
             <Route path="/time" element={<TimePage />} />
             <Route path="/payroll" element={<PayrollPage />} />
             <Route path="/more" element={<MorePage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile/my-data" element={<MyDataPage />} />
+            <Route path="/kiosk-mode" element={<PlaceholderPage title="Режим киоска" />} />
+            <Route path="/language-theme" element={<LanguageThemePage />} />
+            <Route path="/tracking-settings" element={<PlaceholderPage title="Настройки отслеживания" />} />
+            <Route path="/change-password" element={<PlaceholderPage title="Смена пароля" />} />
+            <Route path="/privacy-policy" element={<PlaceholderPage title="Политика конфиденциальности" />} />
+            <Route path="/support" element={<PlaceholderPage title="Поддержка" />} />
+            <Route path="/company" element={<PlaceholderPage title="Компания" />} />
+            <Route path="/reports" element={<PlaceholderPage title="Отчёты" />} />
+            <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/tasks-calendar" element={<TasksCalendarPage />} />
             <Route path="/sport" element={<SportPage />} />
             <Route path="/org-structure" element={<OrgStructurePage />} />
             <Route path="/kpi" element={<KpiPage />} />
@@ -131,14 +188,12 @@ export function AppShell() {
             <Route path="/knowledge" element={<KnowledgePage />} />
             <Route path="/knowledge/:id" element={<KnowledgeArticlePage />} />
             <Route path="/copilot" element={<CopilotPage />} />
+            <Route path="/news" element={<NewsPage />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </main>
 
-        {/* На экране чата таббар прячем: с открытой клавиатурой он всё равно
-            уходит под неё, а его высота отъедала место у переписки. Назад —
-            стрелкой в шапке. */}
-        {pathname !== '/copilot' && <AppTabbar />}
+        {hasTabbar && <AppTabbar />}
       </Page>
     </App>
   )

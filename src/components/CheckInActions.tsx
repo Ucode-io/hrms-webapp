@@ -606,19 +606,19 @@ export function CheckInSummary() {
   const { checkIn, checkOut } = useToday()
 
   const card = (label: string, time: string, icon: string, tone: string) => (
-    <div className={`flex-1 rounded-[20px] px-4 py-3.5 text-center ${tone}`}>
-      <p className="m-0 flex items-center justify-center gap-1.5 text-[15px] font-semibold">
-        <Icon icon={icon} width={18} />
+    <div className={`flex-1 rounded-[20px] px-4 py-2.5 text-center ${tone}`}>
+      <p className="m-0 flex items-center justify-center gap-1.5 text-[13px] font-semibold">
+        <Icon icon={icon} width={16} />
         {label}
       </p>
-      <p className="mt-1 mb-0 text-[20px] font-bold tabular-nums">{time}</p>
+      <p className="mt-0.5 mb-0 text-[17px] font-bold tabular-nums">{time}</p>
     </div>
   )
 
   return (
     <section className="animate-fade-in-up flex gap-2.5">
-      {card('Приход', checkIn, 'mdi:login', 'bg-emerald-50 text-emerald-700')}
-      {card('Уход', checkOut, 'mdi:logout', 'bg-amber-50 text-amber-700')}
+      {card('Приход', checkIn, 'mdi:login', 'bg-emerald-500/15 text-emerald-500')}
+      {card('Уход', checkOut, 'mdi:logout', 'bg-amber-500/15 text-amber-500')}
     </section>
   )
 }
@@ -633,9 +633,11 @@ export function CheckInActions() {
   useEffect(() => { loadCascade().catch(() => {}) }, [])
 
   return (
-    // Лента новостей растёт без предела, поэтому кнопка липкая: смещение снизу —
-    // высота таббара, иначе она уезжает под него.
-    <section className="animate-fade-in-up sticky bottom-[calc(env(safe-area-inset-bottom)+62px)] z-20 -mx-4 mt-auto bg-[var(--app-bg)] px-4 pt-3 pb-1">
+    // Кнопка стоит сразу под карточками «Приход / Уход»: действие рядом с тем,
+    // что оно меняет. Раньше она была липкой внизу экрана — отсюда `sticky`,
+    // `mt-auto` и подложка цветом фона, чтобы лента не просвечивала. На новом
+    // месте всё это не нужно: обычный блок в потоке.
+    <section className="animate-fade-in-up">
       <button
         type="button"
         onClick={() => setAction(nextAction)}

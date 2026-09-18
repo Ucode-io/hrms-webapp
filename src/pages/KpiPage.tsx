@@ -193,7 +193,7 @@ export function KpiPage() {
 
   if (!positionId) {
     return (
-      <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-10 text-center">
+      <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-10 text-center">
         <div className="mx-auto w-12 h-12 rounded-2xl bg-[var(--accent-soft)] inline-flex items-center justify-center mb-3">
           <Icon icon="mdi:account-question-outline" width={26} className="text-[var(--accent)]" />
         </div>
@@ -227,7 +227,7 @@ export function KpiPage() {
             <button
               type="button"
               onClick={() => void refetch()}
-              className="mt-2 inline-flex items-center gap-1 rounded-lg border border-[var(--error-line)] bg-white px-3 py-1.5 text-[12px] font-bold text-[var(--error-text)] cursor-pointer active:scale-95"
+              className="mt-2 inline-flex items-center gap-1 rounded-lg border border-[var(--error-line)] bg-[var(--surface)] px-3 py-1.5 text-[12px] font-bold text-[var(--error-text)] cursor-pointer active:scale-95"
             >
               <Icon icon="mdi:refresh" width={13} />
               Повторить
@@ -254,7 +254,7 @@ export function KpiPage() {
               className={`shrink-0 rounded-full border px-3.5 py-1.5 text-[12px] font-bold transition-all active:scale-95 ${
                 isActive
                   ? 'border-transparent text-white shadow-sm'
-                  : 'border-[var(--line)] bg-white text-[var(--text-secondary)]'
+                  : 'border-[var(--line)] bg-[var(--surface)] text-[var(--text-secondary)]'
               }`}
               style={isActive ? { background: company.mainColor } : undefined}
             >
@@ -319,7 +319,7 @@ export function KpiPage() {
 
       {/* Stats strip */}
       <section className="grid grid-cols-3 gap-2">
-        <div className="rounded-2xl border border-[var(--line)] bg-white px-3 py-2.5">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5">
           <div className="flex items-center gap-1.5">
             <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
               <Icon icon="mdi:check-bold" width={13} />
@@ -333,7 +333,7 @@ export function KpiPage() {
             </span>
           </p>
         </div>
-        <div className="rounded-2xl border border-[var(--line)] bg-white px-3 py-2.5">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5">
           <div className="flex items-center gap-1.5">
             <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
               <Icon icon="mdi:clock-outline" width={13} />
@@ -344,7 +344,7 @@ export function KpiPage() {
             {summaryStats.pendingCount}
           </p>
         </div>
-        <div className="rounded-2xl border border-[var(--line)] bg-white px-3 py-2.5">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5">
           <div className="flex items-center gap-1.5">
             <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-[var(--accent-light)] text-[var(--accent)]">
               <Icon icon="mdi:target" width={13} />
@@ -359,12 +359,12 @@ export function KpiPage() {
 
       {/* List */}
       {isFetching && isEmpty ? (
-        <div className="flex flex-col items-center justify-center py-12 gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-white">
+        <div className="flex flex-col items-center justify-center py-12 gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)]">
           <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-gray-200 border-t-[var(--accent)]" />
           <p className="m-0 text-[12.5px] font-semibold text-[var(--text-muted)]">Загружаем KPI…</p>
         </div>
       ) : isEmpty ? (
-        <div className="rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-10 text-center">
+        <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)] px-4 py-10 text-center">
           <div className="mx-auto w-12 h-12 rounded-2xl bg-[var(--accent-soft)] inline-flex items-center justify-center mb-3">
             <Icon icon="mdi:target-variant" width={26} className="text-[var(--accent)]" />
           </div>

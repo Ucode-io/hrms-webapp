@@ -2,16 +2,17 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Drawer } from 'vaul'
 import { Icon } from '@iconify/react'
-import { useAuth } from '../context/AuthContext'
-import { useCompany } from '../context/CompanyContext'
-import { absenceService, formatDateRu, toIsoDate } from '../api/absenceService'
-import DateField from '../components/DateField'
+import { useAuth } from '../../context/AuthContext'
+import { useCompany } from '../../context/CompanyContext'
+import { absenceService, formatDateRu, toIsoDate } from '../../api/absenceService'
+import { uploadFile } from '../../api/dashboardService'
+import DateField from '../../components/DateField'
 import {
   reportsService,
   type EmployeeAbsencePolicy,
   type EmployeeAbsenceRequest,
   type EmployeeAbsenceStatus,
-} from '../api/reportsService'
+} from '../../api/reportsService'
 
 const DEFAULT_ICON = 'mdi:airplane'
 
@@ -22,10 +23,12 @@ const STATUS_LABELS: Record<EmployeeAbsenceStatus, string> = {
 }
 
 const STATUS_COLORS: Record<EmployeeAbsenceStatus, { bg: string; text: string }> = {
-  pending: { bg: 'bg-amber-50', text: 'text-amber-700' },
-  approved: { bg: 'bg-emerald-50', text: 'text-emerald-700' },
-  rejected: { bg: 'bg-rose-50', text: 'text-rose-700' },
+  pending: { bg: 'bg-amber-500/15', text: 'text-amber-500' },
+  approved: { bg: 'bg-emerald-500/15', text: 'text-emerald-500' },
+  rejected: { bg: 'bg-rose-500/15', text: 'text-rose-500' },
 }
+
+const GROUP_ORDER: EmployeeAbsenceStatus[] = ['pending', 'approved', 'rejected']
 
 function countWeekdays(from: string, to: string): number {
   const s = new Date(from)
@@ -53,9 +56,9 @@ const FILTERS: { key: 'all' | EmployeeAbsenceStatus; label: string }[] = [
   { key: 'rejected', label: 'Отклонено' },
 ]
 
-/* ── Page ──────────────────────────────────────────── */
+/* ── Tab ───────────────────────────────────────────── */
 
-export function AbsencePage() {
+export function TimeRequestsTab() {
   const { session, profile } = useAuth()
   const { company } = useCompany()
 
@@ -109,6 +112,14 @@ export function AbsencePage() {
     [requests, filter],
   )
 
+  const grouped = useMemo(() => {
+    if (filter !== 'all') return null
+    const map = new Map<EmployeeAbsenceStatus, EmployeeAbsenceRequest[]>()
+    for (const status of GROUP_ORDER) map.set(status, [])
+    for (const r of filtered) map.get(r.status)?.push(r)
+    return map
+  }, [filtered, filter])
+
   const counts = useMemo(() => {
     const c = { all: requests.length, pending: 0, approved: 0, rejected: 0 }
     requests.forEach((r) => {
@@ -125,19 +136,19 @@ export function AbsencePage() {
           {[1, 2].map((i) => (
             <div
               key={i}
-              className="min-w-[180px] shrink-0 rounded-2xl border border-[var(--line)] bg-white p-4 animate-pulse"
+              className="min-w-[180px] shrink-0 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 animate-pulse"
             >
-              <div className="h-9 w-9 rounded-xl bg-gray-200" />
-              <div className="mt-4 h-8 w-16 rounded bg-gray-200" />
-              <div className="mt-3 h-1.5 rounded-full bg-gray-200" />
-              <div className="mt-3 h-9 rounded-xl bg-gray-200" />
+              <div className="h-9 w-9 rounded-xl bg-[var(--surface-muted)]" />
+              <div className="mt-4 h-8 w-16 rounded bg-[var(--surface-muted)]" />
+              <div className="mt-3 h-1.5 rounded-full bg-[var(--surface-muted)]" />
+              <div className="mt-3 h-9 rounded-xl bg-[var(--surface-muted)]" />
             </div>
           ))}
         </div>
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-[72px] rounded-2xl border border-[var(--line)] bg-white animate-pulse"
+            className="h-[72px] rounded-2xl border border-[var(--line)] bg-[var(--surface)] animate-pulse"
           />
         ))}
       </div>
@@ -167,12 +178,12 @@ export function AbsencePage() {
               return (
                 <div
                   key={pol.guid}
-                  className="min-w-[180px] shrink-0 rounded-2xl border border-[var(--line)] bg-white p-4 flex flex-col justify-between gap-3 shadow-sm snap-start"
+                  className="min-w-[180px] shrink-0 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 flex flex-col justify-between gap-3 shadow-sm snap-start"
                 >
                   <div className="flex items-center gap-2.5">
                     <div
                       className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: `${clr}14`, color: clr }}
+                      style={{ background: `${clr}22`, color: clr }}
                     >
                       <Icon icon={ic} width={18} height={18} />
                     </div>
@@ -196,19 +207,19 @@ export function AbsencePage() {
                       </span>
                     </div>
                     {pol.pending_days > 0 ? (
-                      <p className="m-0 mt-1 text-[10.5px] font-semibold text-amber-600">
+                      <p className="m-0 mt-1 text-[10.5px] font-semibold text-amber-500">
                         Ожидает: {pol.pending_days % 1 === 0 ? pol.pending_days : pol.pending_days.toFixed(1)} д
                       </p>
                     ) : null}
                     {!eligible ? (
-                      <p className="m-0 mt-1.5 rounded-lg bg-amber-50 px-2 py-1 text-[10.5px] font-semibold text-amber-700">
+                      <p className="m-0 mt-1.5 rounded-lg bg-amber-500/15 px-2 py-1 text-[10.5px] font-semibold text-amber-500">
                         {pol.eligible_at
                           ? `Доступно с ${formatDateRu(pol.eligible_at)}`
                           : `Доступно после ${pol.min_months ?? 0} мес. стажа`}
                       </p>
                     ) : null}
                   </div>
-                  <div className="h-[5px] rounded-full bg-gray-100 overflow-hidden">
+                  <div className="h-[5px] rounded-full bg-[var(--surface-muted)] overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-500"
                       style={{ width: `${pct}%`, background: clr }}
@@ -222,7 +233,7 @@ export function AbsencePage() {
                       setShowCreate(true)
                     }}
                     className="w-full h-9 rounded-xl border-0 text-[12px] font-bold cursor-pointer transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
-                    style={{ background: `${clr}12`, color: clr }}
+                    style={{ background: `${clr}22`, color: clr }}
                   >
                     Создать запрос
                   </button>
@@ -231,7 +242,7 @@ export function AbsencePage() {
             })}
           </div>
         ) : (
-          <div className="rounded-2xl border border-[var(--line)] bg-white py-10 text-center text-sm text-[var(--text-muted)]">
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] py-10 text-center text-sm text-[var(--text-muted)]">
             Политики отсутствий не найдены
           </div>
         )}
@@ -246,10 +257,10 @@ export function AbsencePage() {
                 key={o.key}
                 type="button"
                 onClick={() => setFilter(o.key)}
-                className={`shrink-0 px-3.5 py-2 rounded-xl text-[12px] font-bold border cursor-pointer transition-all active:scale-95 ${
+                className={`shrink-0 px-3.5 py-2 rounded-full text-[12px] font-bold border cursor-pointer transition-all active:scale-95 ${
                   act
                     ? 'border-transparent text-white'
-                    : 'border-[var(--line)] bg-white text-[var(--text-secondary)]'
+                    : 'border-[var(--line)] bg-[var(--surface)] text-[var(--text-secondary)]'
                 }`}
                 style={act ? { background: company.mainColor } : undefined}
               >
@@ -265,21 +276,43 @@ export function AbsencePage() {
         </div>
 
         {/* ── Requests ── */}
-        <section className="flex flex-col gap-2">
+        <section className="flex flex-col gap-4">
           {filtered.length === 0 ? (
-            <div className="rounded-2xl border border-[var(--line)] bg-white py-10 text-center flex flex-col items-center gap-2">
+            <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] py-10 text-center flex flex-col items-center gap-2">
               <span className="text-3xl">📋</span>
               <p className="m-0 text-sm font-medium text-[var(--text-muted)]">Нет запросов</p>
             </div>
+          ) : grouped ? (
+            GROUP_ORDER.map((status) => {
+              const items = grouped.get(status) || []
+              if (items.length === 0) return null
+              return (
+                <div key={status} className="flex flex-col gap-2">
+                  <p className="m-0 text-[13px] font-bold text-[var(--text-main)]">
+                    {STATUS_LABELS[status]}
+                  </p>
+                  {items.map((req) => (
+                    <RequestRow
+                      key={req.guid}
+                      req={req}
+                      pol={policyById.get(req.absence_policies_id || '')}
+                      brandColor={company.mainColor}
+                    />
+                  ))}
+                </div>
+              )
+            })
           ) : (
-            filtered.map((req) => (
-              <RequestRow
-                key={req.guid}
-                req={req}
-                pol={policyById.get(req.absence_policies_id || '')}
-                brandColor={company.mainColor}
-              />
-            ))
+            <div className="flex flex-col gap-2">
+              {filtered.map((req) => (
+                <RequestRow
+                  key={req.guid}
+                  req={req}
+                  pol={policyById.get(req.absence_policies_id || '')}
+                  brandColor={company.mainColor}
+                />
+              ))}
+            </div>
           )}
         </section>
       </div>
@@ -293,20 +326,10 @@ export function AbsencePage() {
             setShowCreate(true)
           }}
           className="fixed bottom-[88px] right-4 z-20 w-14 h-14 rounded-2xl border-0 text-white shadow-xl cursor-pointer flex items-center justify-center transition-transform active:scale-90"
-          style={{ background: company.mainColor }}
+          style={{ background: `color-mix(in srgb, ${company.mainColor} 55%, white)` }}
           aria-label="Создать запрос"
         >
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          >
-            <path d="M12 5v14M5 12h14" />
-          </svg>
+          <Icon icon="mdi:plus" width={24} />
         </button>
       )}
 
@@ -317,7 +340,7 @@ export function AbsencePage() {
       <Drawer.Root open={showCreate} onOpenChange={setShowCreate} handleOnly>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[28px] outline-none max-h-[92vh] flex flex-col">
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)] rounded-t-[28px] outline-none max-h-[92vh] flex flex-col">
             <Drawer.Title className="sr-only">Новый запрос на отсутствие</Drawer.Title>
             <Drawer.Description className="sr-only">
               Создание заявки на отсутствие
@@ -331,6 +354,7 @@ export function AbsencePage() {
                 initPolicyId={initPolicyId}
                 color={company.mainColor}
                 employeeGuid={employeeGuid}
+                onClose={() => setShowCreate(false)}
                 onDone={() => {
                   setShowCreate(false)
                   void refetch()
@@ -340,7 +364,6 @@ export function AbsencePage() {
           </Drawer.Content>
         </Drawer.Portal>
       </Drawer.Root>
-
     </>
   )
 }
@@ -368,12 +391,12 @@ function RequestRow({
     <button
       type="button"
       onClick={() => setOpen((v) => !v)}
-      className="w-full text-left rounded-2xl border border-[var(--line)] bg-white overflow-hidden transition-all active:scale-[0.985]"
+      className="w-full text-left rounded-2xl border border-[var(--line)] bg-[var(--surface)] overflow-hidden transition-all active:scale-[0.985]"
     >
       <div className="p-3.5 flex items-center gap-3">
         <div
           className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center"
-          style={{ background: `${clr}12`, color: clr }}
+          style={{ background: `${clr}22`, color: clr }}
         >
           <Icon icon={ic} width={18} height={18} />
         </div>
@@ -391,20 +414,11 @@ function RequestRow({
             {req.requested_days > 0 && ` · ${req.requested_days} д`}
           </p>
         </div>
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          className={`shrink-0 text-[var(--text-muted)] transition-transform ${
-            open ? 'rotate-180' : ''
-          }`}
-        >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
+        <Icon
+          icon="mdi:chevron-down"
+          width={16}
+          className={`shrink-0 text-[var(--text-muted)] transition-transform ${open ? 'rotate-180' : ''}`}
+        />
       </div>
 
       {open && (
@@ -424,22 +438,18 @@ function RequestRow({
               </div>
             ))}
           </div>
-          {req.note ? (
-            <div className="mt-2.5 p-2.5 rounded-xl bg-gray-50 border border-[var(--line)]">
-              <p className="m-0 text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-semibold">
-                Комментарий
-              </p>
-              <p className="m-0 mt-0.5 text-[12px] text-[var(--text-secondary)] leading-relaxed">
-                {req.note}
-              </p>
-            </div>
-          ) : null}
+          <div className="mt-2.5 p-2.5 rounded-xl bg-[var(--surface-muted)] border border-[var(--line)] flex items-center gap-1.5">
+            <Icon icon="mdi:comment-outline" width={14} className="text-[var(--text-muted)] shrink-0" />
+            <p className="m-0 text-[12px] text-[var(--text-secondary)] leading-relaxed">
+              {req.note || 'Комментарий не добавлен'}
+            </p>
+          </div>
           {req.status === 'rejected' && req.reject_reason ? (
-            <div className="mt-2.5 p-2.5 rounded-xl bg-rose-50 border border-rose-200">
-              <p className="m-0 text-[10px] text-rose-700 uppercase tracking-wider font-semibold">
+            <div className="mt-2.5 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
+              <p className="m-0 text-[10px] text-rose-500 uppercase tracking-wider font-semibold">
                 Причина отказа
               </p>
-              <p className="m-0 mt-0.5 text-[12px] text-rose-800 leading-relaxed">
+              <p className="m-0 mt-0.5 text-[12px] text-[var(--text-main)] leading-relaxed">
                 {req.reject_reason}
               </p>
             </div>
@@ -457,18 +467,21 @@ function CreateForm({
   initPolicyId,
   color,
   employeeGuid,
+  onClose,
   onDone,
 }: {
   policies: EmployeeAbsencePolicy[]
   initPolicyId: string
   color: string
   employeeGuid: string
+  onClose: () => void
   onDone: () => void
 }) {
   const [policyId, setPolicyId] = useState(initPolicyId || policies[0]?.guid || '')
   const [dateFrom, setDateFrom] = useState(() => toIsoDate(new Date()))
   const [dateTo, setDateTo] = useState(() => toIsoDate(new Date()))
   const [note, setNote] = useState('')
+  const [attachment, setAttachment] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [err, setErr] = useState('')
 
@@ -491,6 +504,7 @@ function CreateForm({
     setSubmitting(true)
     setErr('')
     try {
+      const attachmentUrl = attachment ? await uploadFile(attachment) : ''
       await absenceService.create({
         user_base_id: employeeGuid,
         absence_policies_id: policyId,
@@ -498,6 +512,7 @@ function CreateForm({
         date_to: dateTo,
         requested_days: days,
         note: note.trim() || undefined,
+        attachments: attachmentUrl ? [attachmentUrl] : undefined,
         status: ['pending'] as unknown as string,
       })
       onDone()
@@ -509,15 +524,20 @@ function CreateForm({
   }
 
   const inputCls =
-    'mobile-input h-12 rounded-2xl border border-[var(--line)] bg-gray-50 px-4 text-[14px] font-medium text-[var(--text-main)] outline-none focus:border-[var(--accent)] transition-colors'
+    'mobile-input h-12 rounded-2xl border border-[var(--line)] bg-[var(--surface-muted)] px-4 text-[14px] font-medium text-[var(--text-main)] outline-none focus:border-[var(--accent)] transition-colors'
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <p className="m-0 text-[20px] font-extrabold text-[var(--text-main)]">Новый запрос</p>
-        <p className="m-0 mt-1 text-[13px] text-[var(--text-muted)]">
-          Создание заявки на отсутствие
-        </p>
+      <div className="flex items-center justify-between">
+        <p className="m-0 text-[18px] font-extrabold text-[var(--text-main)]">Новая заявка</p>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Закрыть"
+          className="w-9 h-9 rounded-xl border-0 bg-[var(--surface-muted)] text-[var(--text-main)] flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+        >
+          <Icon icon="mdi:close" width={18} />
+        </button>
       </div>
 
       {/* Policy */}
@@ -542,7 +562,7 @@ function CreateForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-            С
+            Дата начала
           </label>
           <DateField
             value={dateFrom}
@@ -555,7 +575,7 @@ function CreateForm({
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-            По
+            Дата окончания
           </label>
           <DateField
             value={dateTo}
@@ -568,35 +588,21 @@ function CreateForm({
       </div>
 
       {/* Summary */}
-      <div className="flex items-center justify-between rounded-2xl bg-gray-50 border border-[var(--line)] px-4 py-3">
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-            Раб. дней
-          </span>
-          <span className="text-[18px] font-extrabold mt-0.5" style={{ color }}>
-            {days}
+      <div className="rounded-2xl bg-[var(--surface-muted)] border border-[var(--line)] overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--line)]">
+          <span className="text-[13px] font-semibold text-[var(--text-secondary)]">Раб. дней</span>
+          <span className="text-[15px] font-extrabold text-[var(--text-main)]">{days} д</span>
+        </div>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--line)]">
+          <span className="text-[13px] font-semibold text-[var(--text-secondary)]">Доступно</span>
+          <span className="text-[15px] font-extrabold text-[var(--text-main)]">
+            {(avail % 1 === 0 ? avail : avail.toFixed(1))} д
           </span>
         </div>
-        <div className="h-8 w-px bg-[var(--line)]" />
-        <div className="flex flex-col items-center">
-          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-            Доступно
-          </span>
-          <span className="text-[18px] font-extrabold mt-0.5 text-[var(--text-main)]">
-            {avail % 1 === 0 ? avail : avail.toFixed(1)}
-          </span>
-        </div>
-        <div className="h-8 w-px bg-[var(--line)]" />
-        <div className="flex flex-col items-end">
-          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-            Остаток
-          </span>
-          <span
-            className={`text-[18px] font-extrabold mt-0.5 ${
-              forecast < 0 ? 'text-red-500' : 'text-emerald-600'
-            }`}
-          >
-            {forecast % 1 === 0 ? forecast : forecast.toFixed(1)}
+        <div className="flex items-center justify-between px-4 py-3">
+          <span className="text-[13px] font-semibold text-[var(--text-secondary)]">Остаток</span>
+          <span className={`text-[15px] font-extrabold ${forecast < 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+            {(forecast % 1 === 0 ? forecast : forecast.toFixed(1))} д
           </span>
         </div>
       </div>
@@ -604,19 +610,39 @@ function CreateForm({
       {/* Note */}
       <div className="flex flex-col gap-1.5">
         <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-          Комментарий
+          Комментарий (необязательно)
         </label>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Необязательно"
+          placeholder="Причина или пояснение"
           rows={2}
-          className="rounded-2xl border border-[var(--line)] bg-gray-50 px-4 py-3 text-[14px] text-[var(--text-main)] outline-none resize-none focus:border-[var(--accent)] transition-colors"
+          className="rounded-2xl border border-[var(--line)] bg-[var(--surface-muted)] px-4 py-3 text-[14px] text-[var(--text-main)] outline-none resize-none focus:border-[var(--accent)] transition-colors"
         />
       </div>
 
+      {/* Attachment */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
+          Вложение (PDF, PNG, JPEG)
+        </label>
+        <label className="inline-flex w-fit items-center gap-1.5 text-[13px] font-bold cursor-pointer" style={{ color }}>
+          <Icon icon="mdi:tray-arrow-up" width={16} />
+          Загрузить файл
+          <input
+            type="file"
+            accept="application/pdf,image/png,image/jpeg"
+            className="hidden"
+            onChange={(e) => setAttachment(e.target.files?.[0] || null)}
+          />
+        </label>
+        <p className="m-0 text-[12px] text-[var(--text-muted)]">
+          {attachment ? attachment.name : 'Файл не выбран'}
+        </p>
+      </div>
+
       {!eligible && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 px-4 py-2.5 text-[13px] font-medium">
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-500 px-4 py-2.5 text-[13px] font-medium">
           {selected?.eligible_at
             ? `Этот тип отсутствия будет доступен с ${formatDateRu(selected.eligible_at)}.`
             : `Этот тип отсутствия доступен после ${selected?.min_months ?? 0} мес. стажа.`}
@@ -636,7 +662,7 @@ function CreateForm({
         className="w-full h-[52px] rounded-2xl text-white font-bold text-[15px] border-0 cursor-pointer transition-all active:scale-[0.97] disabled:opacity-50 shadow-lg"
         style={{ background: color }}
       >
-        {submitting ? 'Создание...' : 'Создать запрос'}
+        {submitting ? 'Отправка...' : 'Отправить на согласование'}
       </button>
     </div>
   )

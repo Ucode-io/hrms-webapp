@@ -56,7 +56,7 @@ export function PickerSheet({
         onClick={onClose}
         role="presentation"
       />
-      <div className="picker-sheet relative flex max-h-[78vh] flex-col rounded-t-3xl bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_40px_rgba(12,26,46,0.22)]">
+      <div className="picker-sheet relative flex max-h-[78vh] flex-col rounded-t-3xl bg-[var(--surface)] pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_40px_rgba(12,26,46,0.22)]">
         <div className="flex justify-center pb-1 pt-2.5">
           <div className="h-[4px] w-9 rounded-full bg-gray-300" />
         </div>
@@ -65,7 +65,7 @@ export function PickerSheet({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-gray-100 text-[var(--text-secondary)] active:bg-gray-200"
+            className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--surface-muted)] text-[var(--text-secondary)] active:bg-gray-200"
             aria-label="Закрыть"
           >
             <Icon icon="mdi:close" width={16} />
@@ -189,12 +189,12 @@ export function SelectField({
       <PickerSheet open={open} title={label} onClose={close}>
         {/* Поиск — только на длинных справочниках: на пяти пунктах он лишний. */}
         {options.length > 7 ? (
-          <div className="sticky top-0 z-10 bg-white pb-2 pt-1">
+          <div className="sticky top-0 z-10 bg-[var(--surface)] pb-2 pt-1">
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Поиск…"
-              className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[var(--accent)]"
+              className="w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 text-[13px] outline-none focus:border-[var(--accent)]"
             />
           </div>
         ) : null}
@@ -343,12 +343,12 @@ export function MultiSelectField({
         }
       >
         {options.length > 7 ? (
-          <div className="sticky top-0 z-10 bg-white pb-2 pt-1">
+          <div className="sticky top-0 z-10 bg-[var(--surface)] pb-2 pt-1">
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[var(--accent)]"
+              className="w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 text-[13px] outline-none focus:border-[var(--accent)]"
             />
           </div>
         ) : null}
@@ -517,7 +517,7 @@ export function DateField({
             <button
               type="button"
               onClick={() => pick(null)}
-              className="flex-1 cursor-pointer rounded-xl border border-[var(--line)] bg-white px-4 py-3 text-[13px] font-bold text-[var(--text-secondary)] active:bg-gray-50"
+              className="flex-1 cursor-pointer rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-[13px] font-bold text-[var(--text-secondary)] active:bg-gray-50"
             >
               Очистить
             </button>
@@ -537,7 +537,7 @@ export function DateField({
               type="button"
               aria-label="Предыдущий месяц"
               onClick={() => setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
-              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border-0 bg-gray-100 text-[var(--text-secondary)] active:bg-gray-200"
+              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border-0 bg-[var(--surface-muted)] text-[var(--text-secondary)] active:bg-gray-200"
             >
               <Icon icon="mdi:chevron-left" width={20} />
             </button>
@@ -548,7 +548,7 @@ export function DateField({
               type="button"
               aria-label="Следующий месяц"
               onClick={() => setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
-              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border-0 bg-gray-100 text-[var(--text-secondary)] active:bg-gray-200"
+              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border-0 bg-[var(--surface-muted)] text-[var(--text-secondary)] active:bg-gray-200"
             >
               <Icon icon="mdi:chevron-right" width={20} />
             </button>
@@ -692,8 +692,8 @@ export function EditableText({
     onChange: (event: { target: { value: string } }) => setDraft(event.target.value),
   }
   const editClass = isTitle
-    ? 'w-full rounded-xl border border-[var(--accent)] bg-white px-2 py-1 text-[18px] font-extrabold leading-snug text-[var(--text-main)] outline-none disabled:opacity-60'
-    : 'w-full rounded-xl border border-[var(--accent)] bg-white px-3 py-2 text-[13px] leading-relaxed text-[var(--text-main)] outline-none disabled:opacity-60'
+    ? 'w-full rounded-xl border border-[var(--accent)] bg-[var(--surface)] px-2 py-1 text-[18px] font-extrabold leading-snug text-[var(--text-main)] outline-none disabled:opacity-60'
+    : 'w-full rounded-xl border border-[var(--accent)] bg-[var(--surface)] px-3 py-2 text-[13px] leading-relaxed text-[var(--text-main)] outline-none disabled:opacity-60'
 
   return multiline ? (
     <textarea

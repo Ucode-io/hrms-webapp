@@ -210,7 +210,7 @@ function BoardColumn({
         <p className="m-0 min-w-0 flex-1 truncate text-[13px] font-extrabold text-[var(--text-main)]">
           {column.title}
         </p>
-        <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-bold text-[var(--text-secondary)]">
+        <span className="shrink-0 rounded-full bg-[var(--surface)]/80 px-2 py-0.5 text-[11px] font-bold text-[var(--text-secondary)]">
           {column.tasks.length}
         </span>
       </div>
@@ -220,7 +220,7 @@ function BoardColumn({
         {column.tasks.length === 0 ? (
           <div
             className={`flex items-center justify-center rounded-xl border border-dashed px-3 py-6 transition-colors ${
-              isOver ? 'border-[var(--accent)] bg-white/70' : 'border-[var(--line)] bg-white/40'
+              isOver ? 'border-[var(--accent)] bg-[var(--surface)]/70' : 'border-[var(--line)] bg-[var(--surface)]/40'
             }`}
           >
             <p className="m-0 flex items-center gap-1.5 text-center text-[12px] font-semibold text-[var(--text-muted)]">
@@ -492,7 +492,7 @@ export function KanbanBoard({
           {activeTask ? (
             // Панель перекрывает таббар целиком: во время переноса он не нужен,
             // а полупрозрачная полоса поверх него читалась бы грязно.
-            <div className="board-drag-layer fixed inset-x-0 bottom-0 z-[65] rounded-t-2xl bg-white px-3 pb-[calc(16px+env(safe-area-inset-bottom))] pt-2.5 shadow-[0_-8px_32px_rgba(12,26,46,0.20)]">
+            <div className="board-drag-layer fixed inset-x-0 bottom-0 z-[65] rounded-t-2xl bg-[var(--surface)] px-3 pb-[calc(16px+env(safe-area-inset-bottom))] pt-2.5 shadow-[0_-8px_32px_rgba(12,26,46,0.20)]">
               <p className="m-0 px-1 pb-1.5 text-[10.5px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
                 Перенести в статус
               </p>

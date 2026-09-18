@@ -155,7 +155,7 @@ export function KnowledgePage() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Поиск по статьям..."
-          className="h-11 w-full rounded-2xl border border-[var(--line)] bg-white pl-10 pr-10 text-[13.5px] text-[var(--text-main)] shadow-[0_1px_4px_rgba(0,0,0,0.05)] outline-none transition-shadow focus:shadow-[0_1px_8px_rgba(0,0,0,0.1)]"
+          className="h-11 w-full rounded-2xl border border-[var(--line)] bg-[var(--surface)] pl-10 pr-10 text-[13.5px] text-[var(--text-main)] shadow-[0_1px_4px_rgba(0,0,0,0.05)] outline-none transition-shadow focus:shadow-[0_1px_8px_rgba(0,0,0,0.1)]"
         />
         {search ? (
           <button
@@ -173,7 +173,7 @@ export function KnowledgePage() {
         // Скелет повторяет форму строки дерева (шеврон · иконка · заголовок),
         // чтобы список не «переезжал», когда данные приедут.
         <>
-          <section className="rounded-2xl border border-gray-100 bg-white p-1.5 shadow-sm">
+          <section className="rounded-2xl border border-gray-100 bg-[var(--surface)] p-1.5 shadow-sm">
             {[0, 1, 0, 1, 0, 0].map((depth, index) => (
               <div
                 key={index}
@@ -209,7 +209,7 @@ export function KnowledgePage() {
               <button
                 type="button"
                 onClick={() => void refetch()}
-                className="mt-2 inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[var(--error-line)] bg-white px-3 py-1.5 text-[12px] font-bold text-[var(--error-text)] active:scale-95"
+                className="mt-2 inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[var(--error-line)] bg-[var(--surface)] px-3 py-1.5 text-[12px] font-bold text-[var(--error-text)] active:scale-95"
               >
                 <Icon icon="mdi:refresh" width={13} />
                 Повторить
@@ -218,13 +218,13 @@ export function KnowledgePage() {
           </div>
         </div>
       ) : articles.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-2xl bg-white p-8 text-center shadow-sm">
+        <div className="flex flex-col items-center gap-2 rounded-2xl bg-[var(--surface)] p-8 text-center shadow-sm">
           <Icon icon="mdi:book-open-page-variant-outline" width={40} className="text-gray-300" />
           <p className="m-0 text-sm text-gray-500">В базе знаний пока нет статей</p>
         </div>
       ) : search ? (
         found.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-2xl bg-white p-8 text-center shadow-sm">
+          <div className="flex flex-col items-center gap-2 rounded-2xl bg-[var(--surface)] p-8 text-center shadow-sm">
             <Icon icon="mdi:magnify" width={40} className="text-gray-300" />
             <p className="m-0 text-sm text-gray-500">Ничего не найдено</p>
           </div>
@@ -240,7 +240,7 @@ export function KnowledgePage() {
                   key={article.id}
                   type="button"
                   onClick={() => openArticle(article.id)}
-                  className="flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-gray-100 bg-white p-3.5 text-left shadow-sm transition active:scale-[0.99]"
+                  className="flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-gray-100 bg-[var(--surface)] p-3.5 text-left shadow-sm transition active:scale-[0.99]"
                 >
                   <span className="shrink-0 text-[20px] leading-none">{article.icon}</span>
                   <span className="min-w-0 flex-1">
@@ -260,7 +260,7 @@ export function KnowledgePage() {
           </section>
         )
       ) : (
-        <section className="rounded-2xl border border-gray-100 bg-white p-1.5 shadow-sm">
+        <section className="rounded-2xl border border-gray-100 bg-[var(--surface)] p-1.5 shadow-sm">
           {tree.map((node) => (
             <TreeRow
               key={node.id}

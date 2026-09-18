@@ -47,9 +47,12 @@ function applyBrandColors(mainColor: string) {
   const { h, s, l } = hexToHsl(mainColor)
   const root = document.documentElement
   root.style.setProperty('--accent', `hsl(${h}, ${s}%, ${l}%)`)
-  root.style.setProperty('--accent-light', `hsl(${h}, ${Math.min(s + 10, 100)}%, 94%)`)
-  root.style.setProperty('--accent-soft', `hsla(${h}, ${s}%, ${l}%, 0.08)`)
   root.style.setProperty('--accent-dark', `hsl(${h}, ${s}%, ${Math.max(l - 10, 20)}%)`)
+  // `--accent-light` и `--accent-soft` отсюда УБРАНЫ намеренно: они выводятся
+  // в index.css через color-mix с фоном приложения. Раньше здесь жёстко
+  // ставилась светлота 94% — почти белый, и в тёмной теме каждая акцентная
+  // плашка светилась белым пятном. Перебить это правилом темы было нельзя:
+  // inline-стиль на <html> выигрывает у любого CSS-селектора.
   root.style.setProperty('--gradient-start', `hsl(${h}, ${Math.min(s + 5, 100)}%, ${Math.min(l + 8, 60)}%)`)
   root.style.setProperty('--gradient-end', `hsl(${(h + 20) % 360}, ${Math.min(s + 10, 100)}%, ${Math.max(l - 5, 30)}%)`)
 }

@@ -29,28 +29,19 @@ const VERTICAL_GAP = 110
 const STACK_GAP = 24
 const STACK_INDENT = 36
 const ROOT_GAP = 80
-const COLOR_PALETTE = [
-  {
-    border: '#3B82F6',
-    background: '#EFF6FF',
-    avatar: '#315BDA',
-  },
-  {
-    border: '#8B5CF6',
-    background: '#F5F3FF',
-    avatar: '#7C3AED',
-  },
-  {
-    border: '#0E7490',
-    background: '#ECFEFF',
-    avatar: '#2E8B85',
-  },
-  {
-    border: '#43A047',
-    background: '#F0FDF4',
-    avatar: '#43A047',
-  },
-]
+/**
+ * Тон уровня иерархии. Хранится одним цветом на уровень: заливка карточки
+ * выводится из него прозрачной подмешкой, а не задаётся отдельной светлой
+ * константой — иначе в тёмной теме узлы графа остаются белыми плашками с
+ * белым же текстом. Границе достаётся тот же тон, аватару — он же.
+ */
+const LEVEL_TONES = ['#3B82F6', '#8B5CF6', '#0EA5E9', '#22C55E']
+
+const COLOR_PALETTE = LEVEL_TONES.map((tone) => ({
+  border: tone,
+  background: `color-mix(in srgb, ${tone} 14%, var(--surface))`,
+  avatar: tone,
+}))
 
 type EmployeeTreeNode = {
   id: string
@@ -137,7 +128,7 @@ const getPositionTitleRank = (rawTitle: string): number => {
 
 const OrgGraphNodeCard = ({ data }: NodeProps<Node<OrgGraphNodeData>>) => (
   <div
-    className="group relative overflow-visible rounded-[22px] border-2 bg-white px-4 py-3 shadow-sm"
+    className="group relative overflow-visible rounded-[22px] border-2 bg-[var(--surface)] px-4 py-3 shadow-sm"
     style={{
       width: NODE_WIDTH,
       minHeight: NODE_HEIGHT,
@@ -271,7 +262,7 @@ const OrgChartEdge = ({
       id={id}
       path={buildRoundedPath(points, 10)}
       style={{
-        stroke: '#CBD5E1',
+        stroke: 'var(--line)',
         strokeWidth: 1.5,
         strokeLinecap: 'round',
         strokeLinejoin: 'round',
@@ -641,7 +632,7 @@ const buildGraphLayout = ({
         type: 'org',
         animated: false,
         style: {
-          stroke: '#CBD5E1',
+          stroke: 'var(--line)',
           strokeWidth: 1.5,
           strokeLinecap: 'round',
           strokeLinejoin: 'round',
@@ -710,7 +701,7 @@ export function OrgStructurePage() {
   if (!employeeTreeNodes.length) {
     return (
       <div className="animate-fade-in-up h-[calc(100svh-132px)] w-full flex items-center justify-center px-4">
-        <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-6 text-center">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-6 text-center">
           <p className="m-0 text-[15px] font-semibold text-[var(--text-main)]">Нет данных для отображения</p>
           <p className="m-0 mt-1 text-[12px] text-[var(--text-muted)]">Оргструктура для выбранной компании не найдена.</p>
         </div>
@@ -723,7 +714,7 @@ export function OrgStructurePage() {
       <button
         type="button"
         onClick={() => setSelectedNodeId('')}
-        className="absolute right-2 top-2 z-10 rounded-md border border-[var(--line)] bg-white/90 px-2 py-1 text-[11px] font-semibold text-[var(--accent)] backdrop-blur-sm"
+        className="absolute right-2 top-2 z-10 rounded-md border border-[var(--line)] bg-[var(--surface)]/90 px-2 py-1 text-[11px] font-semibold text-[var(--accent)] backdrop-blur-sm"
       >
         Сбросить
       </button>
@@ -741,7 +732,7 @@ export function OrgStructurePage() {
         nodesDraggable={false}
         nodesConnectable={false}
       >
-        <Background gap={16} size={1} color="#e2e8f0" />
+        <Background gap={16} size={1} color="var(--line)" />
         <Controls showInteractive={false} />
       </ReactFlow>
 
@@ -750,7 +741,7 @@ export function OrgStructurePage() {
       }}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-40 bg-black/35 backdrop-blur-[2px]" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[28px] bg-white outline-none">
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[28px] bg-[var(--surface)] outline-none">
             <div className="flex justify-center pt-3 pb-1">
               <div className="h-[4px] w-10 rounded-full bg-gray-300" />
             </div>
