@@ -1,3 +1,4 @@
+import { useT } from '../i18n'
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Drawer } from 'vaul'
@@ -646,6 +647,8 @@ const buildGraphLayout = ({
 }
 
 export function OrgStructurePage() {
+  const t = useT()
+
   const [selectedNodeId, setSelectedNodeId] = useState('')
   const { session, profile } = useAuth()
   const companyId = useMemo(
@@ -693,7 +696,7 @@ export function OrgStructurePage() {
   if (error) {
     return (
       <div className="animate-fade-in-up h-[calc(100svh-132px)] w-full flex items-center justify-center px-4 text-sm text-[var(--error-text)]">
-        Не удалось загрузить оргструктуру
+        {t('org.loadFailed')}
       </div>
     )
   }
@@ -702,8 +705,8 @@ export function OrgStructurePage() {
     return (
       <div className="animate-fade-in-up h-[calc(100svh-132px)] w-full flex items-center justify-center px-4">
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-6 text-center">
-          <p className="m-0 text-[15px] font-semibold text-[var(--text-main)]">Нет данных для отображения</p>
-          <p className="m-0 mt-1 text-[12px] text-[var(--text-muted)]">Оргструктура для выбранной компании не найдена.</p>
+          <p className="m-0 text-[15px] font-semibold text-[var(--text-main)]">{t('org.empty')}</p>
+          <p className="m-0 mt-1 text-[12px] text-[var(--text-muted)]">{t('org.emptyHint')}</p>
         </div>
       </div>
     )
@@ -716,7 +719,7 @@ export function OrgStructurePage() {
         onClick={() => setSelectedNodeId('')}
         className="absolute right-2 top-2 z-10 rounded-md border border-[var(--line)] bg-[var(--surface)]/90 px-2 py-1 text-[11px] font-semibold text-[var(--accent)] backdrop-blur-sm"
       >
-        Сбросить
+        {t('org.reset')}
       </button>
 
       <ReactFlow<Node<OrgGraphNodeData>, Edge>
@@ -774,11 +777,11 @@ export function OrgStructurePage() {
                 <div className="mt-4 space-y-2 rounded-2xl bg-[var(--app-bg)] p-3">
                   <div className="flex justify-between gap-4 text-[13px]">
                     <span className="text-[var(--text-muted)]">Email</span>
-                    <span className="truncate font-semibold text-[var(--text-main)]">{selectedEmployee.email || 'Не указан'}</span>
+                    <span className="truncate font-semibold text-[var(--text-main)]">{selectedEmployee.email || t('org.notSet')}</span>
                   </div>
                   <div className="flex justify-between gap-4 text-[13px]">
-                    <span className="text-[var(--text-muted)]">Телефон</span>
-                    <span className="truncate font-semibold text-[var(--text-main)]">{selectedEmployee.phone || 'Не указан'}</span>
+                    <span className="text-[var(--text-muted)]">{t('org.phone')}</span>
+                    <span className="truncate font-semibold text-[var(--text-main)]">{selectedEmployee.phone || t('org.notSet')}</span>
                   </div>
                 </div>
               </div>

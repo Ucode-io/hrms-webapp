@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Icon } from '@iconify/react'
+import { useT } from '../i18n'
 import { useAuth } from '../context/AuthContext'
 import { useCompany } from '../context/CompanyContext'
 import {
@@ -73,6 +74,8 @@ function SkeletonCard() {
 
 /* ── Document card ───────────────────────────────────── */
 function DocCard({ doc, accentColor }: { doc: EmployeeDocument; accentColor: string }) {
+  const t = useT()
+
   const type = getDocumentType(doc.type)
   const cfg = TYPE_CONFIG[type]
   const name = getDocumentName(doc)
@@ -130,7 +133,7 @@ function DocCard({ doc, accentColor }: { doc: EmployeeDocument; accentColor: str
           style={{ backgroundColor: accentColor }}
         >
           <Icon icon="mdi:eye-outline" width={14} />
-          Открыть
+          {t('documents.open')}
         </div>
       </div>
     </button>
@@ -233,6 +236,8 @@ function FolderChip({
 
 /* ── Page ────────────────────────────────────────────── */
 export function DocumentsPage() {
+  const t = useT()
+
   const { session, profile } = useAuth()
   const { company } = useCompany()
   const accentColor = company.mainColor || '#3b6cf5'
@@ -264,7 +269,7 @@ export function DocumentsPage() {
       const fId = doc.document_folders_id
       const fData = doc.document_folders_id_data
       if (fId && fData && !map.has(fId)) {
-        map.set(fId, { guid: fId, title: fData.title || 'Папка' })
+        map.set(fId, { guid: fId, title: fData.title || t('documents.folder') })
       }
     }
     return [...map.values()]
@@ -302,7 +307,7 @@ export function DocumentsPage() {
         <input
           value={search}
           onChange={(e) => { setSearch(e.target.value); setActiveFolderId('all') }}
-          placeholder="Поиск по названию..."
+          placeholder={t('documents.searchPlaceholder')}
           className="h-11 w-full rounded-2xl border border-[var(--line)] bg-[var(--surface)] pl-10 pr-10 text-[13.5px] text-[var(--text-main)] outline-none shadow-[0_1px_4px_rgba(0,0,0,0.05)] transition-shadow focus:shadow-[0_1px_8px_rgba(0,0,0,0.1)]"
           style={{ '--tw-ring-color': accentColor } as React.CSSProperties}
         />
@@ -322,7 +327,7 @@ export function DocumentsPage() {
       {folders.length > 0 && !search && (
         <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-0.5">
           <FolderChip
-            label="Все"
+            label={t('common.all')}
             count={documents.length}
             active={activeFolderId === 'all'}
             accentColor={accentColor}
@@ -331,7 +336,7 @@ export function DocumentsPage() {
           {folders.map((folder) => (
             <FolderChip
               key={folder.guid}
-              label={folder.title || 'Папка'}
+              label={folder.title || t('documents.folder')}
               count={folderCount[folder.guid] || 0}
               active={activeFolderId === folder.guid}
               accentColor={accentColor}
@@ -353,12 +358,12 @@ export function DocumentsPage() {
           </div>
           <div>
             <p className="m-0 text-[14px] font-bold text-[var(--text-main)]">
-              {search ? 'Ничего не найдено' : 'Документов пока нет'}
+              {search ? t('documents.nothingFound') : t('documents.empty')}
             </p>
             <p className="m-0 mt-1 text-[12px] text-[var(--text-muted)] leading-relaxed">
               {search
-                ? `По запросу «${search}» ничего не нашлось`
-                : 'Документы, загруженные HR, появятся здесь'}
+                ? t('documents.nothingForQuery', { query: search })
+                : t('documents.emptyHint')}
             </p>
           </div>
         </div>
@@ -367,7 +372,7 @@ export function DocumentsPage() {
         <div className="flex flex-col gap-2">
           {search && (
             <p className="m-0 text-[12px] text-[var(--text-muted)] px-1">
-              Найдено: <span className="font-semibold text-[var(--text-secondary)]">{filtered.length}</span>
+              {t('documents.found')} <span className="font-semibold text-[var(--text-secondary)]">{filtered.length}</span>
             </p>
           )}
           {filtered.map((doc) => (

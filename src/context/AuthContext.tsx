@@ -18,18 +18,26 @@ import {
   persistSession,
   type AuthSession,
 } from '../auth/session'
+import { tr } from '../i18n'
 
+// Человеческий текст ucode кладёт в `data`, а в `description` — константу под
+// код ответа: на неверный пароль там «Invalid argument value passed», и именно
+// это видел сотрудник. Текст из `data` приходит только по-русски, поэтому он
+// нужен ради нечастых случаев («Пользователь заблокирован»), а обычную осечку
+// логина перекрывает свой перевод.
 function getAuthErrorMessage(error: unknown): string {
-  const ax = error as AxiosError<{ description?: string }> | null
-  const desc = ax?.response?.data?.description
-  return typeof desc === 'string' && desc.trim().length > 0 ? desc : 'Неверный логин или пароль'
+  const ax = error as AxiosError<{ data?: unknown }> | null
+  const message = ax?.response?.data?.data
+  return typeof message === 'string' && message.trim().length > 0
+    ? message
+    : tr('auth.badCredentials')
 }
 
 export function getDisplayName(user: UserData | null): string {
   const full = [user?.first_name, user?.second_name].filter(Boolean).join(' ')
   if (full.trim().length > 0) return full
   if (typeof user?.login === 'string' && user.login.trim().length > 0) return user.login
-  return 'Сотрудник'
+  return tr('auth.employee')
 }
 
 export function getInitials(user: UserData | null): string {
@@ -115,12 +123,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   const profile = profileData || session?.user_data || session?.user || null
-  const newsError = _newsError ? 'Не удалось загрузить ленту новостей' : ''
+  const newsError = _newsError ? tr('auth.newsFailed') : ''
 
   const login = async (username: string, password: string) => {
     const normalizedUsername = username.trim()
     if (!normalizedUsername || !password) {
-      setLoginError('Заполните логин и пароль')
+      setLoginError(tr('auth.emptyCredentials'))
       return
     }
     setLoginError('')

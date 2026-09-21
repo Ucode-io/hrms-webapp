@@ -1,3 +1,4 @@
+import { tr } from '../i18n'
 import adminRequest from './adminRequest'
 
 /**
@@ -96,7 +97,7 @@ const rowParentId = (row: Record<string, unknown>): string | null =>
 const mapSummary = (row: Record<string, unknown>): KbArticleSummary => ({
   id: asString(row.guid),
   parentArticleId: rowParentId(row),
-  title: asString(row.title) || 'Без названия',
+  title: asString(row.title) || tr('fallback.noArticleTitle'),
   icon: asString(row.icon) || '📄',
   updatedAt: asString(row.updated_at) || asString(row.created_at) || '',
 })

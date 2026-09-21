@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
+import { useT, formatDateLocal } from '../i18n'
 
 import { useAuth } from '../context/AuthContext'
 import { uploadFile } from '../api/dashboardService'
@@ -14,7 +15,7 @@ const formatDate = (value: string | null): string => {
   if (!value) return ''
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return ''
-  return parsed.toLocaleDateString('ru-RU', {
+  return formatDateLocal(parsed, {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
@@ -23,7 +24,7 @@ const formatDate = (value: string | null): string => {
 
 const formatFileSize = (bytes: number | null): string => {
   if (!bytes || bytes <= 0) return ''
-  if (bytes < 1024) return `${bytes} Б`
+  if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`
   return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`
 }
@@ -35,6 +36,8 @@ const MATERIAL_ICONS: Record<TrainingMaterial['material_type'], string> = {
 }
 
 export function TrainingDetailPage() {
+  const t = useT()
+
   const { id } = useParams<{ id: string }>()
   const trainingsId = id || ''
   const queryClient = useQueryClient()
@@ -80,14 +83,14 @@ export function TrainingDetailPage() {
     const start = formatDate(training?.starts_at || null)
     const end = formatDate(training?.ends_at || null)
     if (start && end) return `${start} — ${end}`
-    if (start) return `с ${start}`
-    if (end) return `до ${end}`
+    if (start) return t('training.from', { date: start })
+    if (end) return t('training.to', { date: end })
     return ''
   }, [training?.starts_at, training?.ends_at])
 
   const handleSubmit = async () => {
     if (!selectedFile) {
-      setSubmitError('Выберите файл с домашним заданием.')
+      setSubmitError(t('training.pickFile'))
       return
     }
 
@@ -119,7 +122,7 @@ export function TrainingDetailPage() {
       successTimerRef.current = setTimeout(() => setShowSuccess(false), 4000)
     } catch (error) {
       console.error('Failed to submit homework:', error)
-      setSubmitError('Не удалось отправить домашнее задание. Попробуйте еще раз.')
+      setSubmitError(t('training.sendFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -140,13 +143,13 @@ export function TrainingDetailPage() {
             <>
               <p className="truncate text-[14px] font-medium text-gray-900">{selectedFile.name}</p>
               <p className="text-[12px] text-gray-500">
-                {formatFileSize(selectedFile.size)} · нажмите, чтобы заменить
+                {formatFileSize(selectedFile.size)} · {t('training.tapToReplace')}
               </p>
             </>
           ) : (
             <>
-              <p className="text-[14px] font-medium text-gray-700">Выбрать файл</p>
-              <p className="text-[12px] text-gray-500">Любой формат, включая ZIP-архив</p>
+              <p className="text-[14px] font-medium text-gray-700">{t('training.chooseFile')}</p>
+              <p className="text-[12px] text-gray-500">{t('training.anyFormat')}</p>
             </>
           )}
         </div>
@@ -165,7 +168,7 @@ export function TrainingDetailPage() {
       <textarea
         value={comment}
         onChange={(event) => setComment(event.target.value)}
-        placeholder="Комментарий к работе (необязательно)"
+        placeholder={t('training.commentPlaceholder')}
         rows={2}
         className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-[14px] text-gray-800 placeholder:text-gray-400 focus:border-[var(--accent)] focus:outline-none"
       />
@@ -180,7 +183,7 @@ export function TrainingDetailPage() {
         disabled={isSubmitting}
         className="w-full rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-medium text-white transition active:scale-[0.99] disabled:opacity-60"
       >
-        {isSubmitting ? 'Отправляем...' : 'Отправить домашнее задание'}
+        {isSubmitting ? t('training.sending') : t('training.sendHomework')}
       </button>
     </div>
   )
@@ -215,10 +218,10 @@ export function TrainingDetailPage() {
             }`}
           >
             {isAccepted
-              ? 'Домашнее задание принято'
+              ? t('training.hwAcceptedFull')
               : isRejected
-                ? 'Домашнее задание отклонено'
-                : 'Домашнее задание на проверке'}
+                ? t('training.hwRejectedFull')
+                : t('training.hwInReview')}
           </p>
         </div>
 
@@ -230,7 +233,7 @@ export function TrainingDetailPage() {
         >
           <Icon icon="mdi:paperclip" width={16} className="shrink-0 text-gray-500" />
           <span className="min-w-0 flex-1 truncate text-[13px] text-gray-700">
-            {submission.file_name || 'Файл'}
+            {submission.file_name || t('knowledge.file')}
           </span>
           {submission.file_size ? (
             <span className="shrink-0 text-[12px] text-gray-400">
@@ -240,12 +243,12 @@ export function TrainingDetailPage() {
         </a>
 
         <p className="text-[12px] text-gray-500">
-          Отправлено {formatDate(submission.submitted_at)}
+          {t('training.sentAt', { date: formatDate(submission.submitted_at) })}
         </p>
 
         {isRejected && submission.review_comment && (
           <p className="rounded-lg bg-white/70 px-3 py-2 text-[13px] text-red-600">
-            Комментарий проверяющего: {submission.review_comment}
+            {t('training.reviewerComment', { comment: submission.review_comment })}
           </p>
         )}
 
@@ -257,7 +260,7 @@ export function TrainingDetailPage() {
               isRejected ? 'bg-red-500' : 'bg-[var(--accent)]'
             }`}
           >
-            Отправить заново
+            {t('training.resend')}
           </button>
         )}
       </div>
@@ -274,7 +277,7 @@ export function TrainingDetailPage() {
         </div>
       ) : isError || !training ? (
         <div className="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
-          Тренинг недоступен: возможно, он не назначен вам или уже не активен.
+          {t('training.unavailable')}
         </div>
       ) : (
         <>
@@ -286,7 +289,7 @@ export function TrainingDetailPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <h1 className="text-[17px] font-semibold text-gray-900">
-                  {training.title || 'Без названия'}
+                  {training.title || t('tasks.noName')}
                 </h1>
                 {periodLabel && <p className="text-[13px] text-gray-500">{periodLabel}</p>}
               </div>
@@ -296,7 +299,7 @@ export function TrainingDetailPage() {
                 {training.trainer_name && (
                   <p className="flex items-center gap-2 text-[13px] text-gray-600">
                     <Icon icon="mdi:account-tie-outline" width={16} className="shrink-0 text-gray-400" />
-                    Тренер: {training.trainer_name}
+                    {t('training.trainer', { name: training.trainer_name })}
                   </p>
                 )}
                 {training.location && (
@@ -317,10 +320,10 @@ export function TrainingDetailPage() {
           {/* Materials */}
           <div className="rounded-2xl bg-white p-5 shadow-sm">
             <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-gray-400">
-              Материалы ({materials.length})
+              {t('training.materials', { count: materials.length })}
             </h2>
             {materials.length === 0 ? (
-              <p className="text-sm text-gray-400">Материалы не добавлены.</p>
+              <p className="text-sm text-gray-400">{t('training.noMaterials')}</p>
             ) : (
               <div className="space-y-2">
                 {materials.map((material) => (
@@ -360,11 +363,11 @@ export function TrainingDetailPage() {
             <div className="rounded-2xl bg-white p-5 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-[13px] font-semibold uppercase tracking-wide text-gray-400">
-                  Домашнее задание
+                  {t('training.homework')}
                 </h2>
                 {training.homework_deadline && (
                   <span className="text-[12px] text-gray-400">
-                    до {formatDate(training.homework_deadline)}
+                    {t('training.deadline', { date: formatDate(training.homework_deadline) })}
                   </span>
                 )}
               </div>
@@ -373,7 +376,7 @@ export function TrainingDetailPage() {
                 <div className="animate-fade-in-up mb-3 flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3">
                   <Icon icon="mdi:check-circle" width={20} className="shrink-0 text-green-600" />
                   <p className="text-[14px] font-medium text-green-700">
-                    Домашнее задание отправлено!
+                    {t('training.hwSent')}
                   </p>
                 </div>
               )}

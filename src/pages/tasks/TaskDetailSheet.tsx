@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Drawer } from 'vaul'
 import { Icon } from '@iconify/react'
+import { useT, type TKey, formatDateLocal, formatDateTimeLocal } from '../../i18n'
 import {
   reportsService,
   type MyTask,
@@ -34,10 +35,10 @@ interface TaskDetailSheetProps {
   onChanged: () => void
 }
 
-const STATUS_GROUP_LABEL: Record<TaskStatusGroup, string> = {
-  todo: 'К выполнению',
-  in_progress: 'В работе',
-  completed: 'Завершено',
+const STATUS_GROUP_LABEL: Record<TaskStatusGroup, TKey> = {
+  todo: 'tasks.statusTodo',
+  in_progress: 'tasks.statusInProgress',
+  completed: 'tasks.statusCompleted',
 }
 const STATUS_GROUP_ORDER: TaskStatusGroup[] = ['todo', 'in_progress', 'completed']
 
@@ -45,14 +46,14 @@ const formatDate = (iso: string | null): string => {
   if (!iso) return '—'
   const parsed = new Date(iso.length > 10 ? iso : `${iso}T00:00:00`)
   if (Number.isNaN(parsed.getTime())) return '—'
-  return parsed.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' })
+  return formatDateLocal(parsed, { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 const formatDateTime = (iso: string | null): string => {
   if (!iso) return '—'
   const parsed = new Date(iso)
   if (Number.isNaN(parsed.getTime())) return '—'
-  return parsed.toLocaleString('ru-RU', {
+  return formatDateTimeLocal(parsed, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -63,9 +64,11 @@ const formatDateTime = (iso: string | null): string => {
 
 const formatSize = (bytes: number): string => {
   if (!Number.isFinite(bytes) || bytes <= 0) return ''
-  if (bytes < 1024) return `${bytes} Б`
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} КБ`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`
+  // ponytail: KB/MB латиницей — единицы не переводим, так короче и понятно
+  // на всех трёх языках.
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 const initials = (name: string): string =>
@@ -208,6 +211,8 @@ export function TaskDetailSheet({
   onClose,
   onChanged,
 }: TaskDetailSheetProps) {
+  const t = useT()
+
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [statusPickerOpen, setStatusPickerOpen] = useState(false)
@@ -232,7 +237,7 @@ export function TaskDetailSheet({
   }
 
   const fail = (error: unknown) => {
-    setActionError(error instanceof Error ? error.message : 'Не удалось сохранить изменение')
+    setActionError(error instanceof Error ? error.message : t('tasks.saveFailed'))
   }
 
   const statusMutation = useMutation({
@@ -349,7 +354,7 @@ export function TaskDetailSheet({
   // Статусы в пикере группируем по стадиям — видно, куда движется задача.
   const statusGroups = STATUS_GROUP_ORDER.map((group) => ({
     group,
-    label: STATUS_GROUP_LABEL[group],
+    label: t(STATUS_GROUP_LABEL[group]),
     options: statuses.filter((status) => status.group === group),
   })).filter((entry) => entry.options.length > 0)
 
@@ -358,8 +363,8 @@ export function TaskDetailSheet({
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[2px]" />
         <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[92vh] flex-col rounded-t-[28px] bg-[var(--app-bg)] outline-none">
-          <Drawer.Title className="sr-only">Детали задачи</Drawer.Title>
-          <Drawer.Description className="sr-only">Подробности выбранной задачи</Drawer.Description>
+          <Drawer.Title className="sr-only">{t('tasks.detailsSr')}</Drawer.Title>
+          <Drawer.Description className="sr-only">{t('tasks.detailsSrDesc')}</Drawer.Description>
 
           {/* Фикс-шапка: грабер, код и «Закрыть» доступны при любом скролле. */}
           <div className="shrink-0 rounded-t-[28px] bg-[var(--app-bg)]">
@@ -378,7 +383,7 @@ export function TaskDetailSheet({
                 type="button"
                 onClick={onClose}
                 className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--surface)] text-[var(--text-secondary)] shadow-[0_1px_3px_rgba(12,26,46,0.10)] active:bg-gray-100"
-                aria-label="Закрыть"
+                aria-label={t('common.close')}
               >
                 <Icon icon="mdi:close" width={17} />
               </button>
@@ -389,7 +394,7 @@ export function TaskDetailSheet({
             {/* Заголовок */}
             <EditableText
               value={task.title}
-              placeholder="Название задачи"
+              placeholder={t('tasks.titlePlaceholder')}
               appearance="title"
               disabled={busy}
               onCommit={(next) => patch({ title: next })}
@@ -412,7 +417,7 @@ export function TaskDetailSheet({
                     className="h-1.5 w-1.5 rounded-full"
                     style={{ background: task.statusColor || 'var(--text-muted)' }}
                   />
-                  {task.statusTitle || 'Без статуса'}
+                  {task.statusTitle || t('tasks.noStatus')}
                   {statusMutation.isPending ? (
                     <span className="ml-0.5 h-3 w-3 animate-spin rounded-full border-2 border-current/30 border-t-current" />
                   ) : (
@@ -427,7 +432,7 @@ export function TaskDetailSheet({
                 {isOverdue && task.daysLeft != null ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1.5 text-[11.5px] font-bold text-rose-600">
                     <Icon icon="mdi:fire" width={13} />
-                    Просрочено на {Math.abs(task.daysLeft)} дн.
+                    {t('tasks.overdueBy', { days: Math.abs(task.daysLeft) })}
                   </span>
                 ) : null}
               </div>
@@ -479,10 +484,10 @@ export function TaskDetailSheet({
 
             {/* Описание. Правим plain-text: во фронте это rich-text, но
                 санитайзера на мобилке нет, а слать сюда HTML руками незачем. */}
-            <Section title="Описание">
+            <Section title={t('tasks.description')}>
               <EditableText
                 value={description}
-                placeholder="Добавьте описание…"
+                placeholder={t('tasks.descriptionPlaceholder')}
                 multiline
                 disabled={busy}
                 onCommit={(next) => patch({ description: next })}
@@ -492,26 +497,26 @@ export function TaskDetailSheet({
             {/* Детали — состав и порядок повторяют панель «Детали» в hrms-front.
                 Каждое поле редактируется на месте и сохраняется сразу: «Готово»
                 на мобилке лишний шаг, а частичный патч это позволяет. */}
-            <Section title="Детали">
+            <Section title={t('tasks.details')}>
               <div className="divide-y divide-[var(--line)]/70 overflow-hidden rounded-2xl border border-black/[0.05] bg-[var(--surface)] shadow-[0_1px_2px_rgba(12,26,46,0.04)]">
-                <FieldRow icon="mdi:shape-outline" label="Тип">
+                <FieldRow icon="mdi:shape-outline" label={t('tasks.type')}>
                   <SelectField
                     value={task.typeId}
                     options={directories.types}
-                    placeholder="Не указано"
-                    label="Тип задачи"
+                    placeholder={t('tasks.notSet')}
+                    label={t('tasks.typeOfTask')}
                     disabled={busy}
                     onChange={(id) => patch({ type_id: id })}
                   />
                 </FieldRow>
 
-                <FieldRow icon="mdi:account-multiple-outline" label="Исполнители">
+                <FieldRow icon="mdi:account-multiple-outline" label={t('tasks.assignees')}>
                   <MultiSelectField
                     values={task.assigneeIds}
                     options={employeeOptions}
-                    placeholder="Не назначены"
-                    label="Исполнители"
-                    searchPlaceholder="Поиск сотрудника…"
+                    placeholder={t('tasks.notAssigned')}
+                    label={t('tasks.assignees')}
+                    searchPlaceholder={t('tasks.searchEmployee')}
                     disabled={busy}
                     onChange={(ids) => patch({ assignee_ids: ids })}
                     renderChip={(option) => {
@@ -559,12 +564,12 @@ export function TaskDetailSheet({
                   />
                 </FieldRow>
 
-                <FieldRow icon="mdi:flag-variant-outline" label="Приоритет">
+                <FieldRow icon="mdi:flag-variant-outline" label={t('tasks.priority')}>
                   <SelectField
                     value={task.priorityId}
                     options={directories.priorities}
-                    placeholder="Не указан"
-                    label="Приоритет"
+                    placeholder={t('tasks.notSetM')}
+                    label={t('tasks.priority')}
                     disabled={busy}
                     onChange={(id) => patch({ priority_id: id })}
                     renderValue={(option) => (
@@ -582,67 +587,67 @@ export function TaskDetailSheet({
                   />
                 </FieldRow>
 
-                <FieldRow icon="mdi:map-marker-outline" label="Локация">
+                <FieldRow icon="mdi:map-marker-outline" label={t('tasks.location')}>
                   <SelectField
                     value={task.locationId}
                     options={directories.locations.map((l) => ({ id: l.id, title: l.title }))}
-                    placeholder="Не указана"
-                    label="Локация"
+                    placeholder={t('tasks.notSetF')}
+                    label={t('tasks.location')}
                     disabled={busy}
                     onChange={(id) => patch({ location_id: id })}
                   />
                 </FieldRow>
 
-                <FieldRow icon="mdi:ray-start-arrow" label="Начало">
+                <FieldRow icon="mdi:ray-start-arrow" label={t('tasks.start')}>
                   <DateField
                     value={task.startDate}
-                    label="Дата начала"
-                    placeholder="Не указано"
+                    label={t('tasks.startDate')}
+                    placeholder={t('tasks.notSet')}
                     disabled={busy}
                     onChange={(iso) => patch({ start_date: iso })}
                   />
                 </FieldRow>
 
-                <FieldRow icon="mdi:flag-checkered" label="Дедлайн">
+                <FieldRow icon="mdi:flag-checkered" label={t('tasks.deadline')}>
                   <DateField
                     value={task.deadline}
-                    label="Дедлайн"
-                    placeholder="Не указан"
+                    label={t('tasks.deadline')}
+                    placeholder={t('tasks.notSetM')}
                     disabled={busy}
                     tone={isOverdue ? 'text-rose-600' : undefined}
                     onChange={(iso) => patch({ deadline: iso })}
                   />
                 </FieldRow>
 
-                <FieldRow icon="mdi:file-tree-outline" label="Родитель">
+                <FieldRow icon="mdi:file-tree-outline" label={t('tasks.parent')}>
                   <SelectField
                     value={task.parentId}
                     options={parentOptions}
-                    placeholder="Не указан"
-                    label="Родительская задача"
+                    placeholder={t('tasks.notSetM')}
+                    label={t('tasks.parentTask')}
                     disabled={busy}
                     onChange={(id) => patch({ parent_id: id })}
                   />
                 </FieldRow>
 
-                <FieldRow icon="mdi:view-list-outline" label="Лист">
+                <FieldRow icon="mdi:view-list-outline" label={t('tasks.list')}>
                   <SelectField
                     value={task.sheetId}
                     options={directories.sheets}
-                    placeholder="Не указан"
-                    label="Лист"
+                    placeholder={t('tasks.notSetM')}
+                    label={t('tasks.list')}
                     disabled={busy}
                     onChange={(id) => patch({ sheet_id: id })}
                   />
                 </FieldRow>
 
-                <FieldRow icon="mdi:tag-multiple-outline" label="Теги">
+                <FieldRow icon="mdi:tag-multiple-outline" label={t('tasks.tags')}>
                   <MultiSelectField
                     values={task.tags.map((tag) => tag.id)}
                     options={directories.tags}
-                    placeholder="Не указаны"
-                    label="Теги"
-                    searchPlaceholder="Поиск тега…"
+                    placeholder={t('tasks.notSetPl')}
+                    label={t('tasks.tags')}
+                    searchPlaceholder={t('tasks.searchTag')}
                     disabled={busy}
                     onChange={(ids) => patch({ tag_ids: ids })}
                     renderChip={(option) => (
@@ -664,7 +669,7 @@ export function TaskDetailSheet({
             {/* Чек-лист */}
             {task.checklist.length > 0 ? (
               <Section
-                title="Чек-лист"
+                title={t('tasks.checklist')}
                 meta={
                   <span
                     className={`text-[11.5px] font-bold ${
@@ -714,7 +719,7 @@ export function TaskDetailSheet({
             {/* Подзадачи */}
             {task.subtasks.length > 0 ? (
               <Section
-                title="Подзадачи"
+                title={t('tasks.subtasks')}
                 meta={
                   <span className="text-[11.5px] font-bold text-[var(--text-muted)]">
                     {task.subtasks.filter((sub) => sub.statusGroup === 'completed').length}/
@@ -732,7 +737,7 @@ export function TaskDetailSheet({
 
             {/* Вложения */}
             <Section
-              title="Вложения"
+              title={t('tasks.attachments')}
               meta={
                 task.attachments.length > 0 ? (
                   <span className="text-[11.5px] font-bold text-[var(--text-muted)]">
@@ -774,7 +779,7 @@ export function TaskDetailSheet({
                             onClick={() => removeAttachment(file.id)}
                             disabled={busy}
                             className="shrink-0 cursor-pointer rounded-lg border-0 bg-transparent p-1.5 text-[var(--text-muted)] active:bg-gray-100 disabled:opacity-60"
-                            aria-label={`Удалить ${file.name}`}
+                            aria-label={t('tasks.deleteFile', { name: file.name })}
                           >
                             <Icon icon="mdi:trash-can-outline" width={15} />
                           </button>
@@ -799,12 +804,12 @@ export function TaskDetailSheet({
                   {uploading ? (
                     <>
                       <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--accent)]/30 border-t-[var(--accent)]" />
-                      Загружаем…
+                      {t('tasks.uploading')}
                     </>
                   ) : (
                     <>
                       <Icon icon="mdi:tray-arrow-up" width={14} />
-                      Добавить вложение
+                      {t('tasks.addAttachment')}
                     </>
                   )}
                 </button>
@@ -812,15 +817,15 @@ export function TaskDetailSheet({
             </Section>
 
             {/* Служебные даты — как нижний блок панели «Детали» во front'е */}
-            <Section title="Даты">
+            <Section title={t('tasks.dates')}>
               <div className="divide-y divide-[var(--line)]/70 overflow-hidden rounded-2xl border border-black/[0.05] bg-[var(--surface)] shadow-[0_1px_2px_rgba(12,26,46,0.04)]">
-                <DetailRow label="Создана">{plain(formatDateTime(task.createdAt))}</DetailRow>
-                <DetailRow label="Обновлена">{plain(formatDateTime(task.updatedAt))}</DetailRow>
+                <DetailRow label={t('tasks.createdAt')}>{plain(formatDateTime(task.createdAt))}</DetailRow>
+                <DetailRow label={t('tasks.updatedAt')}>{plain(formatDateTime(task.updatedAt))}</DetailRow>
                 {task.beginAt ? (
-                  <DetailRow label="Начата">{plain(formatDateTime(task.beginAt))}</DetailRow>
+                  <DetailRow label={t('tasks.startedAt')}>{plain(formatDateTime(task.beginAt))}</DetailRow>
                 ) : null}
                 {isCompleted ? (
-                  <DetailRow label="Завершена">
+                  <DetailRow label={t('tasks.finishedAt')}>
                     <span className="text-[12.5px] font-bold text-emerald-600">
                       {formatDateTime(task.completedAt) !== '—'
                         ? formatDateTime(task.completedAt)
@@ -833,7 +838,7 @@ export function TaskDetailSheet({
 
             {/* Комментарии */}
             <Section
-              title="Комментарии"
+              title={t('tasks.comments')}
               meta={
                 activityQuery.data && activityQuery.data.comments.length > 0 ? (
                   <span className="text-[11.5px] font-bold text-[var(--text-muted)]">
@@ -847,7 +852,7 @@ export function TaskDetailSheet({
                   <div className="h-14 animate-pulse rounded-2xl bg-gray-200/60" />
                 ) : activityQuery.isError ? (
                   <p className="m-0 text-[12px] text-[var(--text-muted)]">
-                    Не удалось загрузить комментарии.
+                    {t('tasks.commentsFailed')}
                   </p>
                 ) : activityQuery.data && activityQuery.data.comments.length > 0 ? (
                   activityQuery.data.comments.map((comment) => (
@@ -880,7 +885,7 @@ export function TaskDetailSheet({
                   ))
                 ) : (
                   <p className="m-0 text-[12px] text-[var(--text-muted)]">
-                    Комментариев пока нет — начните обсуждение.
+                    {t('tasks.commentsEmpty')}
                   </p>
                 )}
 
@@ -889,7 +894,7 @@ export function TaskDetailSheet({
                     value={commentDraft}
                     onChange={(event) => setCommentDraft(event.target.value)}
                     rows={2}
-                    placeholder="Напишите комментарий…"
+                    placeholder={t('tasks.commentPlaceholder')}
                     className="min-h-[44px] flex-1 resize-none rounded-2xl border border-black/[0.05] bg-[var(--surface)] px-3.5 py-2.5 text-[13px] text-[var(--text-main)] shadow-[0_1px_2px_rgba(12,26,46,0.04)] outline-none focus:border-[var(--accent)]"
                   />
                   <button
@@ -897,7 +902,7 @@ export function TaskDetailSheet({
                     onClick={() => commentMutation.mutate(commentDraft.trim())}
                     disabled={commentMutation.isPending || commentDraft.trim().length === 0}
                     className="inline-flex h-[44px] w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--accent)] text-white shadow-[0_4px_12px_rgba(12,26,46,0.18)] active:scale-95 disabled:opacity-40 disabled:shadow-none"
-                    aria-label="Отправить комментарий"
+                    aria-label={t('tasks.sendComment')}
                   >
                     {commentMutation.isPending ? (
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />

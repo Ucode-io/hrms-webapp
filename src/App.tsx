@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, HashRouter } from 'react-router-dom'
 import { CompanyProvider } from './context/CompanyContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { I18nProvider } from './i18n'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { AppShell } from './components/AppShell'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -49,6 +50,8 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
+        {/* Язык снаружи роутера: его читает и логин, и весь каркас. */}
+        <I18nProvider>
         <HashRouter>
           {/* AuthProvider снаружи: брендинг компании зависит от залогиненного пользователя. */}
           <AuthProvider>
@@ -57,6 +60,7 @@ function App() {
             </CompanyProvider>
           </AuthProvider>
         </HashRouter>
+        </I18nProvider>
       </ThemeProvider>
     </QueryClientProvider>
   )

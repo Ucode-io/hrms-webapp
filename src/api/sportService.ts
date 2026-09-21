@@ -1,3 +1,4 @@
+import { formatDateLocal, formatTimeLocal } from '../i18n'
 import adminRequest, { getCompaniesId } from './adminRequest'
 
 const SPORT_ATTENDANCE_COLLECTION = 'sport_attendance'
@@ -62,14 +63,14 @@ export function formatSportDate(value: string): string {
   if (!value) return '—'
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return '—'
-  return parsed.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return formatDateLocal(parsed, { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 export function formatSportTime(value: string): string {
   if (!value) return '—'
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return '—'
-  return parsed.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+  return formatTimeLocal(parsed)
 }
 
 export const sportService = {

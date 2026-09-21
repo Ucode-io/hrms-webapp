@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatDateRu, toIsoDate } from '../api/absenceService'
+import { useI18n, monthNames, weekdayNames } from '../i18n'
 
-const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
-const MONTHS = [
-  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
-]
+
 
 function parseIso(iso: string): Date | null {
   if (!iso) return null
@@ -37,6 +34,9 @@ export default function DateField({
   accent = 'var(--accent)',
   align = 'left',
 }: DateFieldProps) {
+  const { lang, t } = useI18n()
+  const WEEKDAYS = useMemo(() => weekdayNames(lang), [lang])
+  const MONTHS = useMemo(() => monthNames(lang), [lang])
   const [open, setOpen] = useState(false)
   const [viewMonth, setViewMonth] = useState<Date>(() => {
     const base = parseIso(value) || new Date()
@@ -94,7 +94,7 @@ export default function DateField({
   return (
     <div ref={wrapRef} className="relative">
       <button type="button" onClick={toggle} className={fieldCls}>
-        <span>{value ? formatDateRu(value) : 'Выберите дату'}</span>
+        <span>{value ? formatDateRu(value) : t('calendar.pickDate')}</span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8896a8" strokeWidth="1.5">
           <rect x="3" y="4" width="18" height="18" rx="2" />
           <path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" />
@@ -115,7 +115,7 @@ export default function DateField({
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                aria-label="Предыдущий месяц"
+                aria-label={t('calendar.prevMonth')}
                 onClick={() =>
                   setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))
                 }
@@ -127,7 +127,7 @@ export default function DateField({
               </button>
               <button
                 type="button"
-                aria-label="Следующий месяц"
+                aria-label={t('calendar.nextMonth')}
                 onClick={() =>
                   setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))
                 }
@@ -198,7 +198,7 @@ export default function DateField({
               className="rounded-lg px-3 py-1.5 text-[13px] font-semibold"
               style={{ color: accent }}
             >
-              Сегодня
+              {t('common.today')}
             </button>
           </div>
         </div>

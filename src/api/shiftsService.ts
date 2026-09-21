@@ -1,3 +1,4 @@
+import { tr, type TKey } from '../i18n'
 // Свои смены сотрудника — только чтение.
 //
 // Открытые смены (без user_base_id) сюда не попадают и попасть не должны:
@@ -34,11 +35,13 @@ export interface ShiftRecord {
  */
 export type ShiftKind = 'day' | 'night' | 'remote' | 'off'
 
-export const SHIFT_KIND_META: Record<ShiftKind, { label: string; color: string; soft: string }> = {
-  day: { label: 'Дневная', color: '#2563eb', soft: '#eff6ff' },
-  night: { label: 'Ночная', color: '#7c3aed', soft: '#f5f3ff' },
-  remote: { label: 'Удалённо', color: '#0e7490', soft: '#ecfeff' },
-  off: { label: 'Выходной', color: '#94a3b8', soft: '#f8fafc' },
+// Ключ вместо готовой подписи: объект собирается один раз на импорт модуля,
+// а язык к тому моменту ещё не выбран — переводим на месте отрисовки.
+export const SHIFT_KIND_META: Record<ShiftKind, { label: TKey; color: string; soft: string }> = {
+  day: { label: 'shift.day', color: '#2563eb', soft: '#eff6ff' },
+  night: { label: 'shift.night', color: '#7c3aed', soft: '#f5f3ff' },
+  remote: { label: 'shift.remote', color: '#0e7490', soft: '#ecfeff' },
+  off: { label: 'shift.off', color: '#94a3b8', soft: '#f8fafc' },
 }
 
 /** Локация считается удалённой по названию — отдельного флага у `locations` нет. */
@@ -95,7 +98,7 @@ export function formatShiftRange(shift: ShiftRecord): string {
   if (start && end) return `${start}–${end}`
   // Смена может быть задана объёмом: тогда известно сколько, но не когда.
   const hours = shiftHoursPerDay(shift)
-  return hours != null ? `${hours}ч/день` : '—'
+  return hours != null ? tr('shift.hoursPerDay', { hours }) : '—'
 }
 
 const shiftsService = {

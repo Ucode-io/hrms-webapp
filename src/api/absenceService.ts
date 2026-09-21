@@ -1,3 +1,4 @@
+import { type TKey } from '../i18n'
 import adminRequest from './adminRequest'
 
 /* ── Types ─────────────────────────────────────────── */
@@ -184,10 +185,10 @@ export function formatDateRu(iso: string): string {
   return `${parts[2]}.${parts[1]}.${parts[0]}`
 }
 
-export const STATUS_LABELS: Record<AbsenceStatus, string> = {
-  pending: 'Ожидает',
-  approved: 'Одобрено',
-  rejected: 'Отклонено',
+export const STATUS_LABELS: Record<AbsenceStatus, TKey> = {
+  pending: 'status.pending',
+  approved: 'status.approved',
+  rejected: 'status.rejected',
 }
 
 export const STATUS_COLORS: Record<AbsenceStatus, { bg: string; text: string }> = {

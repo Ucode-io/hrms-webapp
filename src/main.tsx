@@ -21,6 +21,8 @@ declare global {
         // Из неподписанной части берём только start_param — он решает, какой
         // экран открыть, и подделывать в нём нечего.
         initDataUnsafe?: { start_param?: string }
+        // Bot API 6.1, в старых клиентах нет — зовём опционально.
+        HapticFeedback?: { notificationOccurred?: (type: 'error' | 'success' | 'warning') => void }
         // Bot API 8.0. Внутри Telegram это единственный источник координат:
         // navigator.geolocation вебвью не отдаёт, его колбэк не приходит вовсе.
         LocationManager?: {

@@ -1,3 +1,4 @@
+import { type TKey } from '../i18n'
 import adminRequest from './adminRequest'
 
 export interface PropertyCategory {
@@ -7,11 +8,11 @@ export interface PropertyCategory {
 
 export type PropertyStatus = 'in_stock' | 'assigned' | 'repair' | 'written_off'
 
-export const PROPERTY_STATUS_CONFIG: Record<PropertyStatus, { label: string; color: string; dot: string }> = {
-  in_stock:    { label: 'На складе',   color: 'bg-slate-100 text-slate-600',   dot: 'bg-slate-400' },
-  assigned:    { label: 'Выдано',      color: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' },
-  repair:      { label: 'На ремонте',  color: 'bg-amber-50 text-amber-700',    dot: 'bg-amber-500' },
-  written_off: { label: 'Списано',     color: 'bg-rose-50 text-rose-700',      dot: 'bg-rose-500' },
+export const PROPERTY_STATUS_CONFIG: Record<PropertyStatus, { label: TKey; color: string; dot: string }> = {
+  in_stock:    { label: 'property.inStock',   color: 'bg-slate-100 text-slate-600',   dot: 'bg-slate-400' },
+  assigned:    { label: 'property.assigned',  color: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' },
+  repair:      { label: 'property.repair',    color: 'bg-amber-50 text-amber-700',    dot: 'bg-amber-500' },
+  written_off: { label: 'property.writtenOff', color: 'bg-rose-50 text-rose-700',      dot: 'bg-rose-500' },
 }
 
 export interface PropertyItem {

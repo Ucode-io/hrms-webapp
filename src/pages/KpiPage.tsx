@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Icon } from '@iconify/react'
+import { useT } from '../i18n'
 import { useAuth } from '../context/AuthContext'
 import { useCompany } from '../context/CompanyContext'
 import {
@@ -37,6 +38,8 @@ interface ProgressRingProps {
 }
 
 function ProgressRing({ percent, color }: ProgressRingProps) {
+  const t = useT()
+
   const clamped = clampPercent(percent)
   const offset = RING_CIRC - (clamped / 100) * RING_CIRC
   return (
@@ -65,13 +68,15 @@ function ProgressRing({ percent, color }: ProgressRingProps) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
         <span className="text-[22px] font-extrabold leading-none">{percent}%</span>
-        <span className="text-[10px] font-semibold opacity-85 mt-0.5">средний</span>
+        <span className="text-[10px] font-semibold opacity-85 mt-0.5">{t('kpi.average')}</span>
       </div>
     </div>
   )
 }
 
 export function KpiPage() {
+  const t = useT()
+
   const { session, profile } = useAuth()
   const { company } = useCompany()
   const queryClient = useQueryClient()
@@ -197,9 +202,9 @@ export function KpiPage() {
         <div className="mx-auto w-12 h-12 rounded-2xl bg-[var(--accent-soft)] inline-flex items-center justify-center mb-3">
           <Icon icon="mdi:account-question-outline" width={26} className="text-[var(--accent)]" />
         </div>
-        <p className="m-0 text-[15px] font-bold text-[var(--text-main)]">Должность не найдена</p>
+        <p className="m-0 text-[15px] font-bold text-[var(--text-main)]">{t('kpi.noPosition')}</p>
         <p className="m-0 mt-1 text-[13px] text-[var(--text-muted)]">
-          Не удалось определить вашу должность для загрузки KPI.
+          {t('kpi.noPositionHint')}
         </p>
       </div>
     )
@@ -209,7 +214,7 @@ export function KpiPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3">
         <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-gray-200 border-t-[var(--accent)]" />
-        <p className="m-0 text-[12.5px] font-semibold text-[var(--text-muted)]">Загружаем KPI…</p>
+        <p className="m-0 text-[12.5px] font-semibold text-[var(--text-muted)]">{t('kpi.loading')}</p>
       </div>
     )
   }
@@ -220,9 +225,9 @@ export function KpiPage() {
         <div className="flex items-start gap-2.5">
           <Icon icon="mdi:alert-circle-outline" width={20} className="text-[var(--error-text)] mt-0.5 shrink-0" />
           <div className="flex-1">
-            <p className="m-0 text-[13.5px] font-bold text-[var(--error-text)]">Не удалось загрузить KPI</p>
+            <p className="m-0 text-[13.5px] font-bold text-[var(--error-text)]">{t('kpi.loadFailed')}</p>
             <p className="m-0 mt-0.5 text-[12px] text-[var(--error-text)]/80">
-              Проверьте соединение и попробуйте снова.
+              {t('kpi.loadFailedHint')}
             </p>
             <button
               type="button"
@@ -230,7 +235,7 @@ export function KpiPage() {
               className="mt-2 inline-flex items-center gap-1 rounded-lg border border-[var(--error-line)] bg-[var(--surface)] px-3 py-1.5 text-[12px] font-bold text-[var(--error-text)] cursor-pointer active:scale-95"
             >
               <Icon icon="mdi:refresh" width={13} />
-              Повторить
+              {t('events.repeat')}
             </button>
           </div>
         </div>
@@ -258,7 +263,7 @@ export function KpiPage() {
               }`}
               style={isActive ? { background: company.mainColor } : undefined}
             >
-              {tab.label}
+              {t(tab.label)}
             </button>
           )
         })}
@@ -278,13 +283,13 @@ export function KpiPage() {
           <ProgressRing percent={summaryStats.avgPercent} color={ringTone.ring} />
           <div className="min-w-0 flex-1">
             <p className="m-0 text-[11px] uppercase tracking-wider font-semibold opacity-80">
-              Текущий период
+              {t('kpi.currentPeriod')}
             </p>
             <p className="m-0 mt-0.5 text-[16px] font-extrabold leading-tight truncate">
               {periodTitle}
             </p>
             <p className="m-0 mt-1 text-[12px] opacity-90">
-              {totalKpiCount} KPI · {summaryStats.leafCount} к заполнению
+              {t('kpi.counter', { total: totalKpiCount, leaf: summaryStats.leafCount })}
             </p>
           </div>
         </div>
@@ -295,7 +300,7 @@ export function KpiPage() {
             type="button"
             onClick={() => setCursorDate((prev) => movePeriod(prev, periodMode, 'prev'))}
             className="inline-flex h-9 w-9 items-center justify-center rounded-xl border-0 bg-white/15 backdrop-blur text-white cursor-pointer active:bg-white/25"
-            aria-label="Предыдущий период"
+            aria-label={t('calendar.prevPeriod')}
           >
             <Icon icon="mdi:chevron-left" width={18} />
           </button>
@@ -310,7 +315,7 @@ export function KpiPage() {
             type="button"
             onClick={() => setCursorDate((prev) => movePeriod(prev, periodMode, 'next'))}
             className="inline-flex h-9 w-9 items-center justify-center rounded-xl border-0 bg-white/15 backdrop-blur text-white cursor-pointer active:bg-white/25"
-            aria-label="Следующий период"
+            aria-label={t('calendar.nextPeriod')}
           >
             <Icon icon="mdi:chevron-right" width={18} />
           </button>
@@ -324,7 +329,7 @@ export function KpiPage() {
             <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
               <Icon icon="mdi:check-bold" width={13} />
             </span>
-            <p className="m-0 text-[10.5px] text-[var(--text-muted)] font-semibold">Достигнуто</p>
+            <p className="m-0 text-[10.5px] text-[var(--text-muted)] font-semibold">{t('kpi.achieved')}</p>
           </div>
           <p className="m-0 mt-1 text-[18px] font-extrabold text-[var(--text-main)]">
             {summaryStats.achievedCount}
@@ -338,7 +343,7 @@ export function KpiPage() {
             <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
               <Icon icon="mdi:clock-outline" width={13} />
             </span>
-            <p className="m-0 text-[10.5px] text-[var(--text-muted)] font-semibold">Ждут факт</p>
+            <p className="m-0 text-[10.5px] text-[var(--text-muted)] font-semibold">{t('kpi.waitingFact')}</p>
           </div>
           <p className="m-0 mt-1 text-[18px] font-extrabold text-[var(--text-main)]">
             {summaryStats.pendingCount}
@@ -349,7 +354,7 @@ export function KpiPage() {
             <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-[var(--accent-light)] text-[var(--accent)]">
               <Icon icon="mdi:target" width={13} />
             </span>
-            <p className="m-0 text-[10.5px] text-[var(--text-muted)] font-semibold">Всего</p>
+            <p className="m-0 text-[10.5px] text-[var(--text-muted)] font-semibold">{t('kpi.total')}</p>
           </div>
           <p className="m-0 mt-1 text-[18px] font-extrabold text-[var(--text-main)]">
             {totalKpiCount}
@@ -361,16 +366,16 @@ export function KpiPage() {
       {isFetching && isEmpty ? (
         <div className="flex flex-col items-center justify-center py-12 gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)]">
           <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-gray-200 border-t-[var(--accent)]" />
-          <p className="m-0 text-[12.5px] font-semibold text-[var(--text-muted)]">Загружаем KPI…</p>
+          <p className="m-0 text-[12.5px] font-semibold text-[var(--text-muted)]">{t('kpi.loading')}</p>
         </div>
       ) : isEmpty ? (
         <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)] px-4 py-10 text-center">
           <div className="mx-auto w-12 h-12 rounded-2xl bg-[var(--accent-soft)] inline-flex items-center justify-center mb-3">
             <Icon icon="mdi:target-variant" width={26} className="text-[var(--accent)]" />
           </div>
-          <p className="m-0 text-[14.5px] font-bold text-[var(--text-main)]">KPI не найдены</p>
+          <p className="m-0 text-[14.5px] font-bold text-[var(--text-main)]">{t('kpi.empty')}</p>
           <p className="m-0 mt-1 text-[12px] text-[var(--text-muted)]">
-            На выбранный период для вашей должности KPI отсутствуют.
+            {t('kpi.emptyHint')}
           </p>
         </div>
       ) : (
@@ -411,7 +416,7 @@ export function KpiPage() {
         <div className="flex items-start gap-2">
           <Icon icon="mdi:information-outline" width={14} className="text-[var(--accent)] mt-0.5 shrink-0" />
           <p className="m-0 text-[11.5px] text-[var(--text-secondary)] leading-relaxed">
-            Изменять факт можно только у конечных KPI. У групповых KPI факт считается автоматически из дочерних.
+            {t('kpi.leafOnlyHint')}
           </p>
         </div>
       </div>

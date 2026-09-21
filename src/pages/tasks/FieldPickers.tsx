@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from '@iconify/react'
+import { useT, tr, getLang, weekdayNames, monthNames, formatDateLocal } from '../../i18n'
 
 /**
  * Пикеры полей карточки задачи.
@@ -30,6 +31,8 @@ export function PickerSheet({
   children: ReactNode
   footer?: ReactNode
 }) {
+  const t = useT()
+
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent) => {
@@ -66,7 +69,7 @@ export function PickerSheet({
             type="button"
             onClick={onClose}
             className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--surface-muted)] text-[var(--text-secondary)] active:bg-gray-200"
-            aria-label="Закрыть"
+            aria-label={t('common.close')}
           >
             <Icon icon="mdi:close" width={16} />
           </button>
@@ -165,6 +168,8 @@ export function SelectField({
   onChange: (id: string | null) => void
   renderValue?: (option: Option) => ReactNode
 }) {
+  const t = useT()
+
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const selected = useMemo(() => options.find((o) => o.id === value) || null, [options, value])
@@ -193,7 +198,7 @@ export function SelectField({
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Поиск…"
+              placeholder={t('picker.searchPlaceholder')}
               className="w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 text-[13px] outline-none focus:border-[var(--accent)]"
             />
           </div>
@@ -220,7 +225,7 @@ export function SelectField({
 
           {filtered.length === 0 ? (
             <p className="m-0 px-3 py-4 text-center text-[12.5px] text-[var(--text-muted)]">
-              Ничего не найдено
+              {t('picker.nothingFound')}
             </p>
           ) : (
             filtered.map((option) => (
@@ -279,6 +284,8 @@ export function MultiSelectField({
   renderChip: (option: Option) => ReactNode
   renderOption?: (option: Option) => ReactNode
 }) {
+  const t = useT()
+
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   // Правки копим локально и отправляем одним патчем по «Готово»: иначе выбор
@@ -338,7 +345,7 @@ export function MultiSelectField({
             onClick={apply}
             className="w-full cursor-pointer rounded-xl border-0 bg-[var(--accent)] px-4 py-3 text-[13.5px] font-bold text-white active:scale-[0.99]"
           >
-            Готово{draft.length > 0 ? ` · ${draft.length}` : ''}
+            {t('picker.done')}{draft.length > 0 ? ` · ${draft.length}` : ''}
           </button>
         }
       >
@@ -356,7 +363,7 @@ export function MultiSelectField({
         <div className="flex flex-col gap-0.5">
           {filtered.length === 0 ? (
             <p className="m-0 px-3 py-4 text-center text-[12.5px] text-[var(--text-muted)]">
-              Ничего не найдено
+              {t('picker.nothingFound')}
             </p>
           ) : (
             filtered.map((option) => {
@@ -402,11 +409,8 @@ export function MultiSelectField({
 
 /* ── Дата ──────────────────────────────────────────────────────────────── */
 
-const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
-const MONTHS = [
-  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
-]
+const WEEKDAYS = weekdayNames(getLang())
+const MONTHS = monthNames(getLang())
 
 const toIso = (date: Date): string => {
   const m = `${date.getMonth() + 1}`.padStart(2, '0')
@@ -424,7 +428,7 @@ const parseIso = (iso: string | null): Date | null => {
 const formatRu = (iso: string): string => {
   const parsed = parseIso(iso)
   if (!parsed) return iso
-  const short = parsed.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })
+  const short = formatDateLocal(parsed, { day: '2-digit', month: 'short' })
   // Год показываем только когда он не текущий: в строке поля «2026 г.» рядом с
   // каждой датой — шум, который ничего не уточняет.
   const year = parsed.getFullYear()
@@ -444,7 +448,7 @@ export function DateField({
   label,
   disabled,
   tone,
-  placeholder = 'Не указана',
+  placeholder = tr('tasks.notSetF'),
   onChange,
 }: {
   value: string | null
@@ -454,6 +458,8 @@ export function DateField({
   placeholder?: string
   onChange: (iso: string | null) => void
 }) {
+  const t = useT()
+
   const [open, setOpen] = useState(false)
   const [viewMonth, setViewMonth] = useState<Date>(() => {
     const base = parseIso(value) || new Date()
@@ -519,14 +525,14 @@ export function DateField({
               onClick={() => pick(null)}
               className="flex-1 cursor-pointer rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-[13px] font-bold text-[var(--text-secondary)] active:bg-gray-50"
             >
-              Очистить
+              {t('picker.clear')}
             </button>
             <button
               type="button"
               onClick={() => pick(todayIso)}
               className="flex-1 cursor-pointer rounded-xl border-0 bg-[var(--accent)] px-4 py-3 text-[13px] font-bold text-white active:scale-[0.99]"
             >
-              Сегодня
+              {t('common.today')}
             </button>
           </div>
         }
@@ -535,7 +541,7 @@ export function DateField({
           <div className="mb-2 flex items-center justify-between">
             <button
               type="button"
-              aria-label="Предыдущий месяц"
+              aria-label={t('calendar.prevMonth')}
               onClick={() => setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
               className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border-0 bg-[var(--surface-muted)] text-[var(--text-secondary)] active:bg-gray-200"
             >
@@ -546,7 +552,7 @@ export function DateField({
             </span>
             <button
               type="button"
-              aria-label="Следующий месяц"
+              aria-label={t('calendar.nextMonth')}
               onClick={() => setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
               className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border-0 bg-[var(--surface-muted)] text-[var(--text-secondary)] active:bg-gray-200"
             >

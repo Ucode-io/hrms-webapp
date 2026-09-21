@@ -1,3 +1,4 @@
+import { tr } from '../i18n'
 // Клиент HRMS Copilot (udevs_hrms_copilot).
 //
 // Мимо axios-слоя приложения намеренно: чат — это SSE-поток, а интерцептор
@@ -154,8 +155,8 @@ const openStream = async (
       type: 'error',
       message:
         response.status === 401
-          ? 'Сессия истекла. Войдите заново.'
-          : 'AI-помощник сейчас недоступен.',
+          ? tr('copilot.sessionExpired')
+          : tr('copilot.unavailable'),
       code: response.status === 401 ? 'forbidden' : 'internal',
     })
     return

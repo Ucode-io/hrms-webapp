@@ -15,11 +15,12 @@ import {
 } from '../../api/reportsService'
 
 const DEFAULT_ICON = 'mdi:airplane'
+import { useT, type TKey } from '../../i18n'
 
-const STATUS_LABELS: Record<EmployeeAbsenceStatus, string> = {
-  pending: 'Ожидает',
-  approved: 'Одобрено',
-  rejected: 'Отклонено',
+const STATUS_LABELS: Record<EmployeeAbsenceStatus, TKey> = {
+  pending: 'status.pending',
+  approved: 'status.approved',
+  rejected: 'status.rejected',
 }
 
 const STATUS_COLORS: Record<EmployeeAbsenceStatus, { bg: string; text: string }> = {
@@ -49,16 +50,18 @@ function hexColor(v: unknown, fb: string): string {
   return /^#[0-9a-fA-F]{6}$/.test(v.trim()) ? v.trim() : fb
 }
 
-const FILTERS: { key: 'all' | EmployeeAbsenceStatus; label: string }[] = [
-  { key: 'all', label: 'Все' },
-  { key: 'pending', label: 'Ожидает' },
-  { key: 'approved', label: 'Одобрено' },
-  { key: 'rejected', label: 'Отклонено' },
+const FILTERS: { key: 'all' | EmployeeAbsenceStatus; label: TKey }[] = [
+  { key: 'all', label: 'common.all' },
+  { key: 'pending', label: 'status.pending' },
+  { key: 'approved', label: 'status.approved' },
+  { key: 'rejected', label: 'status.rejected' },
 ]
 
 /* ── Tab ───────────────────────────────────────────── */
 
 export function TimeRequestsTab() {
+  const t = useT()
+
   const { session, profile } = useAuth()
   const { company } = useCompany()
 
@@ -158,7 +161,7 @@ export function TimeRequestsTab() {
   if (error && !policies.length) {
     return (
       <div className="rounded-2xl border border-[var(--error-line)] bg-[var(--error-bg)] text-[var(--error-text)] px-4 py-8 text-center text-sm animate-fade-in-up">
-        Не удалось загрузить данные
+        {t('absence.loadFailed')}
       </div>
     )
   }
@@ -193,7 +196,7 @@ export function TimeRequestsTab() {
                   </div>
                   <div>
                     <p className="m-0 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
-                      Доступно
+                      {t('absence.available')}
                     </p>
                     <div className="flex items-end gap-1 mt-1">
                       <span
@@ -203,19 +206,19 @@ export function TimeRequestsTab() {
                         {pol.available % 1 === 0 ? pol.available : pol.available.toFixed(1)}
                       </span>
                       <span className="text-[14px] font-semibold text-[var(--text-secondary)] pb-0.5">
-                        / {pol.limit} д
+                        {t('absence.ofLimit', { limit: pol.limit })}
                       </span>
                     </div>
                     {pol.pending_days > 0 ? (
                       <p className="m-0 mt-1 text-[10.5px] font-semibold text-amber-500">
-                        Ожидает: {pol.pending_days % 1 === 0 ? pol.pending_days : pol.pending_days.toFixed(1)} д
+                        {t('absence.pendingDays', { days: pol.pending_days % 1 === 0 ? pol.pending_days : pol.pending_days.toFixed(1) })}
                       </p>
                     ) : null}
                     {!eligible ? (
                       <p className="m-0 mt-1.5 rounded-lg bg-amber-500/15 px-2 py-1 text-[10.5px] font-semibold text-amber-500">
                         {pol.eligible_at
-                          ? `Доступно с ${formatDateRu(pol.eligible_at)}`
-                          : `Доступно после ${pol.min_months ?? 0} мес. стажа`}
+                          ? t('absence.eligibleFrom', { date: formatDateRu(pol.eligible_at) })
+                          : t('absence.eligibleAfter', { months: pol.min_months ?? 0 })}
                       </p>
                     ) : null}
                   </div>
@@ -235,7 +238,7 @@ export function TimeRequestsTab() {
                     className="w-full h-9 rounded-xl border-0 text-[12px] font-bold cursor-pointer transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
                     style={{ background: `${clr}22`, color: clr }}
                   >
-                    Создать запрос
+                    {t('absence.create')}
                   </button>
                 </div>
               )
@@ -243,7 +246,7 @@ export function TimeRequestsTab() {
           </div>
         ) : (
           <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] py-10 text-center text-sm text-[var(--text-muted)]">
-            Политики отсутствий не найдены
+            {t('absence.noPolicies')}
           </div>
         )}
 
@@ -264,7 +267,7 @@ export function TimeRequestsTab() {
                 }`}
                 style={act ? { background: company.mainColor } : undefined}
               >
-                {o.label}
+                {t(o.label)}
                 {cnt > 0 && (
                   <span className={`ml-1.5 ${act ? 'opacity-80' : 'text-[var(--text-muted)]'}`}>
                     {cnt}
@@ -280,7 +283,7 @@ export function TimeRequestsTab() {
           {filtered.length === 0 ? (
             <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] py-10 text-center flex flex-col items-center gap-2">
               <span className="text-3xl">📋</span>
-              <p className="m-0 text-sm font-medium text-[var(--text-muted)]">Нет запросов</p>
+              <p className="m-0 text-sm font-medium text-[var(--text-muted)]">{t('absence.noRequests')}</p>
             </div>
           ) : grouped ? (
             GROUP_ORDER.map((status) => {
@@ -289,7 +292,7 @@ export function TimeRequestsTab() {
               return (
                 <div key={status} className="flex flex-col gap-2">
                   <p className="m-0 text-[13px] font-bold text-[var(--text-main)]">
-                    {STATUS_LABELS[status]}
+                    {t(STATUS_LABELS[status])}
                   </p>
                   {items.map((req) => (
                     <RequestRow
@@ -327,7 +330,7 @@ export function TimeRequestsTab() {
           }}
           className="fixed bottom-[88px] right-4 z-20 w-14 h-14 rounded-2xl border-0 text-white shadow-xl cursor-pointer flex items-center justify-center transition-transform active:scale-90"
           style={{ background: `color-mix(in srgb, ${company.mainColor} 55%, white)` }}
-          aria-label="Создать запрос"
+          aria-label={t('absence.create')}
         >
           <Icon icon="mdi:plus" width={24} />
         </button>
@@ -341,9 +344,9 @@ export function TimeRequestsTab() {
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" />
           <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)] rounded-t-[28px] outline-none max-h-[92vh] flex flex-col">
-            <Drawer.Title className="sr-only">Новый запрос на отсутствие</Drawer.Title>
+            <Drawer.Title className="sr-only">{t('absence.newRequestSr')}</Drawer.Title>
             <Drawer.Description className="sr-only">
-              Создание заявки на отсутствие
+              {t('absence.newRequestSrDesc')}
             </Drawer.Description>
             <div className="flex justify-center pt-3 pb-1">
               <Drawer.Handle className="!w-10 !h-[4px] !bg-gray-300" />
@@ -379,13 +382,15 @@ function RequestRow({
   pol?: EmployeeAbsencePolicy
   brandColor: string
 }) {
+  const t = useT()
+
   const [open, setOpen] = useState(false)
   const sc = STATUS_COLORS[req.status]
   const policyIcon = req.policy?.icon || pol?.icon || ''
   const ic = typeof policyIcon === 'string' && policyIcon ? policyIcon : DEFAULT_ICON
   const policyColorRaw = req.policy?.color || pol?.color || null
   const clr = hexColor(policyColorRaw, brandColor)
-  const title = req.policy?.title || pol?.title || 'Отсутствие'
+  const title = req.policy?.title || pol?.title || t('absence.defaultTitle')
 
   return (
     <button
@@ -406,12 +411,12 @@ function RequestRow({
             <span
               className={`shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-bold ${sc.bg} ${sc.text}`}
             >
-              {STATUS_LABELS[req.status]}
+              {t(STATUS_LABELS[req.status])}
             </span>
           </div>
           <p className="m-0 mt-0.5 text-[11px] text-[var(--text-muted)]">
             {formatDateRu(req.date_from || '')} — {formatDateRu(req.date_to || '')}
-            {req.requested_days > 0 && ` · ${req.requested_days} д`}
+            {req.requested_days > 0 && ` · ${t('absence.days', { days: req.requested_days })}`}
           </p>
         </div>
         <Icon
@@ -425,10 +430,10 @@ function RequestRow({
         <div className="px-3.5 pb-3.5 border-t border-[var(--line)]">
           <div className="grid grid-cols-2 gap-2 pt-3">
             {[
-              ['Начало', formatDateRu(req.date_from || '')],
-              ['Конец', formatDateRu(req.date_to || '')],
-              ['Дней', String(req.requested_days)],
-              ['Создано', formatDateRu((req.created_at || '').slice(0, 10))],
+              [t('absence.from'), formatDateRu(req.date_from || '')],
+              [t('absence.to'), formatDateRu(req.date_to || '')],
+              [t('absence.daysLabel'), String(req.requested_days)],
+              [t('absence.createdAt'), formatDateRu((req.created_at || '').slice(0, 10))],
             ].map(([l, v]) => (
               <div key={l}>
                 <p className="m-0 text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-semibold">
@@ -441,13 +446,13 @@ function RequestRow({
           <div className="mt-2.5 p-2.5 rounded-xl bg-[var(--surface-muted)] border border-[var(--line)] flex items-center gap-1.5">
             <Icon icon="mdi:comment-outline" width={14} className="text-[var(--text-muted)] shrink-0" />
             <p className="m-0 text-[12px] text-[var(--text-secondary)] leading-relaxed">
-              {req.note || 'Комментарий не добавлен'}
+              {req.note || t('absence.noNote')}
             </p>
           </div>
           {req.status === 'rejected' && req.reject_reason ? (
             <div className="mt-2.5 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
               <p className="m-0 text-[10px] text-rose-500 uppercase tracking-wider font-semibold">
-                Причина отказа
+                {t('absence.rejectReason')}
               </p>
               <p className="m-0 mt-0.5 text-[12px] text-[var(--text-main)] leading-relaxed">
                 {req.reject_reason}
@@ -477,6 +482,8 @@ function CreateForm({
   onClose: () => void
   onDone: () => void
 }) {
+  const t = useT()
+
   const [policyId, setPolicyId] = useState(initPolicyId || policies[0]?.guid || '')
   const [dateFrom, setDateFrom] = useState(() => toIsoDate(new Date()))
   const [dateTo, setDateTo] = useState(() => toIsoDate(new Date()))
@@ -496,8 +503,8 @@ function CreateForm({
     if (selected && selected.eligible === false) {
       setErr(
         selected.eligible_at
-          ? `Этот тип отсутствия будет доступен с ${formatDateRu(selected.eligible_at)}.`
-          : `Этот тип отсутствия доступен после ${selected.min_months ?? 0} мес. стажа.`,
+          ? t('absence.typeEligibleFrom', { date: formatDateRu(selected.eligible_at) })
+          : t('absence.typeEligibleAfter', { months: selected.min_months ?? 0 }),
       )
       return
     }
@@ -517,7 +524,7 @@ function CreateForm({
       })
       onDone()
     } catch {
-      setErr('Не удалось создать запрос')
+      setErr(t('absence.createFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -529,11 +536,11 @@ function CreateForm({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
-        <p className="m-0 text-[18px] font-extrabold text-[var(--text-main)]">Новая заявка</p>
+        <p className="m-0 text-[18px] font-extrabold text-[var(--text-main)]">{t('absence.newTitle')}</p>
         <button
           type="button"
           onClick={onClose}
-          aria-label="Закрыть"
+          aria-label={t('common.close')}
           className="w-9 h-9 rounded-xl border-0 bg-[var(--surface-muted)] text-[var(--text-main)] flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
         >
           <Icon icon="mdi:close" width={18} />
@@ -543,7 +550,7 @@ function CreateForm({
       {/* Policy */}
       <div className="flex flex-col gap-1.5">
         <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-          Тип отсутствия
+          {t('absence.type')}
         </label>
         <select
           value={policyId}
@@ -562,7 +569,7 @@ function CreateForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-            Дата начала
+            {t('absence.dateFrom')}
           </label>
           <DateField
             value={dateFrom}
@@ -575,7 +582,7 @@ function CreateForm({
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-            Дата окончания
+            {t('absence.dateTo')}
           </label>
           <DateField
             value={dateTo}
@@ -590,19 +597,19 @@ function CreateForm({
       {/* Summary */}
       <div className="rounded-2xl bg-[var(--surface-muted)] border border-[var(--line)] overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--line)]">
-          <span className="text-[13px] font-semibold text-[var(--text-secondary)]">Раб. дней</span>
-          <span className="text-[15px] font-extrabold text-[var(--text-main)]">{days} д</span>
+          <span className="text-[13px] font-semibold text-[var(--text-secondary)]">{t('absence.workingDays')}</span>
+          <span className="text-[15px] font-extrabold text-[var(--text-main)]">{t('absence.days', { days })}</span>
         </div>
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--line)]">
-          <span className="text-[13px] font-semibold text-[var(--text-secondary)]">Доступно</span>
+          <span className="text-[13px] font-semibold text-[var(--text-secondary)]">{t('absence.available')}</span>
           <span className="text-[15px] font-extrabold text-[var(--text-main)]">
-            {(avail % 1 === 0 ? avail : avail.toFixed(1))} д
+            {t('absence.days', { days: avail % 1 === 0 ? avail : avail.toFixed(1) })}
           </span>
         </div>
         <div className="flex items-center justify-between px-4 py-3">
-          <span className="text-[13px] font-semibold text-[var(--text-secondary)]">Остаток</span>
+          <span className="text-[13px] font-semibold text-[var(--text-secondary)]">{t('absence.balance')}</span>
           <span className={`text-[15px] font-extrabold ${forecast < 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-            {(forecast % 1 === 0 ? forecast : forecast.toFixed(1))} д
+            {t('absence.days', { days: forecast % 1 === 0 ? forecast : forecast.toFixed(1) })}
           </span>
         </div>
       </div>
@@ -610,12 +617,12 @@ function CreateForm({
       {/* Note */}
       <div className="flex flex-col gap-1.5">
         <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-          Комментарий (необязательно)
+          {t('absence.note')}
         </label>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Причина или пояснение"
+          placeholder={t('absence.notePlaceholder')}
           rows={2}
           className="rounded-2xl border border-[var(--line)] bg-[var(--surface-muted)] px-4 py-3 text-[14px] text-[var(--text-main)] outline-none resize-none focus:border-[var(--accent)] transition-colors"
         />
@@ -624,11 +631,11 @@ function CreateForm({
       {/* Attachment */}
       <div className="flex flex-col gap-1.5">
         <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-          Вложение (PDF, PNG, JPEG)
+          {t('absence.attachment')}
         </label>
         <label className="inline-flex w-fit items-center gap-1.5 text-[13px] font-bold cursor-pointer" style={{ color }}>
           <Icon icon="mdi:tray-arrow-up" width={16} />
-          Загрузить файл
+          {t('absence.uploadFile')}
           <input
             type="file"
             accept="application/pdf,image/png,image/jpeg"
@@ -637,15 +644,15 @@ function CreateForm({
           />
         </label>
         <p className="m-0 text-[12px] text-[var(--text-muted)]">
-          {attachment ? attachment.name : 'Файл не выбран'}
+          {attachment ? attachment.name : t('absence.noFile')}
         </p>
       </div>
 
       {!eligible && (
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-500 px-4 py-2.5 text-[13px] font-medium">
           {selected?.eligible_at
-            ? `Этот тип отсутствия будет доступен с ${formatDateRu(selected.eligible_at)}.`
-            : `Этот тип отсутствия доступен после ${selected?.min_months ?? 0} мес. стажа.`}
+            ? t('absence.typeEligibleFrom', { date: formatDateRu(selected.eligible_at) })
+            : t('absence.typeEligibleAfter', { months: selected?.min_months ?? 0 })}
         </div>
       )}
 
@@ -662,7 +669,7 @@ function CreateForm({
         className="w-full h-[52px] rounded-2xl text-white font-bold text-[15px] border-0 cursor-pointer transition-all active:scale-[0.97] disabled:opacity-50 shadow-lg"
         style={{ background: color }}
       >
-        {submitting ? 'Отправка...' : 'Отправить на согласование'}
+        {submitting ? t('absence.submitting') : t('absence.submit')}
       </button>
     </div>
   )

@@ -3,6 +3,7 @@ import { useAuth, getDisplayName, getInitials } from '../context/AuthContext'
 import { useCompany } from '../context/CompanyContext'
 import { updateUserBase, uploadFile } from '../api/dashboardService'
 import { Icon } from '@iconify/react'
+import { useT, tr, formatDateLocal } from '../i18n'
 import { ProfileBanner } from '../components/ProfileBanner'
 
 function getRelationTitle(value: unknown): string {
@@ -15,7 +16,7 @@ function formatDateToRu(isoString: unknown): string {
   if (typeof isoString !== 'string' || !isoString) return '—'
   const date = new Date(isoString)
   if (isNaN(date.getTime())) return '—'
-  const formatter = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })
+  const formatter = { format: (value: Date) => formatDateLocal(value, { day: 'numeric', month: 'short', year: 'numeric' }) }
   return formatter.format(date)
 }
 
@@ -37,14 +38,16 @@ function calcWorkPeriod(startDate: string): string {
     m += 12
   }
   const parts = []
-  if (y > 0) parts.push(`${y} г.`)
-  if (m > 0) parts.push(`${m} мес.`)
-  if (d > 0 && y === 0) parts.push(`${d} дн.`)
-  if (parts.length === 0) return 'Только начал(а)'
+  if (y > 0) parts.push(tr('myData.years', { count: y }))
+  if (m > 0) parts.push(tr('myData.months', { count: m }))
+  if (d > 0 && y === 0) parts.push(tr('myData.days', { count: d }))
+  if (parts.length === 0) return tr('myData.justStarted')
   return parts.join(', ')
 }
 
 export function MyDataPage() {
+  const t = useT()
+
   const { profile, session } = useAuth()
   const { company } = useCompany()
 
@@ -99,7 +102,7 @@ export function MyDataPage() {
       setIsEditing(false)
       window.location.reload()
     } catch {
-      setError('Не удалось сохранить изменения')
+      setError(t('myData.saveFailed'))
       setIsSaving(false)
     }
   }
@@ -118,7 +121,7 @@ export function MyDataPage() {
         // but for now we just keep it in formData until they press save.
       }
     } catch {
-      setError('Не удалось загрузить фото')
+      setError(t('myData.photoFailed'))
     } finally {
       setIsUploading(false)
     }
@@ -151,7 +154,7 @@ export function MyDataPage() {
           onChange={e => handleChange(field, e.target.value)}
           className="mobile-input h-12 rounded-2xl border border-[var(--line)] bg-[var(--surface-muted)] px-4 text-[14px] font-medium text-[var(--text-main)] outline-none focus:border-[var(--accent)] transition-colors"
         >
-          <option value="">Выберите</option>
+          <option value="">{t('myData.choose')}</option>
           {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </div>
@@ -194,18 +197,18 @@ export function MyDataPage() {
           {/* Personal Info Read */}
           <section className="rounded-[24px] border border-[var(--line)] bg-[var(--surface)] overflow-hidden shadow-sm">
             <div className="px-5 py-4 border-b border-[var(--line)]">
-              <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">Личное</p>
+              <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">{t('myData.personal')}</p>
             </div>
             <div className="px-5 py-2">
-              {renderReadField('ID сотрудника', profile?.guid as string)}
-              {renderReadField('Фамилия', profile?.second_name as string)}
-              {renderReadField('Имя', profile?.first_name as string)}
-              {renderReadField('Отчество', profile?.middle_name as string)}
-              {renderReadField('Дата рождения', formatDateToRu(profile?.birthday))}
-              {renderReadField('Пол', profile?.gender === 'male' ? 'Мужской' : profile?.gender === 'female' ? 'Женский' : '—')}
+              {renderReadField(t('myData.employeeId'), profile?.guid as string)}
+              {renderReadField(t('myData.lastName'), profile?.second_name as string)}
+              {renderReadField(t('myData.firstName'), profile?.first_name as string)}
+              {renderReadField(t('myData.middleName'), profile?.middle_name as string)}
+              {renderReadField(t('myData.birthday'), formatDateToRu(profile?.birthday))}
+              {renderReadField(t('myData.gender'), profile?.gender === 'male' ? t('myData.male') : profile?.gender === 'female' ? t('myData.female') : '—')}
               <div className="flex flex-col gap-1 py-3 border-b border-[var(--line)] last:border-0">
-                <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Статус</span>
-                <span className="mt-0.5 inline-flex w-fit items-center rounded-full bg-emerald-500/15 px-3 py-1 text-[12px] font-bold text-emerald-400">Активный</span>
+                <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{t('myData.status')}</span>
+                <span className="mt-0.5 inline-flex w-fit items-center rounded-full bg-emerald-500/15 px-3 py-1 text-[12px] font-bold text-emerald-400">{t('myData.active')}</span>
               </div>
             </div>
           </section>
@@ -213,17 +216,17 @@ export function MyDataPage() {
           {/* Working Data Read */}
           <section className="rounded-[24px] border border-[var(--line)] bg-[var(--surface)] overflow-hidden shadow-sm">
             <div className="px-5 py-4 border-b border-[var(--line)]">
-              <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">Рабочие данные</p>
+              <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">{t('myData.workData')}</p>
             </div>
             <div className="px-5 py-2">
-              {renderReadField('Дата начала', formatDateToRu(workingData.startDate))}
-              {renderReadField('Тип работы', workingData.jobType)}
-              {renderReadField('Должность', workingData.position)}
-              {renderReadField('Уровень', workingData.level)}
-              {renderReadField('Департамент', workingData.department)}
-              {renderReadField('Подразделение', workingData.unit)}
-              {renderReadField('Локация', workingData.location)}
-              {renderReadField('Срок работы', calcWorkPeriod(workingData.startDate))}
+              {renderReadField(t('myData.startDate'), formatDateToRu(workingData.startDate))}
+              {renderReadField(t('myData.jobType'), workingData.jobType)}
+              {renderReadField(t('myData.position'), workingData.position)}
+              {renderReadField(t('myData.level'), workingData.level)}
+              {renderReadField(t('myData.department'), workingData.department)}
+              {renderReadField(t('myData.unit'), workingData.unit)}
+              {renderReadField(t('myData.location'), workingData.location)}
+              {renderReadField(t('myData.tenure'), calcWorkPeriod(workingData.startDate))}
             </div>
           </section>
 
@@ -231,14 +234,14 @@ export function MyDataPage() {
           <section className="rounded-[24px] border border-[var(--line)] bg-[var(--surface)] overflow-hidden shadow-sm">
             <div className="px-5 py-4 border-b border-[var(--line)] flex items-center gap-2">
               <Icon icon="mdi:phone-outline" width={18} className="text-[var(--text-main)]" />
-              <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">Контакты</p>
+              <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">{t('myData.contacts')}</p>
             </div>
             <div className="px-5 py-2">
-              {renderReadField('Эл. почта', profile?.email as string)}
-              {renderReadField('Личная эл. почта', profile?.personal_email as string)}
-              {renderReadField('Мобильный телефон', profile?.phone as string)}
-              {renderReadField('Рабочий телефон', profile?.work_phone as string)}
-              {renderReadField('Телеграм', profile?.telegram as string)}
+              {renderReadField(t('myData.email'), profile?.email as string)}
+              {renderReadField(t('myData.personalEmail'), profile?.personal_email as string)}
+              {renderReadField(t('myData.phone'), profile?.phone as string)}
+              {renderReadField(t('myData.workPhone'), profile?.work_phone as string)}
+              {renderReadField(t('myData.telegram'), profile?.telegram as string)}
             </div>
           </section>
 
@@ -246,11 +249,11 @@ export function MyDataPage() {
           <section className="rounded-[24px] border border-[var(--line)] bg-[var(--surface)] overflow-hidden shadow-sm flex flex-col">
             <div className="px-5 py-4 border-b border-[var(--line)] flex items-center gap-2">
               <Icon icon="mdi:school-outline" width={18} className="text-[var(--text-main)]" />
-              <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">Образование</p>
+              <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">{t('myData.education')}</p>
             </div>
             <div className="px-5 py-5">
                <p className="m-0 text-[14px] text-[var(--text-main)] leading-relaxed whitespace-pre-wrap">
-                 {(profile?.education as string) || 'Нет добавленной информации'}
+                 {(profile?.education as string) || t('myData.noEducation')}
                </p>
             </div>
           </section>
@@ -259,11 +262,11 @@ export function MyDataPage() {
           <section className="rounded-[24px] border border-[var(--line)] bg-[var(--surface)] overflow-hidden shadow-sm flex flex-col">
             <div className="px-5 py-4 border-b border-[var(--line)] flex items-center gap-2">
               <Icon icon="mdi:certificate-outline" width={18} className="text-[var(--text-main)]" />
-              <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">Лицензии и сертификаты</p>
+              <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">{t('myData.certificates')}</p>
             </div>
             <div className="px-5 py-5">
                <p className="m-0 text-[14px] text-[var(--text-main)] leading-relaxed whitespace-pre-wrap">
-                 {(profile?.certificates as string) || 'Нет добавленных сертификатов'}
+                 {(profile?.certificates as string) || t('myData.noCertificates')}
                </p>
             </div>
           </section>
@@ -272,11 +275,11 @@ export function MyDataPage() {
           <section className="rounded-[24px] border border-[var(--line)] bg-[var(--surface)] overflow-hidden shadow-sm flex flex-col">
             <div className="px-5 py-4 border-b border-[var(--line)] flex items-center gap-2">
               <Icon icon="mdi:heart-outline" width={18} className="text-[var(--text-main)]" />
-              <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">Интересы</p>
+              <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">{t('myData.interests')}</p>
             </div>
             <div className="px-5 py-5">
                <p className="m-0 text-[14px] text-[var(--text-main)] leading-relaxed whitespace-pre-wrap">
-                 {(profile?.interests as string) || 'Нет добавленных интересов'}
+                 {(profile?.interests as string) || t('myData.noInterests')}
                </p>
             </div>
           </section>
@@ -309,7 +312,7 @@ export function MyDataPage() {
                   className="px-3 py-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[12px] font-bold text-[var(--text-main)] active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                 >
                   <Icon icon="mdi:camera-outline" width={16} />
-                  {isUploading ? 'Загрузка...' : 'Изменить фото'}
+                  {isUploading ? t('myData.uploading') : t('myData.changePhoto')}
                 </button>
               </div>
             </div>
@@ -318,16 +321,16 @@ export function MyDataPage() {
           {/* Basic Info Edit */}
           <section className="rounded-[24px] border border-[var(--line)] bg-[var(--surface)] overflow-hidden shadow-sm">
             <div className="px-5 py-4 border-b border-[var(--line)]">
-              <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">Личное</p>
+              <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">{t('myData.personal')}</p>
             </div>
             <div className="p-5 flex flex-col gap-1">
-              {renderField('Фамилия', 'second_name', 'text', true)}
-              {renderField('Имя', 'first_name', 'text', true)}
-              {renderField('Отчество', 'middle_name')}
-              {renderField('Дата рождения', 'birthday', 'date')}
-              {renderSelect('Пол', 'gender', [
-                { value: 'male', label: 'Мужчина' },
-                { value: 'female', label: 'Женщина' }
+              {renderField(t('myData.lastName'), 'second_name', 'text', true)}
+              {renderField(t('myData.firstName'), 'first_name', 'text', true)}
+              {renderField(t('myData.middleName'), 'middle_name')}
+              {renderField(t('myData.birthday'), 'birthday', 'date')}
+              {renderSelect(t('myData.gender'), 'gender', [
+                { value: 'male', label: t('myData.maleOption') },
+                { value: 'female', label: t('myData.femaleOption') }
               ])}
             </div>
           </section>
@@ -336,14 +339,14 @@ export function MyDataPage() {
           <section className="rounded-[24px] border border-[var(--line)] bg-[var(--surface)] overflow-hidden shadow-sm">
             <div className="px-5 py-4 border-b border-[var(--line)] flex items-center gap-2">
               <Icon icon="mdi:phone-outline" width={18} className="text-[var(--text-main)]" />
-              <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">Контакты</p>
+              <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">{t('myData.contacts')}</p>
             </div>
             <div className="p-5 flex flex-col gap-1">
-              {renderField('Эл. почта', 'email', 'email', true)}
-              {renderField('Личная эл. почта', 'personal_email', 'email')}
-              {renderField('Мобильный телефон', 'phone', 'tel')}
-              {renderField('Рабочий телефон', 'work_phone', 'tel')}
-              {renderField('Телеграм', 'telegram')}
+              {renderField(t('myData.email'), 'email', 'email', true)}
+              {renderField(t('myData.personalEmail'), 'personal_email', 'email')}
+              {renderField(t('myData.phone'), 'phone', 'tel')}
+              {renderField(t('myData.workPhone'), 'work_phone', 'tel')}
+              {renderField(t('myData.telegram'), 'telegram')}
             </div>
           </section>
 
@@ -358,7 +361,7 @@ export function MyDataPage() {
         onClick={() => setIsEditing(true)}
         className="fixed bottom-[88px] right-4 z-20 w-14 h-14 rounded-2xl border-0 text-white shadow-xl cursor-pointer flex items-center justify-center transition-transform active:scale-90"
         style={{ background: `color-mix(in srgb, ${company.mainColor} 55%, white)` }}
-        aria-label="Изменить профиль"
+        aria-label={t('myData.editProfile')}
       >
         <Icon icon="mdi:pencil-outline" width={24} />
       </button>
@@ -370,7 +373,7 @@ export function MyDataPage() {
           disabled={isSaving}
           className="h-11 px-4 rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[13px] font-bold text-[var(--text-secondary)] shadow-lg cursor-pointer transition-transform active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Отмена
+          {t('common.cancel')}
         </button>
         <button
           type="button"
@@ -379,7 +382,7 @@ export function MyDataPage() {
           className="h-11 px-4 rounded-xl border-0 text-white text-[13px] font-bold shadow-xl cursor-pointer transition-transform active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
           style={{ background: company.mainColor }}
         >
-          {isSaving ? 'Сохранение...' : 'Сохранить'}
+          {isSaving ? t('myData.saving') : t('common.save')}
         </button>
       </div>
     )}

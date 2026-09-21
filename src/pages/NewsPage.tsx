@@ -1,5 +1,6 @@
 import { Preloader } from 'konsta/react'
 import { useAuth } from '../context/AuthContext'
+import { useT, tr, formatDateLocal } from '../i18n'
 import { NewspaperIcon } from '../components/Icons'
 
 const TINTS = [
@@ -18,23 +19,27 @@ function formatRelativeTime(value: string): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
   const minutes = Math.floor((Date.now() - date.getTime()) / 60000)
-  if (minutes < 1) return 'Только что'
-  if (minutes < 60) return `${minutes} мин назад`
+  // ponytail: сокращения «мин / ч / дн» вместо склонений — одна форма на все
+  // три языка и ноль правил множественного числа.
+  if (minutes < 1) return tr('news.justNow')
+  if (minutes < 60) return tr('news.minutesAgo', { count: minutes })
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} ${hours === 1 ? 'час' : hours < 5 ? 'часа' : 'часов'} назад`
+  if (hours < 24) return tr('news.hoursAgo', { count: hours })
   const days = Math.floor(hours / 24)
-  if (days === 1) return 'Вчера'
-  if (days < 7) return `${days} ${days < 5 ? 'дня' : 'дней'} назад`
-  return date.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })
+  if (days === 1) return tr('news.yesterday')
+  if (days < 7) return tr('news.daysAgo', { count: days })
+  return formatDateLocal(date, { day: '2-digit', month: 'short' })
 }
 
 export function NewsPage() {
+  const t = useT()
+
   const { newsFeed, isNewsLoading, newsError } = useAuth()
 
   return (
     <section className="flex flex-col gap-3">
       <span className="self-start rounded-full bg-[var(--surface-muted)] border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--text-secondary)]">
-        {newsFeed.length} {newsFeed.length === 1 ? 'новая' : 'новых'}
+        {t('news.counter', { count: newsFeed.length })}
       </span>
 
       {isNewsLoading ? (
@@ -47,7 +52,7 @@ export function NewsPage() {
         </div>
       ) : newsFeed.length === 0 ? (
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] py-8 text-center text-sm text-[var(--text-muted)]">
-          Пока нет активных новостей
+          {t('news.empty')}
         </div>
       ) : (
         newsFeed.map((item, idx) => {

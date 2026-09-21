@@ -1,3 +1,4 @@
+import { tr } from '../i18n'
 import { useQuery } from '@tanstack/react-query'
 import adminRequest from './adminRequest'
 import type { UserData } from './authService'
@@ -123,7 +124,7 @@ const buildWeekendEvents = (dateFrom: string, dateTo: string): UpcomingEventItem
       list.push({
         id: `weekend-${iso}`,
         date: iso,
-        title: day === 6 ? 'Суббота' : 'Воскресенье',
+        title: day === 6 ? tr('fallback.saturday') : tr('fallback.sunday'),
         type: 'weekend',
       })
     }
@@ -146,7 +147,7 @@ const normalizeNewsItem = (raw: unknown): NewsItem => {
 
   return {
     guid,
-    title: toStringValue(source.title).trim() || 'Без заголовка',
+    title: toStringValue(source.title).trim() || tr('fallback.noTitle'),
     text:
       toStringValue(source.text).trim() ||
       toStringValue(source.description).trim() ||

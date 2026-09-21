@@ -1,3 +1,4 @@
+import { tr } from '../i18n'
 import adminRequest from './adminRequest'
 
 export interface DocumentFolder {
@@ -51,9 +52,9 @@ export function getDocumentName(doc: EmployeeDocument): string {
   if (doc.file && typeof doc.file === 'string') {
     const parts = doc.file.split('/')
     const last = parts[parts.length - 1] || ''
-    return last.replace(/\?.*$/, '') || 'Документ'
+    return last.replace(/\?.*$/, '') || tr('fallback.document')
   }
-  return 'Документ'
+  return tr('fallback.document')
 }
 
 export const documentsService = {

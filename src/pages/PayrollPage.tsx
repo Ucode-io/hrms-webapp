@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Icon } from '@iconify/react'
+import { useT, tr, formatDateLocal } from '../i18n'
 import { useAuth } from '../context/AuthContext'
 import { useCompany } from '../context/CompanyContext'
 import {
@@ -45,6 +46,8 @@ function groupByMonth(records: CompensationRecord[]): MonthGroup[] {
 
 /* ── Payslip card (summary for one month) ──────────── */
 function PayslipHeader({ group, color, name }: { group: MonthGroup; color: string; name: string }) {
+  const t = useT()
+
   return (
     <div className="rounded-2xl overflow-hidden shadow-md" style={{ background: `linear-gradient(135deg, ${color}ee, ${color}bb)` }}>
       <div className="px-4 pt-4 pb-3">
@@ -53,16 +56,16 @@ function PayslipHeader({ group, color, name }: { group: MonthGroup; color: strin
       </div>
       <div className="px-4 pb-4 flex items-end justify-between">
         <div>
-          <p className="m-0 text-[11px] text-white/70 font-semibold uppercase tracking-wider">Начислено</p>
+          <p className="m-0 text-[11px] text-white/70 font-semibold uppercase tracking-wider">{t('payroll.accrued')}</p>
           <p className="m-0 mt-0.5 text-[22px] font-extrabold text-white leading-none">{formatAmount(group.totalIncome)}</p>
         </div>
         <div className="text-right">
-          <p className="m-0 text-[11px] text-white/70 font-semibold uppercase tracking-wider">Удержано</p>
+          <p className="m-0 text-[11px] text-white/70 font-semibold uppercase tracking-wider">{t('payroll.withheld')}</p>
           <p className="m-0 mt-0.5 text-[16px] font-bold text-white/90 leading-none">−{formatAmount(group.totalDeductions)}</p>
         </div>
       </div>
       <div className="px-4 py-3 bg-black/10 flex items-center justify-between">
-        <p className="m-0 text-[12px] text-white/80 font-semibold">К выплате</p>
+        <p className="m-0 text-[12px] text-white/80 font-semibold">{t('payroll.toPay')}</p>
         <p className="m-0 text-[18px] font-extrabold text-white">{formatAmount(group.net)}</p>
       </div>
     </div>
@@ -80,7 +83,7 @@ function LineRow({ record }: { record: CompensationRecord }) {
           <Icon icon={isIncome ? 'mdi:cash-plus' : 'mdi:cash-minus'} width={18} />
         </div>
         <div className="min-w-0">
-          <p className="m-0 text-[13px] font-semibold text-[var(--text-main)] truncate">{record.typeTitle || OPERATION_LABELS[record.operationType]}</p>
+          <p className="m-0 text-[13px] font-semibold text-[var(--text-main)] truncate">{record.typeTitle || tr(OPERATION_LABELS[record.operationType])}</p>
           {record.description && <p className="m-0 text-[11px] text-[var(--text-muted)] truncate">{record.description}</p>}
         </div>
       </div>
@@ -93,15 +96,17 @@ function LineRow({ record }: { record: CompensationRecord }) {
 
 /* ── Month detail section ──────────────────────────── */
 function MonthDetail({ group, color }: { group: MonthGroup; color: string }) {
+  const t = useT()
+
   return (
     <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] overflow-hidden">
       {/* Earnings */}
       {group.income.length > 0 && (
         <div className="px-4 pt-4">
-          <p className="m-0 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">Начисления</p>
+          <p className="m-0 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">{t('payroll.accruals')}</p>
           {group.income.map(r => <LineRow key={r.guid} record={r} />)}
           <div className="flex items-center justify-between py-3 border-t border-[var(--line)]">
-            <p className="m-0 text-[13px] font-bold text-[var(--text-main)]">Итого начислений</p>
+            <p className="m-0 text-[13px] font-bold text-[var(--text-main)]">{t('payroll.totalAccruals')}</p>
             <p className="m-0 text-[14px] font-extrabold text-emerald-500">+{formatAmount(group.totalIncome)}</p>
           </div>
         </div>
@@ -110,10 +115,10 @@ function MonthDetail({ group, color }: { group: MonthGroup; color: string }) {
       {/* Deductions */}
       {group.deductions.length > 0 && (
         <div className={`px-4 ${group.income.length > 0 ? 'border-t border-[var(--line)]' : ''} pt-4`}>
-          <p className="m-0 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">Удержания</p>
+          <p className="m-0 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">{t('payroll.deductions')}</p>
           {group.deductions.map(r => <LineRow key={r.guid} record={r} />)}
           <div className="flex items-center justify-between py-3 border-t border-[var(--line)]">
-            <p className="m-0 text-[13px] font-bold text-[var(--text-main)]">Итого удержаний</p>
+            <p className="m-0 text-[13px] font-bold text-[var(--text-main)]">{t('payroll.totalDeductions')}</p>
             <p className="m-0 text-[14px] font-extrabold text-rose-500">−{formatAmount(group.totalDeductions)}</p>
           </div>
         </div>
@@ -121,7 +126,7 @@ function MonthDetail({ group, color }: { group: MonthGroup; color: string }) {
 
       {/* Net */}
       <div className="px-4 py-3 border-t border-[var(--line)] flex items-center justify-between" style={{ background: `${color}08` }}>
-        <p className="m-0 text-[14px] font-extrabold text-[var(--text-main)]">К выплате</p>
+        <p className="m-0 text-[14px] font-extrabold text-[var(--text-main)]">{t('payroll.toPay')}</p>
         <p className="m-0 text-[16px] font-extrabold" style={{ color }}>{formatAmount(group.net)}</p>
       </div>
     </div>
@@ -133,6 +138,8 @@ function MonthNav({ monthKey, income, deductions, color, canGoNext, onPrev, onNe
   monthKey: string; income: number; deductions: number; color: string
   canGoNext: boolean; onPrev: () => void; onNext: () => void
 }) {
+  const t = useT()
+
   return (
     <div className="rounded-3xl overflow-hidden" style={{ background: `linear-gradient(135deg, ${color}f0 0%, ${color}90 100%)` }}>
       <div className="flex items-center justify-between px-4 py-4">
@@ -143,7 +150,7 @@ function MonthNav({ monthKey, income, deductions, color, canGoNext, onPrev, onNe
         <div className="text-center">
           <p className="m-0 text-[18px] font-extrabold text-white leading-snug">{monthKeyLabel(monthKey)}</p>
           <p className="m-0 mt-0.5 text-[11.5px] text-white/70">
-            Начислено {formatAmount(income)} · Удержано {formatAmount(deductions)}
+            {t('payroll.summary', { income: formatAmount(income), deductions: formatAmount(deductions) })}
           </p>
         </div>
         <button type="button" onClick={onNext} disabled={!canGoNext}
@@ -160,6 +167,7 @@ function MonthNav({ monthKey, income, deductions, color, canGoNext, onPrev, onNe
 export function PayrollPage() {
   const { session, profile } = useAuth()
   const { company } = useCompany()
+  const t = useT()
 
   const employeeGuid = useMemo(() =>
     (typeof profile?.guid === 'string' && profile.guid) ||
@@ -171,7 +179,7 @@ export function PayrollPage() {
     const u = session?.user_data ?? session?.user ?? {}
     const fn = typeof (u as Record<string,unknown>).first_name === 'string' ? (u as Record<string,unknown>).first_name : ''
     const ln = typeof (u as Record<string,unknown>).second_name === 'string' ? (u as Record<string,unknown>).second_name : ''
-    return [fn, ln].filter(Boolean).join(' ') || 'Сотрудник'
+    return [fn, ln].filter(Boolean).join(' ') || tr('auth.employee')
   }, [session])
 
   const currentMonthKey = getCurrentMonthKey()
@@ -205,7 +213,7 @@ export function PayrollPage() {
 
   if (error) return (
     <div className="rounded-2xl border border-[var(--error-line)] bg-[var(--error-bg)] text-[var(--error-text)] px-4 py-8 text-center text-sm animate-fade-in-up">
-      Не удалось загрузить данные
+      {t('payroll.loadFailed')}
     </div>
   )
 
@@ -236,9 +244,9 @@ export function PayrollPage() {
               <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] py-10 text-center flex flex-col items-center gap-2">
                 <span className="text-3xl">📅</span>
                 <p className="m-0 text-[14px] font-semibold text-[var(--text-main)]">
-                  {new Date(selectedMonth + '-01').toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}
+                  {formatDateLocal(new Date(selectedMonth + '-01'), { month: 'long', year: 'numeric' })}
                 </p>
-                <p className="m-0 text-[13px] text-[var(--text-muted)]">Нет данных о зарплате за этот месяц</p>
+                <p className="m-0 text-[13px] text-[var(--text-muted)]">{t('payroll.emptyMonth')}</p>
               </div>
             )}
 

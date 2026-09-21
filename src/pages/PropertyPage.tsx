@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Icon } from '@iconify/react'
+import { useT, formatNumberLocal } from '../i18n'
 import { Drawer } from 'vaul'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -17,26 +18,30 @@ import {
 /* ── Helpers ────────────────────────────────────────── */
 function formatCost(value: number | null | undefined): string {
   if (!value && value !== 0) return '—'
-  return Number(value).toLocaleString('ru-RU')
+  return formatNumberLocal(Number(value))
 }
 
 /* ── Status badge ────────────────────────────────────── */
 function StatusBadge({ status }: { status: PropertyStatus }) {
+  const t = useT()
+
   const cfg = PROPERTY_STATUS_CONFIG[status]
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${cfg.color}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-      {cfg.label}
+      {t(cfg.label)}
     </span>
   )
 }
 
 /* ── History timeline ────────────────────────────────── */
 function HistoryTimeline({ history }: { history: PropertyHistoryItem[] }) {
+  const t = useT()
+
   if (history.length === 0) {
     return (
       <p className="text-center text-[12px] text-[var(--text-muted)] py-4">
-        История изменений пуста
+        {t('property.historyEmpty')}
       </p>
     )
   }
@@ -67,11 +72,11 @@ function HistoryTimeline({ history }: { history: PropertyHistoryItem[] }) {
               <div className="flex flex-wrap items-center gap-1.5 text-[13px] text-[var(--text-main)]">
                 {fromCfg ? (
                   <>
-                    <span className="text-[var(--text-muted)]">{fromCfg.label}</span>
+                    <span className="text-[var(--text-muted)]">{t(fromCfg.label)}</span>
                     <Icon icon="mdi:arrow-right" width={12} className="text-[var(--text-muted)]" />
                   </>
                 ) : null}
-                <span className="font-semibold">{toCfg.label}</span>
+                <span className="font-semibold">{t(toCfg.label)}</span>
               </div>
               {entry.comment && (
                 <p className="m-0 mt-1 rounded-xl bg-[var(--app-bg)] px-3 py-1.5 text-[12px] text-[var(--text-secondary)]">
@@ -99,6 +104,8 @@ function DetailDrawer({
   open: boolean
   onClose: () => void
 }) {
+  const t = useT()
+
   const { data: history = [], isLoading: isHistoryLoading } = useQuery({
     queryKey: ['property-history', item?.guid],
     queryFn: () => propertyService.getHistory(item!.guid),
@@ -117,7 +124,7 @@ function DetailDrawer({
         <Drawer.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" />
         <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[92dvh] flex-col rounded-t-[28px] bg-[var(--surface)] outline-none">
           <Drawer.Title className="sr-only">{item.name}</Drawer.Title>
-          <Drawer.Description className="sr-only">Детали имущества</Drawer.Description>
+          <Drawer.Description className="sr-only">{t('property.details')}</Drawer.Description>
 
           {/* Handle */}
           <div className="flex justify-center pt-3 pb-1 shrink-0">
@@ -139,7 +146,7 @@ function DetailDrawer({
             {/* Name + status */}
             <div className="flex items-start justify-between gap-3">
               <h2 className="m-0 text-[18px] font-extrabold text-[var(--text-main)] leading-snug">
-                {item.name || 'Без названия'}
+                {item.name || t('property.noName')}
               </h2>
               <div className="shrink-0"><StatusBadge status={status} /></div>
             </div>
@@ -150,11 +157,11 @@ function DetailDrawer({
             {/* Info rows */}
             <div className="mt-4 rounded-2xl border border-[var(--line)] divide-y divide-[var(--line)]">
               {[
-                { label: 'Серийный номер', value: item.serial_number || '—' },
-                { label: 'Стоимость',      value: formatCost(item.cost) },
-                { label: 'Дата покупки',   value: formatDate(item.purchase_date) },
-                { label: 'Гарантия до',    value: formatDate(item.warranty_until) },
-                { label: 'Дата выдачи',    value: formatDate(item.assigned_date) },
+                { label: t('property.serial'),        value: item.serial_number || '—' },
+                { label: t('property.cost'),          value: formatCost(item.cost) },
+                { label: t('property.purchaseDate'),  value: formatDate(item.purchase_date) },
+                { label: t('property.warrantyUntil'), value: formatDate(item.warranty_until) },
+                { label: t('property.assignedDate'),  value: formatDate(item.assigned_date) },
               ].map(({ label, value }) => (
                 <div key={label} className="flex items-center justify-between px-4 py-2.5">
                   <span className="text-[12px] text-[var(--text-muted)]">{label}</span>
@@ -166,7 +173,7 @@ function DetailDrawer({
             {/* Description */}
             {item.description && (
               <div className="mt-3 rounded-2xl bg-[var(--app-bg)] px-4 py-3">
-                <p className="m-0 text-[12px] font-semibold text-[var(--text-muted)] mb-1">Описание</p>
+                <p className="m-0 text-[12px] font-semibold text-[var(--text-muted)] mb-1">{t('property.description')}</p>
                 <p className="m-0 text-[13px] text-[var(--text-secondary)]">{item.description}</p>
               </div>
             )}
@@ -174,7 +181,7 @@ function DetailDrawer({
             {/* History */}
             <div className="mt-5">
               <div className="flex items-center justify-between mb-3">
-                <p className="m-0 text-[13px] font-bold text-[var(--text-main)]">История движения</p>
+                <p className="m-0 text-[13px] font-bold text-[var(--text-main)]">{t('property.history')}</p>
                 {!isHistoryLoading && (
                   <span className="rounded-full bg-[var(--app-bg)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-muted)]">
                     {history.length}
@@ -198,6 +205,8 @@ function DetailDrawer({
 
 /* ── Property card ───────────────────────────────────── */
 function PropertyCard({ item, onOpen }: { item: PropertyItem; onOpen: () => void }) {
+  const t = useT()
+
   const status = normalizeStatus(item.status)
   const categoryTitle = item.property_categories_id_data?.title
 
@@ -221,7 +230,7 @@ function PropertyCard({ item, onOpen }: { item: PropertyItem; onOpen: () => void
       <div className="p-3">
         <div className="flex items-start justify-between gap-2">
           <p className="m-0 text-[14px] font-bold text-[var(--text-main)] leading-snug flex-1">
-            {item.name || 'Без названия'}
+            {item.name || t('property.noName')}
           </p>
           <StatusBadge status={status} />
         </div>
@@ -243,6 +252,8 @@ function PropertyCard({ item, onOpen }: { item: PropertyItem; onOpen: () => void
 
 /* ── Page ────────────────────────────────────────────── */
 export function PropertyPage() {
+  const t = useT()
+
   const { session, profile } = useAuth()
   const [selectedItem, setSelectedItem] = useState<PropertyItem | null>(null)
 
@@ -276,10 +287,10 @@ export function PropertyPage() {
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)] px-6 py-12 text-center">
           <Icon icon="mdi:package-variant-closed" width={44} className="text-[var(--text-muted)] opacity-30" />
           <p className="m-0 text-[13px] font-semibold text-[var(--text-muted)]">
-            Имущество не закреплено
+            {t('property.empty')}
           </p>
           <p className="m-0 text-[12px] text-[var(--text-muted)] opacity-70">
-            Имущество, закреплённое за вами, появится здесь
+            {t('property.emptyHint')}
           </p>
         </div>
       ) : (

@@ -1,47 +1,24 @@
-import { useState } from 'react'
 import { Icon } from '@iconify/react'
 import { useTheme, type ThemeMode } from '../context/ThemeContext'
+import { useI18n, LANGUAGES, type TKey } from '../i18n'
 
-const THEME_OPTIONS: { value: ThemeMode; label: string; icon: string }[] = [
-  { value: 'light', label: 'Светлая', icon: 'mdi:white-balance-sunny' },
-  { value: 'dark', label: 'Тёмная', icon: 'mdi:weather-night' },
-  { value: 'system', label: 'Система', icon: 'mdi:theme-light-dark' },
+const THEME_OPTIONS: { value: ThemeMode; label: TKey; icon: string }[] = [
+  { value: 'light', label: 'settings.themeLight', icon: 'mdi:white-balance-sunny' },
+  { value: 'dark', label: 'settings.themeDark', icon: 'mdi:weather-night' },
+  { value: 'system', label: 'settings.themeSystem', icon: 'mdi:theme-light-dark' },
 ]
-
-type LanguageCode = 'ru' | 'en' | 'uz'
-
-const LANGUAGE_OPTIONS: { value: LanguageCode; label: string }[] = [
-  { value: 'ru', label: 'Русский' },
-  { value: 'en', label: 'English' },
-  { value: 'uz', label: "O'zbekcha" },
-]
-
-const LANGUAGE_STORAGE_KEY = 'interface_language'
-
-function loadStoredLanguage(): LanguageCode {
-  try {
-    const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY)
-    if (stored === 'ru' || stored === 'en' || stored === 'uz') return stored
-  } catch {}
-  return 'ru'
-}
 
 export function LanguageThemePage() {
   const { mode, setMode } = useTheme()
-  const [language, setLanguage] = useState<LanguageCode>(loadStoredLanguage)
-
-  const selectLanguage = (value: LanguageCode) => {
-    setLanguage(value)
-    try {
-      localStorage.setItem(LANGUAGE_STORAGE_KEY, value)
-    } catch {}
-  }
+  // Язык живёт в контексте, а не в локальном стейте: выбор должен перерисовать
+  // весь интерфейс, а не только эту страницу.
+  const { lang, setLang, t } = useI18n()
 
   return (
     <div className="flex flex-col gap-3 animate-fade-in-up">
       <section className="rounded-[24px] border border-[var(--line)] bg-[var(--surface)] overflow-hidden shadow-sm">
         <div className="px-5 py-4 border-b border-[var(--line)]">
-          <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">Тема оформления</p>
+          <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">{t('settings.theme')}</p>
         </div>
         <div className="p-5">
           <div className="flex items-center gap-1 rounded-2xl bg-[var(--surface-muted)] p-1">
@@ -57,7 +34,7 @@ export function LanguageThemePage() {
                 }`}
               >
                 <Icon icon={opt.icon} width={16} />
-                {opt.label}
+                {t(opt.label)}
               </button>
             ))}
           </div>
@@ -66,18 +43,20 @@ export function LanguageThemePage() {
 
       <section className="rounded-[24px] border border-[var(--line)] bg-[var(--surface)] overflow-hidden shadow-sm">
         <div className="px-5 py-4 border-b border-[var(--line)]">
-          <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">Язык интерфейса</p>
+          <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">{t('settings.language')}</p>
         </div>
         <div className="px-5 py-2">
-          {LANGUAGE_OPTIONS.map((opt) => (
+          {LANGUAGES.map((opt) => (
             <button
               key={opt.value}
               type="button"
-              onClick={() => selectLanguage(opt.value)}
+              onClick={() => setLang(opt.value)}
               className="flex items-center justify-between w-full py-3 border-0 border-b border-[var(--line)] last:border-0 bg-transparent text-left cursor-pointer"
             >
+              {/* Названия языков намеренно не переводятся: «O'zbekcha» ищут
+                  глазами именно так, на любом текущем языке. */}
               <span className="text-[14px] font-semibold text-[var(--text-main)]">{opt.label}</span>
-              {language === opt.value && (
+              {lang === opt.value && (
                 <Icon icon="mdi:check-circle" width={20} className="text-[var(--accent)]" />
               )}
             </button>

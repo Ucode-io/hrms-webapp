@@ -1,3 +1,4 @@
+import { tr, type TKey, formatNumberLocal, formatDateLocal } from '../i18n'
 import adminRequest from './adminRequest'
 
 /* ── Types ─────────────────────────────────────────── */
@@ -74,14 +75,14 @@ export function normalizeRecord(item: Compensation): CompensationRecord {
 }
 
 export function formatAmount(n: number): string {
-  return new Intl.NumberFormat('ru-RU').format(n) + ' сум'
+  return formatNumberLocal(n) + ' ' + tr('payroll.currency')
 }
 
 export function formatDate(iso: string): string {
   if (!iso) return '—'
   const d = new Date(iso)
   if (isNaN(d.getTime())) return iso
-  return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return formatDateLocal(d, { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 export function toIsoDate(d: Date): string {
@@ -91,12 +92,12 @@ export function toIsoDate(d: Date): string {
 export function getMonthLabel(iso: string): string {
   const d = new Date(iso + '-01')
   if (isNaN(d.getTime())) return iso
-  return d.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+  return formatDateLocal(d, { month: 'long', year: 'numeric' })
 }
 
-export const OPERATION_LABELS: Record<OperationType, string> = {
-  income: 'Начисление',
-  deduction: 'Удержание',
+export const OPERATION_LABELS: Record<OperationType, TKey> = {
+  income: 'payroll.income',
+  deduction: 'payroll.deduction',
 }
 
 /* ── Service ───────────────────────────────────────── */

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
+import { useT } from '../i18n'
 
 import { Model } from 'survey-core'
 import { Survey } from 'survey-react-ui'
@@ -13,6 +14,8 @@ import { parseSurveyBody, surveysService } from '../api/surveysService'
 import { surveyTheme } from '../config/surveyTheme'
 
 export function SurveyTakePage() {
+  const t = useT()
+
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const surveysId = id || ''
@@ -72,7 +75,7 @@ export function SurveyTakePage() {
           await queryClient.invalidateQueries({ queryKey: ['my-surveys'] })
         } catch (error) {
           console.error('Failed to submit survey:', error)
-          setSubmitError('Не удалось отправить ответы. Попробуйте еще раз.')
+          setSubmitError(t('surveys.sendFailed'))
           // Return the survey to an editable state so the user can retry.
           sender.clear(false, false)
         } finally {
@@ -94,32 +97,32 @@ export function SurveyTakePage() {
         </div>
       ) : isError ? (
         <div className="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
-          Опрос недоступен: возможно, он не назначен вам или уже не активен.
+          {t('surveys.unavailable')}
         </div>
       ) : isDone ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl bg-white p-8 text-center shadow-sm">
           <Icon icon="mdi:check-circle" width={48} className="text-green-500" />
-          <p className="text-base font-semibold text-gray-900">Спасибо!</p>
-          <p className="text-sm text-gray-500">Ваши ответы отправлены.</p>
+          <p className="text-base font-semibold text-gray-900">{t('surveys.thanks')}</p>
+          <p className="text-sm text-gray-500">{t('surveys.answersSent')}</p>
           <button
             type="button"
             onClick={() => navigate('/surveys')}
             className="mt-2 rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white"
           >
-            К списку опросов
+            {t('surveys.toList')}
           </button>
         </div>
       ) : data?.already_completed ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl bg-white p-8 text-center shadow-sm">
           <Icon icon="mdi:check-circle-outline" width={48} className="text-green-500" />
-          <p className="text-base font-semibold text-gray-900">Опрос уже пройден</p>
-          <p className="text-sm text-gray-500">Повторное прохождение недоступно.</p>
+          <p className="text-base font-semibold text-gray-900">{t('surveys.alreadyPassed')}</p>
+          <p className="text-sm text-gray-500">{t('surveys.noRetake')}</p>
           <button
             type="button"
             onClick={() => navigate('/surveys')}
             className="mt-2 rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white"
           >
-            К списку опросов
+            {t('surveys.toList')}
           </button>
         </div>
       ) : model ? (
@@ -131,7 +134,7 @@ export function SurveyTakePage() {
           )}
           {isSubmitting && (
             <div className="mx-4 mt-4 rounded-xl bg-[var(--accent-light)] px-4 py-3 text-sm text-[var(--accent)]">
-              Отправляем ответы...
+              {t('surveys.sending')}
             </div>
           )}
           <Survey model={model} />

@@ -32,6 +32,7 @@ import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { CalendarPage } from '../pages/CalendarPage'
 import { TasksCalendarPage } from '../pages/TasksCalendarPage'
 import { hasPendingTaskId } from '../telegram/startParam'
+import { useT, type TKey } from '../i18n'
 
 function detectKonstaTheme(): 'ios' | 'material' {
   if (typeof navigator === 'undefined') return 'material'
@@ -41,38 +42,39 @@ function detectKonstaTheme(): 'ios' | 'material' {
   return 'material'
 }
 
-const PAGE_TITLES: Record<string, string> = {
-  '/time': 'Время',
-  '/payroll': 'Зарплата',
-  '/more': 'Ещё',
-  '/profile': 'Профиль',
-  '/sport': 'Спорт',
-  '/org-structure': 'Орг структура',
-  '/contacts': 'Контакты',
-  '/kpi': 'KPI',
-  '/tasks': 'Задачи',
-  '/documents': 'Документы',
-  '/property': 'Имущество',
-  '/surveys': 'Опросы',
-  '/trainings': 'Тренинги',
-  '/knowledge': 'База знаний',
-  '/copilot': 'AI-помощник',
-  '/news': 'Новости',
-  '/profile/my-data': 'Мои данные',
-  '/kiosk-mode': 'Режим киоска',
-  '/language-theme': 'Язык и тема',
-  '/tracking-settings': 'Настройки отслеживания',
-  '/change-password': 'Смена пароля',
-  '/privacy-policy': 'Политика конфиденциальности',
-  '/support': 'Поддержка',
-  '/company': 'Компания',
-  '/reports': 'Отчёты',
-  '/calendar': 'Календарь',
-  '/tasks-calendar': 'Календарь задач',
+const PAGE_TITLES: Record<string, TKey> = {
+  '/time': 'page.time',
+  '/payroll': 'page.payroll',
+  '/more': 'page.more',
+  '/profile': 'page.profile',
+  '/sport': 'page.sport',
+  '/org-structure': 'page.orgStructure',
+  '/contacts': 'page.contacts',
+  '/kpi': 'page.kpi',
+  '/tasks': 'page.tasks',
+  '/documents': 'page.documents',
+  '/property': 'page.property',
+  '/surveys': 'page.surveys',
+  '/trainings': 'page.trainings',
+  '/knowledge': 'page.knowledge',
+  '/copilot': 'page.copilot',
+  '/news': 'page.news',
+  '/profile/my-data': 'page.myData',
+  '/kiosk-mode': 'page.kiosk',
+  '/language-theme': 'page.languageTheme',
+  '/tracking-settings': 'page.tracking',
+  '/change-password': 'page.changePassword',
+  '/privacy-policy': 'page.privacy',
+  '/support': 'page.support',
+  '/company': 'page.company',
+  '/reports': 'page.reports',
+  '/calendar': 'page.calendar',
+  '/tasks-calendar': 'page.tasksCalendar',
 }
 
 function CurrentHeader() {
   const { pathname } = useLocation()
+  const t = useT()
   const isHome = pathname === '/home' || pathname === '/'
 
   if (isHome) return <AppHeader />
@@ -80,13 +82,14 @@ function CurrentHeader() {
   const isSurveyTake = /^\/surveys\/.+/.test(pathname)
   const isTrainingDetail = /^\/trainings\/.+/.test(pathname)
   const isKnowledgeArticle = /^\/knowledge\/.+/.test(pathname)
-  const title = isSurveyTake
-    ? 'Прохождение опроса'
+  const titleKey: TKey | '' = isSurveyTake
+    ? 'page.surveyTake'
     : isTrainingDetail
-      ? 'Тренинг'
+      ? 'page.trainingDetail'
       : isKnowledgeArticle
-        ? 'Статья'
+        ? 'page.knowledgeArticle'
         : PAGE_TITLES[pathname] || ''
+  const title = titleKey ? t(titleKey) : ''
   const shouldShowBack =
     pathname === '/time' ||
     pathname === '/payroll' ||
@@ -136,6 +139,7 @@ const TABBAR_ROUTES = new Set(['/more'])
 
 export function AppShell() {
   const { isAuthorized } = useAuth()
+  const t = useT()
   const konstaTheme = useMemo(() => detectKonstaTheme(), [])
   const { resolvedTheme } = useTheme()
   const { pathname } = useLocation()
@@ -168,14 +172,14 @@ export function AppShell() {
             <Route path="/more" element={<MorePage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/profile/my-data" element={<MyDataPage />} />
-            <Route path="/kiosk-mode" element={<PlaceholderPage title="Режим киоска" />} />
+            <Route path="/kiosk-mode" element={<PlaceholderPage title={t('page.kiosk')} />} />
             <Route path="/language-theme" element={<LanguageThemePage />} />
-            <Route path="/tracking-settings" element={<PlaceholderPage title="Настройки отслеживания" />} />
-            <Route path="/change-password" element={<PlaceholderPage title="Смена пароля" />} />
-            <Route path="/privacy-policy" element={<PlaceholderPage title="Политика конфиденциальности" />} />
-            <Route path="/support" element={<PlaceholderPage title="Поддержка" />} />
-            <Route path="/company" element={<PlaceholderPage title="Компания" />} />
-            <Route path="/reports" element={<PlaceholderPage title="Отчёты" />} />
+            <Route path="/tracking-settings" element={<PlaceholderPage title={t('page.tracking')} />} />
+            <Route path="/change-password" element={<PlaceholderPage title={t('page.changePassword')} />} />
+            <Route path="/privacy-policy" element={<PlaceholderPage title={t('page.privacy')} />} />
+            <Route path="/support" element={<PlaceholderPage title={t('page.support')} />} />
+            <Route path="/company" element={<PlaceholderPage title={t('page.company')} />} />
+            <Route path="/reports" element={<PlaceholderPage title={t('page.reports')} />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/tasks-calendar" element={<TasksCalendarPage />} />
             <Route path="/sport" element={<SportPage />} />

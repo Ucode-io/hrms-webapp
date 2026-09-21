@@ -1,20 +1,14 @@
 import { useMemo } from 'react'
 import { Icon } from '@iconify/react'
+import { useT, getLang, monthNames, weekdayNames, type TKey, formatDateLocal } from '../i18n'
 
 /** Режимы одинаковы у календаря событий и календаря задач — см. макеты. */
 export type CalendarView = 'month' | 'week' | 'day'
 
-const VIEW_TABS: Array<{ key: CalendarView; label: string }> = [
-  { key: 'month', label: 'Месяц' },
-  { key: 'week', label: 'Неделя' },
-  { key: 'day', label: 'День' },
-]
-
-const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
-
-const MONTHS_NOMINATIVE = [
-  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
+const VIEW_TABS: Array<{ key: CalendarView; label: TKey }> = [
+  { key: 'month', label: 'calendar.month' },
+  { key: 'week', label: 'calendar.week' },
+  { key: 'day', label: 'calendar.day' },
 ]
 
 export const toIsoDate = (value: Date): string => {
@@ -63,10 +57,9 @@ export const moveCursor = (cursor: Date, view: CalendarView, direction: -1 | 1):
 }
 
 export const formatCursorTitle = (cursor: Date, view: CalendarView): string => {
-  if (view === 'month') return `${MONTHS_NOMINATIVE[cursor.getMonth()]} ${cursor.getFullYear()}`
+  if (view === 'month') return `${monthNames(getLang())[cursor.getMonth()]} ${cursor.getFullYear()}`
   if (view === 'day') {
-    return cursor
-      .toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', weekday: 'long' })
+    return formatDateLocal(cursor, { day: 'numeric', month: 'short', weekday: 'long' })
       .replace('.', '')
   }
   const first = startOfWeek(cursor)
@@ -74,8 +67,8 @@ export const formatCursorTitle = (cursor: Date, view: CalendarView): string => {
   const sameMonth = first.getMonth() === last.getMonth()
   const firstLabel = sameMonth
     ? String(first.getDate())
-    : first.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '')
-  const lastLabel = last.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '')
+    : formatDateLocal(first, { day: 'numeric', month: 'short' }).replace('.', '')
+  const lastLabel = formatDateLocal(last, { day: 'numeric', month: 'short' }).replace('.', '')
   return `${firstLabel}–${lastLabel} ${last.getFullYear()}`
 }
 
@@ -102,6 +95,7 @@ export function PeriodCalendar({
   onViewChange,
   accentColor,
 }: PeriodCalendarProps) {
+  const t = useT()
   const todayIso = toIsoDate(new Date())
   const cursorIso = toIsoDate(cursor)
 
@@ -143,7 +137,7 @@ export function PeriodCalendar({
       >
         {withWeekday && (
           <span className={`text-[10px] font-bold uppercase ${isSelected ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>
-            {WEEKDAYS[(date.getDay() + 6) % 7]}
+            {weekdayNames(getLang())[(date.getDay() + 6) % 7]}
           </span>
         )}
         {date.getDate()}
@@ -168,7 +162,7 @@ export function PeriodCalendar({
         <button
           type="button"
           onClick={() => onCursorChange(moveCursor(cursor, view, -1))}
-          aria-label="Предыдущий период"
+          aria-label={t('calendar.prevPeriod')}
           className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface)] text-[var(--text-secondary)] active:scale-95"
         >
           <Icon icon="mdi:chevron-left" width={20} />
@@ -179,7 +173,7 @@ export function PeriodCalendar({
         <button
           type="button"
           onClick={() => onCursorChange(moveCursor(cursor, view, 1))}
-          aria-label="Следующий период"
+          aria-label={t('calendar.nextPeriod')}
           className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface)] text-[var(--text-secondary)] active:scale-95"
         >
           <Icon icon="mdi:chevron-right" width={20} />
@@ -201,7 +195,7 @@ export function PeriodCalendar({
                   : 'text-[var(--text-muted)]'
               }`}
             >
-              {tab.label}
+              {t(tab.label)}
             </button>
           )
         })}
@@ -210,7 +204,7 @@ export function PeriodCalendar({
       {view === 'month' && (
         <div className="rounded-2xl bg-[var(--surface)] p-2.5">
           <div className="mb-1 grid grid-cols-7 gap-1">
-            {WEEKDAYS.map((label) => (
+            {weekdayNames(getLang()).map((label) => (
               <span key={label} className="text-center text-[11px] font-semibold text-[var(--text-muted)]">
                 {label}
               </span>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Icon } from '@iconify/react'
+import { useT, tr, type TKey } from '../i18n'
 import {
   streamChat,
   streamConfirm,
@@ -46,23 +47,19 @@ interface Msg {
   links?: CopilotLink[]
 }
 
-const ERROR_TEXT: Record<CopilotErrorCode, string> = {
-  forbidden: 'Нет доступа к этим данным.',
-  permission_denied: 'Недостаточно прав для этого действия.',
-  not_found: 'Не удалось найти запрошенное.',
-  rate_limited: 'Слишком много запросов. Подождите немного и повторите.',
-  invalid_action: 'Это действие больше недоступно.',
-  action_expired: 'Действие устарело. Повторите запрос.',
-  timeout: 'AI-помощник слишком долго отвечал, запрос остановлен.',
-  unavailable: 'AI-помощник недоступен. Сообщите администратору.',
-  internal: 'Что-то пошло не так. Попробуйте ещё раз.',
+const ERROR_TEXT: Record<CopilotErrorCode, TKey> = {
+  forbidden: 'copilot.forbidden',
+  permission_denied: 'copilot.permissionDenied',
+  not_found: 'copilot.notFound',
+  rate_limited: 'copilot.rateLimited',
+  invalid_action: 'copilot.invalidAction',
+  action_expired: 'copilot.actionExpired',
+  timeout: 'copilot.timeout',
+  unavailable: 'copilot.unavailable',
+  internal: 'copilot.internal',
 }
 
-const SUGGESTIONS = [
-  'Сколько у меня осталось отпускных дней?',
-  'Покажи мои опоздания за этот месяц',
-  'Когда была моя последняя зарплата?',
-]
+const SUGGESTION_KEYS: TKey[] = ['copilot.suggest1', 'copilot.suggest2', 'copilot.suggest3']
 
 /** График как таблица: те же строки, без библиотеки рисования. */
 const chartToTable = (chart: CopilotChart): CopilotTable => {
@@ -71,7 +68,7 @@ const chartToTable = (chart: CopilotChart): CopilotTable => {
   const columns = isPie
     ? [
         { key: 'name', label: '' },
-        { key: 'value', label: 'Значение' },
+        { key: 'value', label: tr('copilot.value') },
       ]
     : [
         { key: xKey, label: '' },
@@ -175,6 +172,8 @@ function applyEvent(msgs: Msg[], e: CopilotStreamEvent): Msg[] {
 }
 
 export function CopilotPage() {
+  const t = useT()
+
   const [messages, setMessages] = useState<Msg[]>([])
   const [draft, setDraft] = useState('')
   const [isStreaming, setStreaming] = useState(false)
@@ -210,7 +209,7 @@ export function CopilotPage() {
       try {
         await start((event) => {
           if (event.type === 'error') {
-            setError((event.code && ERROR_TEXT[event.code]) || event.message)
+            setError((event.code && tr(ERROR_TEXT[event.code])) || event.message)
             setTool(null)
             return
           }
@@ -219,7 +218,7 @@ export function CopilotPage() {
           setMessages((msgs) => applyEvent(msgs, event))
         }, own.signal)
       } catch {
-        if (!own.signal.aborted) setError('Соединение с AI-помощником прервалось.')
+        if (!own.signal.aborted) setError(tr('copilot.connectionLost'))
       } finally {
         // Закрывать состояние вправе только тот запуск, который ещё владеет
         // контроллером: finally отменённого прилетает, когда его сменщик уже в
@@ -283,13 +282,13 @@ export function CopilotPage() {
             <div className="w-14 h-14 rounded-2xl bg-[var(--accent-light)] flex items-center justify-center">
               <Icon icon="mdi:robot-happy-outline" className="text-[var(--accent)]" width={30} />
             </div>
-            <p className="text-[15px] font-semibold text-[var(--text-main)]">AI-помощник HRMS</p>
+            <p className="text-[15px] font-semibold text-[var(--text-main)]">{t('copilot.title')}</p>
             <p className="text-[13px] text-[var(--text-muted)] max-w-[260px]">
-              Спросите про отпуск, зарплату, график или задачи — отвечу по вашим данным.
+              {t('copilot.hint')}
             </p>
           </div>
           <div className="flex flex-col gap-2 mt-2">
-            {SUGGESTIONS.map((s) => (
+            {SUGGESTION_KEYS.map((key) => t(key)).map((s) => (
               <button
                 key={s}
                 type="button"
@@ -310,7 +309,7 @@ export function CopilotPage() {
       {isStreaming && (
         <div className="flex items-center gap-2 text-[13px] text-[var(--text-muted)] px-1">
           <Icon icon="svg-spinners:3-dots-fade" width={22} />
-          {tool ? toolLabel(tool) : 'Думаю…'}
+          {tool ? toolLabel(tool) : tr('copilot.thinking')}
         </div>
       )}
 
@@ -341,7 +340,7 @@ export function CopilotPage() {
             }}
             rows={1}
             maxLength={8000}
-            placeholder="Спросите что-нибудь…"
+            placeholder={t('copilot.inputPlaceholder')}
             className="flex-1 resize-none max-h-28 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-[14px] outline-none focus:border-[var(--accent)]"
           />
           <button
@@ -360,11 +359,11 @@ export function CopilotPage() {
 
 /** Имя инструмента человеку. Незнакомое не показываем — оно английское и техническое. */
 const toolLabel = (tool: string): string => {
-  if (tool.includes('report')) return 'Собираю отчёт…'
-  if (tool.includes('knowledge')) return 'Ищу в базе знаний…'
+  if (tool.includes('report')) return tr('copilot.buildingReport')
+  if (tool.includes('knowledge')) return tr('copilot.searchingKnowledge')
   if (tool.includes('create') || tool.includes('update') || tool.includes('delete'))
-    return 'Готовлю изменение…'
-  return 'Смотрю данные…'
+    return tr('copilot.preparingChange')
+  return tr('copilot.readingData')
 }
 
 function Bubble({
@@ -494,7 +493,7 @@ function ResultTable({ table }: { table: CopilotTable }) {
       </div>
       {table.totalCount != null && table.totalCount > table.rows.length && (
         <p className="px-3.5 py-2 text-[11px] text-[var(--text-muted)] border-t border-[var(--line)]/60">
-          Показано {table.rows.length} из {table.totalCount}
+          {tr('copilot.shownRows', { shown: table.rows.length, total: table.totalCount ?? table.rows.length })}
         </p>
       )}
     </div>
@@ -540,7 +539,7 @@ function ActionCard({
             onClick={() => onConfirm(action.actionId, 'approve')}
             className="flex-1 py-2 rounded-xl bg-[var(--accent)] text-white text-[13px] font-medium disabled:opacity-50 active:scale-[0.98] transition"
           >
-            Подтвердить
+            {tr('copilot.confirm')}
           </button>
           <button
             type="button"
@@ -548,7 +547,7 @@ function ActionCard({
             onClick={() => onConfirm(action.actionId, 'reject')}
             className="flex-1 py-2 rounded-xl bg-[var(--app-bg)] text-[var(--text-main)] text-[13px] font-medium disabled:opacity-50 active:scale-[0.98] transition"
           >
-            Отклонить
+            {tr('copilot.reject')}
           </button>
         </div>
       ) : (
@@ -557,10 +556,10 @@ function ActionCard({
             action.state === 'failed' ? 'text-red-600' : 'text-[var(--text-muted)]'
           }`}
         >
-          {action.state === 'executed' && (action.summary || 'Выполнено')}
-          {action.state === 'failed' && (action.error || 'Не удалось выполнить')}
-          {action.state === 'approved' && 'Выполняю…'}
-          {action.state === 'rejected' && 'Отклонено'}
+          {action.state === 'executed' && (action.summary || tr('copilot.executed'))}
+          {action.state === 'failed' && (action.error || tr('copilot.failed'))}
+          {action.state === 'approved' && tr('copilot.executing')}
+          {action.state === 'rejected' && tr('copilot.rejected')}
         </p>
       )}
     </div>

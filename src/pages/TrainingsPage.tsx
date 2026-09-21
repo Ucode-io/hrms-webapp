@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
+import { useT, tr, formatDateLocal } from '../i18n'
 import { useAuth } from '../context/AuthContext'
 import { trainingsService, type MyTraining } from '../api/trainingsService'
 
@@ -9,7 +10,7 @@ const formatDate = (value: string | null): string => {
   if (!value) return ''
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return ''
-  return parsed.toLocaleDateString('ru-RU', {
+  return formatDateLocal(parsed, {
     day: '2-digit',
     month: 'long',
   })
@@ -19,8 +20,8 @@ const formatPeriod = (training: MyTraining): string => {
   const start = formatDate(training.starts_at)
   const end = formatDate(training.ends_at)
   if (start && end) return `${start} — ${end}`
-  if (start) return `с ${start}`
-  if (end) return `до ${end}`
+  if (start) return tr('training.from', { date: start })
+  if (end) return tr('training.to', { date: end })
   return ''
 }
 
@@ -29,17 +30,17 @@ const STATUS_META: Record<
   { label: string; className: string; icon: string }
 > = {
   submitted: {
-    label: 'ДЗ на проверке',
+    label: tr('training.hwReview'),
     className: 'bg-[var(--accent-light)] text-[var(--accent)]',
     icon: 'mdi:clock-outline',
   },
   accepted: {
-    label: 'ДЗ принято',
+    label: tr('training.hwAccepted'),
     className: 'bg-green-50 text-green-600',
     icon: 'mdi:check-circle-outline',
   },
   rejected: {
-    label: 'ДЗ отклонено',
+    label: tr('training.hwRejected'),
     className: 'bg-red-50 text-red-600',
     icon: 'mdi:close-circle-outline',
   },
@@ -57,7 +58,7 @@ const getLifecycleBadge = (
     const statusMeta = training.submission_status ? STATUS_META[training.submission_status] : null
     return (
       statusMeta || {
-        label: 'Нужно сдать ДЗ',
+        label: tr('training.hwNeeded'),
         className: 'bg-amber-50 text-amber-600',
         icon: 'mdi:file-upload-outline',
       }
@@ -69,18 +70,20 @@ const getLifecycleBadge = (
   const start = training.starts_at ? new Date(training.starts_at) : null
   const end = training.ends_at ? new Date(training.ends_at) : start
   if (end && !Number.isNaN(end.getTime()) && end < today) {
-    return { label: 'Завершён', className: 'bg-green-50 text-green-600', icon: 'mdi:check' }
+    return { label: tr('training.finished'), className: 'bg-green-50 text-green-600', icon: 'mdi:check' }
   }
   if (start && !Number.isNaN(start.getTime()) && start > today) {
-    return { label: 'Скоро', className: 'bg-[var(--accent-light)] text-[var(--accent)]', icon: 'mdi:calendar-clock' }
+    return { label: tr('training.soon'), className: 'bg-[var(--accent-light)] text-[var(--accent)]', icon: 'mdi:calendar-clock' }
   }
   if (start) {
-    return { label: 'Идёт', className: 'bg-violet-50 text-violet-600', icon: 'mdi:play-circle-outline' }
+    return { label: tr('training.ongoing'), className: 'bg-violet-50 text-violet-600', icon: 'mdi:play-circle-outline' }
   }
   return null
 }
 
 export function TrainingsPage() {
+  const t = useT()
+
   const navigate = useNavigate()
   const { session, profile } = useAuth()
 
@@ -115,10 +118,10 @@ export function TrainingsPage() {
         </div>
         <div className="min-w-0 flex-1">
           <p className="m-0 text-[14px] font-bold text-[var(--text-main)] leading-snug">
-            {training.title || 'Без названия'}
+            {training.title || t('tasks.noName')}
           </p>
           <p className="m-0 mt-0.5 text-[12px] text-[var(--text-muted)] leading-snug">
-            {[period, training.location, `${training.materials_count} материал(ов)`]
+            {[period, training.location, t('training.materialsCount', { count: training.materials_count })]
               .filter(Boolean)
               .join(' · ')}
           </p>
@@ -146,12 +149,12 @@ export function TrainingsPage() {
         </div>
       ) : isError ? (
         <div className="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
-          Не удалось загрузить тренинги. Попробуйте позже.
+          {t('training.loadFailed')}
         </div>
       ) : trainings.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-2xl bg-white p-8 text-center shadow-sm">
           <Icon icon="mdi:school-outline" width={40} className="text-gray-300" />
-          <p className="text-sm text-gray-500">Вам пока не назначены тренинги</p>
+          <p className="text-sm text-gray-500">{t('training.empty')}</p>
         </div>
       ) : (
         <section className="space-y-2.5">{trainings.map(renderCard)}</section>

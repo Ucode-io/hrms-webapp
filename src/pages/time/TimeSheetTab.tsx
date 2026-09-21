@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Drawer } from 'vaul'
 import { Icon } from '@iconify/react'
+import { useT, tr, weekdayNames, getLang, type TKey, formatDateLocal } from '../../i18n'
 import { useAuth } from '../../context/AuthContext'
 import { useCompany } from '../../context/CompanyContext'
 import {
@@ -32,7 +33,7 @@ function monthKeyToDate(key: string): Date {
 
 function monthLabel(key: string): string {
   const d = monthKeyToDate(key)
-  return d.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+  return formatDateLocal(d, { month: 'long', year: 'numeric' })
     .replace(/^./, (c) => c.toUpperCase())
 }
 
@@ -130,22 +131,24 @@ const DAY_STATUS_STYLE: Record<DayStatus, { cell: string; num: string; dot?: str
   empty:   { cell: 'bg-transparent', num: 'text-[var(--text-muted)] opacity-70 font-medium' },
 }
 
-const ACTION_BADGE: Record<string, { label: string; cls: string; icon: string }> = {
-  present: { label: 'Присутствовал', cls: 'bg-emerald-500/15 text-emerald-500',    icon: 'mdi:check-circle' },
-  late:    { label: 'Опоздал',       cls: 'bg-amber-500/15 text-amber-500',        icon: 'mdi:clock-alert' },
-  absent:  { label: 'Отсутствовал',  cls: 'bg-rose-500/15 text-rose-500',          icon: 'mdi:close-circle' },
-  active:  { label: 'Активен',       cls: 'bg-[var(--accent-light)] text-[var(--accent)]', icon: 'mdi:circle' },
+// Подписи — ключи: объекты собираются на импорт модуля, до выбора языка.
+const ACTION_BADGE: Record<string, { label: TKey | '—'; cls: string; icon: string }> = {
+  present: { label: 'sheet.present', cls: 'bg-emerald-500/15 text-emerald-500',    icon: 'mdi:check-circle' },
+  late:    { label: 'sheet.late',    cls: 'bg-amber-500/15 text-amber-500',        icon: 'mdi:clock-alert' },
+  absent:  { label: 'sheet.absent',  cls: 'bg-rose-500/15 text-rose-500',          icon: 'mdi:close-circle' },
+  active:  { label: 'sheet.active',  cls: 'bg-[var(--accent-light)] text-[var(--accent)]', icon: 'mdi:circle' },
   unknown: { label: '—',             cls: 'bg-[var(--surface-muted)] text-[var(--text-muted)]', icon: 'mdi:minus' },
 }
 
-const WORKFLOW_BADGE: Record<string, { label: string; cls: string }> = {
-  accepted:  { label: 'Подтверждено', cls: 'bg-emerald-500/15 text-emerald-500' },
-  requested: { label: 'На проверке',  cls: 'bg-amber-500/15 text-amber-500' },
-  rejected:  { label: 'Отклонено',    cls: 'bg-rose-500/15 text-rose-500' },
-  unknown:   { label: '—',            cls: 'bg-[var(--surface-muted)] text-[var(--text-muted)]' },
+const WORKFLOW_BADGE: Record<string, { label: TKey | '—'; cls: string }> = {
+  accepted:  { label: 'sheet.accepted',  cls: 'bg-emerald-500/15 text-emerald-500' },
+  requested: { label: 'sheet.requested', cls: 'bg-amber-500/15 text-amber-500' },
+  rejected:  { label: 'status.rejected', cls: 'bg-rose-500/15 text-rose-500' },
+  unknown:   { label: '—',               cls: 'bg-[var(--surface-muted)] text-[var(--text-muted)]' },
 }
 
-const WEEKDAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+/** '—' у неизвестного статуса — не ключ, переводить нечего. */
+const badgeLabel = (label: TKey | '—'): string => (label === '—' ? label : tr(label))
 
 /* ── Calendar grid ───────────────────────────────────── */
 function CalendarGrid({
@@ -159,6 +162,8 @@ function CalendarGrid({
   recordsByDate: Map<string, AttendanceRecord[]>
   onDayPress: (iso: string) => void
 }) {
+  const t = useT()
+
   const total = daysInMonth(monthKey)
   const firstWd = firstWeekdayOfMonth(monthKey)
   const cells: (number | null)[] = [
@@ -171,7 +176,7 @@ function CalendarGrid({
     <div>
       {/* Header */}
       <div className="grid grid-cols-7 mb-1">
-        {WEEKDAY_LABELS.map((d, i) => (
+        {weekdayNames(getLang()).map((d, i) => (
           <div key={d} className={`text-center text-[11px] font-bold py-1 ${i >= 5 ? 'text-rose-400' : 'text-[var(--text-muted)]'}`}>
             {d}
           </div>
@@ -194,7 +199,7 @@ function CalendarGrid({
             <button
               key={iso}
               type="button"
-              aria-label={`${day} число`}
+              aria-label={t('sheet.dayNumber', { day })}
               onClick={() => interactive && onDayPress(iso)}
               className={`relative flex flex-col items-center justify-center rounded-xl py-1.5 min-h-[46px] transition-all active:scale-95 ${style.cell} ${
                 isToday && status !== 'active' ? 'ring-2 ring-[var(--accent)]/50' : ''
@@ -215,10 +220,10 @@ function CalendarGrid({
       {/* Legend */}
       <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5 border-t border-[var(--line)] pt-3">
         {[
-          { color: 'bg-emerald-400', label: 'Присутствовал' },
-          { color: 'bg-amber-400', label: 'Опоздал' },
-          { color: 'bg-rose-400', label: 'Отсутствовал' },
-          { color: 'bg-[var(--accent)]', label: 'Активен' },
+          { color: 'bg-emerald-400', label: t('sheet.present') },
+          { color: 'bg-amber-400', label: t('sheet.late') },
+          { color: 'bg-rose-400', label: t('sheet.absent') },
+          { color: 'bg-[var(--accent)]', label: t('sheet.active') },
         ].map(({ color, label }) => (
           <div key={label} className="flex items-center gap-1">
             <span className={`h-2 w-2 rounded-full ${color}`} />
@@ -236,6 +241,8 @@ function RecordDetailDrawer({ record, open, onClose }: {
   open: boolean
   onClose: () => void
 }) {
+  const t = useT()
+
   if (!record) return null
   const iso = recordDateIso(record)
   const checkIn = normalizeTime(String(record.check_in_time || '')) || '—'
@@ -250,7 +257,7 @@ function RecordDetailDrawer({ record, open, onClose }: {
     if (a == null || b == null || b <= a) return ''
     const diff = b - a
     const h = Math.floor(diff / 60), m = diff % 60
-    return `${h}ч ${String(m).padStart(2, '0')}м`
+    return tr('sheet.hoursMinutes', { hours: h, minutes: String(m).padStart(2, '0') })
   })()
   const actionStatus = normalizeActionStatus(record.action_status)
   const workflowStatus = normalizeWorkflowStatus(record.status)
@@ -263,8 +270,8 @@ function RecordDetailDrawer({ record, open, onClose }: {
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" />
         <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)] rounded-t-[28px] outline-none">
-          <Drawer.Title className="sr-only">Детали посещаемости</Drawer.Title>
-          <Drawer.Description className="sr-only">Детали записи посещаемости</Drawer.Description>
+          <Drawer.Title className="sr-only">{t('sheet.detailsSr')}</Drawer.Title>
+          <Drawer.Description className="sr-only">{t('sheet.detailsSrDesc')}</Drawer.Description>
           <div className="flex justify-center pt-3 pb-2"><div className="h-1 w-10 rounded-full bg-gray-300" /></div>
 
           <div className="px-5 pb-[calc(28px+env(safe-area-inset-bottom))]">
@@ -272,23 +279,23 @@ function RecordDetailDrawer({ record, open, onClose }: {
             <div className="flex items-center justify-between mb-5">
               <div>
                 <p className="m-0 text-[18px] font-extrabold text-[var(--text-main)]">
-                  {d ? d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : iso}
+                  {d ? formatDateLocal(d, { day: 'numeric', month: 'long' }) : iso}
                 </p>
                 <p className="m-0 mt-0.5 text-[13px] text-[var(--text-muted)] capitalize">
-                  {d ? d.toLocaleDateString('ru-RU', { weekday: 'long' }) : ''}
+                  {d ? formatDateLocal(d, { weekday: 'long' }) : ''}
                 </p>
               </div>
               <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold ${actionCfg.cls}`}>
                 <Icon icon={actionCfg.icon} width={14} />
-                {actionCfg.label}
+                {badgeLabel(actionCfg.label)}
               </span>
             </div>
 
             {/* Times */}
             <div className="grid grid-cols-2 gap-3 mb-4">
               {[
-                { icon: 'mdi:login', label: 'Приход', value: checkIn, color: '#10b981' },
-                { icon: 'mdi:logout', label: 'Уход', value: checkOut, color: '#6366f1' },
+                { icon: 'mdi:login', label: t('check.in'), value: checkIn, color: '#10b981' },
+                { icon: 'mdi:logout', label: t('check.out'), value: checkOut, color: '#6366f1' },
               ].map(({ icon, label, value, color }) => (
                 <div key={label} className="rounded-2xl bg-[var(--app-bg)] px-4 py-3.5">
                   <div className="flex items-center gap-1.5 mb-1">
@@ -303,13 +310,13 @@ function RecordDetailDrawer({ record, open, onClose }: {
             {/* Stats row */}
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className="rounded-2xl bg-[var(--app-bg)] px-4 py-3.5">
-                <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">Длительность</span>
+                <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">{t('sheet.duration')}</span>
                 <p className="m-0 mt-1 text-[17px] font-extrabold text-[var(--text-main)]">{duration || '—'}</p>
               </div>
               <div className="rounded-2xl bg-[var(--app-bg)] px-4 py-3.5">
-                <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">Опоздание</span>
+                <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">{t('sheet.delay')}</span>
                 <p className={`m-0 mt-1 text-[17px] font-extrabold ${delay !== '00:00' ? 'text-amber-500' : 'text-emerald-500'}`}>
-                  {delay !== '00:00' ? `+${delay}` : 'Вовремя'}
+                  {delay !== '00:00' ? `+${delay}` : t('sheet.onTime')}
                 </p>
               </div>
             </div>
@@ -318,7 +325,7 @@ function RecordDetailDrawer({ record, open, onClose }: {
             {workflowStatus !== 'unknown' && (
               <div className={`rounded-2xl px-4 py-3 flex items-center gap-2 ${WORKFLOW_BADGE[workflowStatus].cls}`}>
                 <Icon icon="mdi:information-outline" width={16} />
-                <span className="text-[13px] font-semibold">{WORKFLOW_BADGE[workflowStatus].label}</span>
+                <span className="text-[13px] font-semibold">{badgeLabel(WORKFLOW_BADGE[workflowStatus].label)}</span>
               </div>
             )}
           </div>
@@ -338,6 +345,8 @@ function AddRecordDrawer({ open, defaultDate, employeeGuid, companyId, accentCol
   onClose: () => void
   onSaved: () => void
 }) {
+  const t = useT()
+
   const [form, setForm] = useState({ date: defaultDate, checkIn: '', checkOut: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -360,7 +369,7 @@ function AddRecordDrawer({ open, defaultDate, employeeGuid, companyId, accentCol
   )
 
   const handleSave = async () => {
-    if (!normalizeTime(form.checkIn)) { setError('Укажите время прихода'); return }
+    if (!normalizeTime(form.checkIn)) { setError(t('sheet.needCheckIn')); return }
     try {
       setSaving(true)
       await attendanceService.create({
@@ -369,7 +378,7 @@ function AddRecordDrawer({ open, defaultDate, employeeGuid, companyId, accentCol
       })
       onSaved()
       onClose()
-    } catch { setError('Не удалось сохранить') } finally { setSaving(false) }
+    } catch { setError(t('sheet.saveFailed')) } finally { setSaving(false) }
   }
 
   return (
@@ -377,19 +386,19 @@ function AddRecordDrawer({ open, defaultDate, employeeGuid, companyId, accentCol
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" />
         <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)] rounded-t-[28px] outline-none max-h-[90dvh] flex flex-col">
-          <Drawer.Title className="sr-only">Добавить запись</Drawer.Title>
-          <Drawer.Description className="sr-only">Форма добавления посещаемости</Drawer.Description>
+          <Drawer.Title className="sr-only">{t('sheet.addTitle')}</Drawer.Title>
+          <Drawer.Description className="sr-only">{t('sheet.addSrDesc')}</Drawer.Description>
           <div className="flex justify-center pt-3 pb-1"><div className="h-1 w-10 rounded-full bg-gray-300" /></div>
 
           <div className="flex-1 overflow-y-auto px-5 pb-[calc(24px+env(safe-area-inset-bottom))] pt-3">
-            <p className="m-0 text-[20px] font-extrabold text-[var(--text-main)]">Добавить запись</p>
-            <p className="m-0 mt-1 mb-5 text-[13px] text-[var(--text-muted)]">Запись будет отправлена на подтверждение</p>
+            <p className="m-0 text-[20px] font-extrabold text-[var(--text-main)]">{t('sheet.addTitle')}</p>
+            <p className="m-0 mt-1 mb-5 text-[13px] text-[var(--text-muted)]">{t('sheet.addHint')}</p>
 
             <div className="flex flex-col gap-3">
               {[
-                { label: 'Дата', type: 'date', key: 'date' as const },
-                { label: 'Приход', type: 'time', key: 'checkIn' as const },
-                { label: 'Уход (необязательно)', type: 'time', key: 'checkOut' as const },
+                { label: t('sheet.date'), type: 'date', key: 'date' as const },
+                { label: t('check.in'), type: 'time', key: 'checkIn' as const },
+                { label: t('sheet.checkOutOptional'), type: 'time', key: 'checkOut' as const },
               ].map(({ label, type, key }) => (
                 <label key={key} className="block">
                   <span className="block mb-1.5 text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{label}</span>
@@ -410,9 +419,9 @@ function AddRecordDrawer({ open, defaultDate, employeeGuid, companyId, accentCol
                 <Icon icon={delay === '00:00' ? 'mdi:check-circle' : 'mdi:clock-alert'} width={20}
                   className={delay === '00:00' ? 'text-emerald-500' : 'text-amber-500'} />
                 <div>
-                  <p className="m-0 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">Опоздание</p>
+                  <p className="m-0 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">{t('sheet.delay')}</p>
                   <p className={`m-0 text-[15px] font-extrabold ${delay === '00:00' ? 'text-emerald-500' : 'text-amber-500'}`}>
-                    {delay === '00:00' ? 'Вовремя ✓' : `+${delay}`}
+                    {delay === '00:00' ? t('sheet.onTimeMark') : `+${delay}`}
                   </p>
                 </div>
               </div>
@@ -427,12 +436,12 @@ function AddRecordDrawer({ open, defaultDate, employeeGuid, companyId, accentCol
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button type="button" onClick={onClose} disabled={saving}
                 className="h-12 rounded-2xl border border-[var(--line)] bg-[var(--surface)] text-[14px] font-bold text-[var(--text-secondary)]">
-                Отмена
+                {t('common.cancel')}
               </button>
               <button type="button" onClick={() => void handleSave()} disabled={saving}
                 className="h-12 rounded-2xl text-[14px] font-extrabold text-white transition active:scale-[0.98]"
                 style={{ background: accentColor }}>
-                {saving ? 'Сохранение…' : 'Сохранить'}
+                {saving ? t('sheet.saving') : t('common.save')}
               </button>
             </div>
           </div>
@@ -445,10 +454,12 @@ function AddRecordDrawer({ open, defaultDate, employeeGuid, companyId, accentCol
 /** «95 мин» → «1 ч 35 мин»: часы читаются быстрее трёхзначных минут. */
 function formatMinutes(total: number): string {
   const minutes = Math.max(0, Math.round(total))
-  if (minutes < 60) return `${minutes} мин`
+  if (minutes < 60) return tr('sheet.minutes', { count: minutes })
   const hours = Math.floor(minutes / 60)
   const rest = minutes % 60
-  return rest > 0 ? `${hours} ч ${rest} мин` : `${hours} ч`
+  return rest > 0
+    ? tr('sheet.hoursAndMinutes', { hours, minutes: rest })
+    : tr('sheet.hours', { count: hours })
 }
 
 /* ── Stats card ──────────────────────────────────────── */
@@ -475,6 +486,8 @@ function StatCard({ icon, iconBg, value, label, sub, valueColor }: {
 
 /* ── Tab ─────────────────────────────────────────────── */
 export function TimeSheetTab() {
+  const t = useT()
+
   const { session, profile } = useAuth()
   const { company } = useCompany()
   const accent = company.mainColor || '#3b6cf5'
@@ -541,12 +554,12 @@ export function TimeSheetTab() {
       : formatAmount(Math.round(lateness.penalty_amount))
 
   const latenessPenaltyHint = !lateness
-    ? 'Нет данных'
+    ? t('sheet.noData')
     : !lateness.has_work_schedule
-      ? 'Не задан график работы'
+      ? t('sheet.noSchedule')
       : lateness.penalized_minutes > 0
-        ? `${formatMinutes(lateness.penalized_minutes)} сверх ${lateness.grace_minutes} мин`
-        : `До ${lateness.grace_minutes} мин не штрафуется`
+        ? t('sheet.penaltyOver', { minutes: formatMinutes(lateness.penalized_minutes), grace: lateness.grace_minutes })
+        : t('sheet.graceInfo', { grace: lateness.grace_minutes })
 
   /* Stats — counted per unique day (a day may have several attendance rows) */
   const stats = useMemo(() => {
@@ -561,7 +574,9 @@ export function TimeSheetTab() {
       if (s === 'absent') absent++
     }
     const rate = elapsedDays > 0 ? Math.min(100, Math.round((worked / elapsedDays) * 100)) : 0
-    const rateLabel = rate >= 95 ? 'Отлично' : rate >= 80 ? 'Хорошо' : rate >= 60 ? 'Удовл.' : 'Низкий'
+    const rateLabel = rate >= 95 ? tr('sheet.rateExcellent')
+      : rate >= 80 ? tr('sheet.rateGood')
+        : rate >= 60 ? tr('sheet.rateFair') : tr('sheet.rateLow')
     return { plannedDays, elapsedDays, worked, late, absent, rate, rateLabel }
   }, [recordsByDate, monthPrefix, monthKey, todayIso])
 
@@ -598,7 +613,7 @@ export function TimeSheetTab() {
             <div className="text-center">
               <p className="m-0 text-[18px] font-extrabold text-white leading-snug">{monthLabel(monthKey)}</p>
               <p className="m-0 mt-0.5 text-[11.5px] text-white/70">
-                {stats.elapsedDays} раб. дней прошло · {stats.plannedDays - stats.elapsedDays} осталось
+                {t('sheet.progress', { elapsed: stats.elapsedDays, left: stats.plannedDays - stats.elapsedDays })}
               </p>
             </div>
             <button type="button" onClick={nextMonth}
@@ -614,11 +629,11 @@ export function TimeSheetTab() {
           <div className="rounded-2xl bg-rose-500/15 px-4 py-3.5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <Icon icon="mdi:alert-circle-outline" width={20} className="shrink-0 text-rose-500" />
-              <p className="m-0 text-[13px] font-semibold text-rose-500 truncate">Не удалось загрузить данные</p>
+              <p className="m-0 text-[13px] font-semibold text-rose-500 truncate">{t('sheet.loadFailed')}</p>
             </div>
             <button type="button" onClick={() => void refetch()}
               className="shrink-0 rounded-xl bg-[var(--surface)] px-3 py-1.5 text-[12px] font-bold text-rose-500 active:scale-95 transition-transform">
-              Повторить
+              {t('events.repeat')}
             </button>
           </div>
         )}
@@ -627,24 +642,24 @@ export function TimeSheetTab() {
         {!isLoading && !isError && (
           <div className="grid grid-cols-2 gap-3">
             <StatCard icon="mdi:calendar-month" iconBg="bg-indigo-400"
-              value={String(stats.plannedDays)} label="Рабочих дней" sub={`${stats.elapsedDays} прошло`} />
+              value={String(stats.plannedDays)} label={t('sheet.workingDays')} sub={t('sheet.elapsed', { count: stats.elapsedDays })} />
             <StatCard icon="mdi:check-circle" iconBg="bg-emerald-400"
-              value={String(stats.worked)} label="Отработано" valueColor="text-emerald-500" />
+              value={String(stats.worked)} label={t('sheet.worked')} valueColor="text-emerald-500" />
             {/* Опоздания: количество и суммарные минуты. Минуты приходят с
                 сервера (та же агрегация, что в отчётах и зарплатном Excel) —
                 на клиенте их из сырых записей честно не посчитать. */}
             <StatCard icon="mdi:clock-alert" iconBg="bg-amber-400"
-              value={String(lateness?.late_days ?? stats.late)} label="Опозданий"
+              value={String(lateness?.late_days ?? stats.late)} label={t('sheet.lateDays')}
               valueColor={(lateness?.late_days ?? stats.late) > 0 ? 'text-amber-500' : undefined}
               sub={
                 lateness
-                  ? `${formatMinutes(lateness.late_minutes)} всего`
+                  ? t('sheet.lateTotal', { minutes: formatMinutes(lateness.late_minutes) })
                   : stats.absent
-                    ? `${stats.absent} отс.`
+                    ? t('sheet.absentShort', { count: stats.absent })
                     : undefined
               } />
             <StatCard icon="mdi:cash-remove" iconBg="bg-rose-400"
-              value={latenessPenaltyLabel} label="Штраф за опоздания"
+              value={latenessPenaltyLabel} label={t('sheet.latePenalty')}
               valueColor={(lateness?.penalty_amount ?? 0) > 0 ? 'text-rose-500' : undefined}
               sub={latenessPenaltyHint} />
           </div>
@@ -656,7 +671,7 @@ export function TimeSheetTab() {
         {/* ── Calendar ──────────────────────────────── */}
         <div className="rounded-3xl bg-[var(--surface)] border border-[var(--line)] px-4 py-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">Календарь</p>
+            <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">{t('sheet.calendar')}</p>
             <p className="m-0 text-[13px] text-[var(--text-muted)]">{monthLabel(monthKey)}</p>
           </div>
           {isLoading ? (

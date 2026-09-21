@@ -1,5 +1,6 @@
 import { Fragment, type CSSProperties, type ReactNode } from 'react'
 import { Icon } from '@iconify/react'
+import { tr } from '../../i18n'
 import type { KbArticleSummary, KbBlock, KbInline, KbTextStyles } from '../../api/knowledgeService'
 import { FilePreviewButton } from '../../components/FilePreviewDrawer'
 
@@ -295,7 +296,7 @@ function BlockView({ block, index, onOpenArticle, resolveArticle }: BlockProps) 
     case 'file': {
       const url = propString(block, 'url')
       if (!url) return null
-      const name = propString(block, 'name') || propString(block, 'caption') || 'Файл'
+      const name = propString(block, 'name') || propString(block, 'caption') || tr('knowledge.file')
       return (
         <div className="my-1 flex items-center gap-2.5 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-light)] text-[var(--accent)]">
@@ -309,7 +310,7 @@ function BlockView({ block, index, onOpenArticle, resolveArticle }: BlockProps) 
             href={url}
             target="_blank"
             rel="noreferrer noopener"
-            aria-label="Скачать файл"
+            aria-label={tr('knowledge.downloadFile')}
             className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-gray-300 no-underline"
           >
             <Icon icon="mdi:download" width={18} />
@@ -328,7 +329,7 @@ function BlockView({ block, index, onOpenArticle, resolveArticle }: BlockProps) 
       const target = articleId ? resolveArticle(articleId) : undefined
       if (!target) {
         return (
-          <p className="my-1 text-[13px] italic text-[var(--text-muted)]">Подстатья удалена</p>
+          <p className="my-1 text-[13px] italic text-[var(--text-muted)]">{tr('knowledge.subarticleDeleted')}</p>
         )
       }
       return (
@@ -461,7 +462,7 @@ export function ArticleContent({
   resolveArticle: (articleId: string) => KbArticleSummary | undefined
 }) {
   if (blocks.length === 0) {
-    return <p className="m-0 text-[13px] text-[var(--text-muted)]">Статья пока пустая.</p>
+    return <p className="m-0 text-[13px] text-[var(--text-muted)]">{tr('knowledge.articleEmpty')}</p>
   }
   return (
     <BlockList blocks={blocks} onOpenArticle={onOpenArticle} resolveArticle={resolveArticle} />

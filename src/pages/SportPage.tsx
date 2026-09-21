@@ -2,6 +2,7 @@ import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Drawer } from 'vaul'
 import { Icon } from '@iconify/react'
+import { useT, tr, formatDateLocal } from '../i18n'
 import { useAuth } from '../context/AuthContext'
 import { useCompany } from '../context/CompanyContext'
 import { uploadFile } from '../api/dashboardService'
@@ -34,10 +35,10 @@ const getMonthKeyFromDateTime = (value: string): string => {
 }
 
 const formatMonthLabel = (monthKey: string): string => {
-  if (!monthKey) return 'месяц'
+  if (!monthKey) return tr('sport.month')
   const parsed = new Date(`${monthKey}-01T00:00:00`)
   if (Number.isNaN(parsed.getTime())) return monthKey
-  return parsed.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+  return formatDateLocal(parsed, { month: 'long', year: 'numeric' })
 }
 
 const getLastSixMonthKeys = (): string[] => {
@@ -51,6 +52,8 @@ const getLastSixMonthKeys = (): string[] => {
 }
 
 export function SportPage() {
+  const t = useT()
+
   const { session, profile } = useAuth()
   const { company } = useCompany()
   const [showForm, setShowForm] = useState(false)
@@ -153,14 +156,14 @@ export function SportPage() {
       setIsUploading(true)
       const url = await uploadFile(file)
       if (!url) {
-        setFormError('Не удалось получить ссылку на видео.')
+        setFormError(t('sport.videoLinkFailed'))
         return
       }
       setForm((prev) => ({ ...prev, video: url }))
       setFormError('')
     } catch (uploadError) {
       console.error('Sport video upload error:', uploadError)
-      setFormError('Не удалось загрузить видео.')
+      setFormError(t('sport.videoLoadFailed'))
     } finally {
       setIsUploading(false)
     }
@@ -168,19 +171,19 @@ export function SportPage() {
 
   const handleSave = async () => {
     if (!employeeGuid) {
-      setFormError('Не найден сотрудник.')
+      setFormError(t('sport.noEmployee'))
       return
     }
     if (!form.date) {
-      setFormError('Укажите дату.')
+      setFormError(t('sport.needDate'))
       return
     }
     if (!form.time) {
-      setFormError('Укажите время.')
+      setFormError(t('sport.needTime'))
       return
     }
     if (!form.video.trim()) {
-      setFormError('Загрузите видео.')
+      setFormError(t('sport.needVideo'))
       return
     }
 
@@ -209,7 +212,7 @@ export function SportPage() {
       await refetch()
     } catch (saveError) {
       console.error('Sport attendance save error:', saveError)
-      setFormError('Не удалось сохранить запись.')
+      setFormError(t('sport.saveFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -217,7 +220,7 @@ export function SportPage() {
 
   const handleDelete = async (record: SportAttendanceRecord) => {
     if (!record.guid) return
-    if (!window.confirm('Удалить запись посещения спорта?')) return
+    if (!window.confirm(t('sport.deleteConfirm'))) return
 
     try {
       setIsSubmitting(true)
@@ -225,7 +228,7 @@ export function SportPage() {
       await refetch()
     } catch (deleteError) {
       console.error('Sport attendance delete error:', deleteError)
-      setFormError('Не удалось удалить запись.')
+      setFormError(t('sport.deleteFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -241,8 +244,8 @@ export function SportPage() {
                 <Icon icon="mdi:dumbbell" width={18} />
               </span>
               <div className="min-w-0">
-                <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">Посещение спорта</p>
-                <p className="m-0 mt-0.5 text-[11px] text-[var(--text-muted)]">Ваши отметки и видео-подтверждения</p>
+                <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">{t('sport.title')}</p>
+                <p className="m-0 mt-0.5 text-[11px] text-[var(--text-muted)]">{t('sport.subtitle')}</p>
               </div>
             </div>
           </div>
@@ -253,7 +256,7 @@ export function SportPage() {
                 const monthDate = new Date(`${monthKey}-01T00:00:00`)
                 const monthLabel = Number.isNaN(monthDate.getTime())
                   ? monthKey
-                  : monthDate.toLocaleDateString('ru-RU', { month: 'short' })
+                  : formatDateLocal(monthDate, { month: 'short' })
                 const isActive = monthKey === selectedMonth
 
                 return (
@@ -280,12 +283,12 @@ export function SportPage() {
               </div>
             ) : error ? (
               <div className="rounded-xl border border-[var(--error-line)] bg-[var(--error-bg)] text-[var(--error-text)] px-3 py-3 text-sm">
-                Не удалось загрузить записи по спорту
+                {t('sport.loadFailed')}
               </div>
             ) : filteredRecords.length === 0 ? (
               <div className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--app-bg)] px-4 py-8 text-center">
                 <p className="m-0 text-sm text-[var(--text-muted)]">
-                  За {formatMonthLabel(selectedMonth)} записей нет
+                  {t('sport.emptyMonth', { month: formatMonthLabel(selectedMonth) })}
                 </p>
               </div>
             ) : (
@@ -308,7 +311,7 @@ export function SportPage() {
                             onClick={() => window.open(record.video, '_blank', 'noopener,noreferrer')}
                             className="h-8 px-2.5 rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[11px] font-semibold text-[var(--text-secondary)]"
                           >
-                            Видео
+                            {t('sport.video')}
                           </button>
                         ) : null}
                         <button
@@ -316,14 +319,14 @@ export function SportPage() {
                           onClick={() => openEdit(record)}
                           className="h-8 px-2.5 rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[11px] font-semibold text-[var(--text-secondary)]"
                         >
-                          Изм.
+                          {t('sport.edit')}
                         </button>
                         <button
                           type="button"
                           onClick={() => void handleDelete(record)}
                           className="h-8 px-2.5 rounded-lg border border-rose-200 bg-rose-50 text-[11px] font-semibold text-rose-600"
                         >
-                          Удал.
+                          {t('sport.delete')}
                         </button>
                       </div>
                     </div>
@@ -340,7 +343,7 @@ export function SportPage() {
         onClick={openCreate}
         className="fixed bottom-[88px] right-4 z-20 w-14 h-14 rounded-2xl border-0 text-white shadow-xl cursor-pointer flex items-center justify-center transition-transform active:scale-90"
         style={{ background: company.mainColor }}
-        aria-label="Добавить посещение спорта"
+        aria-label={t('sport.add')}
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
           <path d="M12 5v14M5 12h14" />
@@ -356,12 +359,12 @@ export function SportPage() {
             <div className="flex justify-center pt-3 pb-1"><Drawer.Handle className="!w-10 !h-[4px] !bg-gray-300" /></div>
             <div className="px-5 pt-2 pb-[calc(18px+env(safe-area-inset-bottom))] overflow-y-auto">
               <h3 className="m-0 text-[18px] font-extrabold text-[var(--text-main)]">
-                {editing ? 'Изменить посещение спорта' : 'Добавить посещение спорта'}
+                {editing ? t('sport.editTitle') : t('sport.add')}
               </h3>
 
               <div className="mt-4 grid grid-cols-2 gap-2.5">
                 <label className="block">
-                  <span className="block mb-1 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Дата</span>
+                  <span className="block mb-1 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('sport.date')}</span>
                   <input
                     type="date"
                     value={form.date}
@@ -370,7 +373,7 @@ export function SportPage() {
                   />
                 </label>
                 <label className="block">
-                  <span className="block mb-1 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Время</span>
+                  <span className="block mb-1 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('sport.time')}</span>
                   <input
                     type="time"
                     value={form.time}
@@ -381,12 +384,12 @@ export function SportPage() {
               </div>
 
               <div className="mt-3">
-                <p className="m-0 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Видео</p>
+                <p className="m-0 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('sport.video')}</p>
                 <label className="mt-1.5 block rounded-xl border border-dashed border-[var(--line)] bg-[var(--app-bg)] px-4 py-3 text-center cursor-pointer">
                   <p className="m-0 text-[13px] font-semibold text-[var(--text-main)]">
-                    {isUploading ? 'Загрузка...' : form.video ? 'Заменить видео' : 'Загрузить видео'}
+                    {isUploading ? t('sport.uploading') : form.video ? t('sport.replaceVideo') : t('sport.uploadVideo')}
                   </p>
-                  <p className="m-0 mt-1 text-[11px] text-[var(--text-muted)]">MP4, MOV, AVI и другие форматы</p>
+                  <p className="m-0 mt-1 text-[11px] text-[var(--text-muted)]">{t('sport.formats')}</p>
                   <input
                     type="file"
                     accept="video/*"
@@ -402,7 +405,7 @@ export function SportPage() {
                       onClick={() => window.open(form.video, '_blank', 'noopener,noreferrer')}
                       className="text-[11px] font-semibold text-[var(--accent)] bg-transparent border-0 p-0"
                     >
-                      Открыть текущее видео
+                      {t('sport.openVideo')}
                     </button>
                   </div>
                 ) : null}
@@ -421,7 +424,7 @@ export function SportPage() {
                   disabled={isBusy}
                   className="h-10 flex-1 rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[13px] font-semibold text-[var(--text-secondary)]"
                 >
-                  Отмена
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="button"
@@ -430,7 +433,7 @@ export function SportPage() {
                   className="h-10 flex-1 rounded-xl border-0 text-[13px] font-bold text-white"
                   style={{ background: company.mainColor }}
                 >
-                  {isSubmitting ? 'Сохранение...' : 'Сохранить'}
+                  {isSubmitting ? t('sport.saving') : t('common.save')}
                 </button>
               </div>
             </div>

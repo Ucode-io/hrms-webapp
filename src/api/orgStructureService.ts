@@ -1,3 +1,4 @@
+import { tr } from '../i18n'
 import adminRequest from './adminRequest'
 
 const REPORTS_FUNCTION_PATH = '/v2/invoke_function/udevs-hrms-reports'
@@ -112,7 +113,7 @@ const normalizeGraphNode = (node: OrgStructureReportNode): OrgStructureGraphNode
   const manager = node.manager || null
   const positionId = toText(node.department_guid)
   const parentId = toText(node.parent_id) || null
-  const positionTitle = toText(manager?.position_title) || 'Без должности'
+  const positionTitle = toText(manager?.position_title) || tr('fallback.noPosition')
   const fullName = toText(manager?.full_name) || positionTitle
   const initials = toText(manager?.initials) || fullName.slice(0, 2).toUpperCase() || 'HR'
   const employeeGuid = id.startsWith('employee:') ? id.replace(/^employee:/, '') : ''

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { App, Button, Link, Page, Preloader } from 'konsta/react'
 import { useAuth } from '../context/AuthContext'
 import { useCompany } from '../context/CompanyContext'
+import { useT } from '../i18n'
 
 function detectKonstaTheme(): 'ios' | 'material' {
   if (typeof navigator === 'undefined') return 'material'
@@ -16,6 +17,7 @@ const konstaTheme = detectKonstaTheme()
 export function LoginPage() {
   const { company } = useCompany()
   const { login, loginError, isSubmitting } = useAuth()
+  const t = useT()
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -57,7 +59,7 @@ export function LoginPage() {
               </div>
             </div>
             <h1 className="m-0 text-[26px] font-black tracking-tight leading-tight">{company.name}</h1>
-            <p className="m-0 mt-1.5 text-sm font-medium opacity-80">HR Management System</p>
+            <p className="m-0 mt-1.5 text-sm font-medium opacity-80">{t('login.subtitle')}</p>
           </div>
         </div>
 
@@ -69,9 +71,9 @@ export function LoginPage() {
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               {/* Header */}
               <div className="text-center">
-                <p className="m-0 text-xl font-extrabold text-[var(--text-main)]">Вход в систему</p>
+                <p className="m-0 text-xl font-extrabold text-[var(--text-main)]">{t('login.title')}</p>
                 <p className="m-0 mt-1 text-[13px] text-[var(--text-muted)] font-medium">
-                  Введите данные для доступа к порталу
+                  {t('login.hint')}
                 </p>
               </div>
 
@@ -87,12 +89,12 @@ export function LoginPage() {
                 {/* Login */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[13px] font-semibold text-[var(--text-secondary)]" htmlFor="login-input">
-                    Логин
+                    {t('login.login')}
                   </label>
                   <input
                     id="login-input"
                     type="text"
-                    placeholder="Эл. почта, телефон или логин"
+                    placeholder={t('login.loginPlaceholder')}
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     disabled={isSubmitting}
@@ -104,7 +106,7 @@ export function LoginPage() {
                 {/* Password */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[13px] font-semibold text-[var(--text-secondary)]" htmlFor="password-input">
-                    Пароль
+                    {t('login.password')}
                   </label>
                   <div className="relative">
                     <input
@@ -120,7 +122,7 @@ export function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword((p) => !p)}
-                      aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                      aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                       className="absolute top-1/2 right-2.5 -translate-y-1/2 w-8 h-8 rounded-lg bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center border-0 cursor-pointer active:bg-[var(--accent-soft)] transition-colors"
                     >
                       {showPassword ? (
@@ -141,7 +143,7 @@ export function LoginPage() {
               {/* Forgot */}
               <div className="flex justify-end -mt-1">
                 <Link component="button" type="button" className="border-0 bg-transparent cursor-pointer text-[13px] font-semibold text-[var(--accent)]">
-                  Забыли пароль?
+                  {t('login.forgot')}
                 </Link>
               </div>
 
@@ -155,17 +157,17 @@ export function LoginPage() {
                 {isSubmitting ? (
                   <span className="inline-flex items-center gap-2">
                     <Preloader className="h-4 w-4" />
-                    Вход...
+                    {t('login.submitting')}
                   </span>
                 ) : (
-                  'Войти в систему'
+                  t('login.submit')
                 )}
               </Button>
             </form>
           </div>
 
           <p className="mt-5 text-[11px] text-[var(--text-muted)] text-center">
-            © {new Date().getFullYear()} {company.name}. Все права защищены.
+            © {new Date().getFullYear()} {company.name}. {t('login.rights')}
           </p>
         </div>
       </Page>

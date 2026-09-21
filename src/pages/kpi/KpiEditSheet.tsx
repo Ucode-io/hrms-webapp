@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Drawer } from 'vaul'
 import { Icon } from '@iconify/react'
+import { useT } from '../../i18n'
 import {
   clampPercent,
   formatCompactPeriodLabel,
@@ -21,6 +22,8 @@ interface KpiEditSheetProps {
 }
 
 export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }: KpiEditSheetProps) {
+  const t = useT()
+
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -29,8 +32,8 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
     if (open && node) {
       setDraft(node.actualTotal ? String(node.actualTotal) : '')
       setError(null)
-      const t = window.setTimeout(() => inputRef.current?.focus(), 220)
-      return () => window.clearTimeout(t)
+      const timer = window.setTimeout(() => inputRef.current?.focus(), 220)
+      return () => window.clearTimeout(timer)
     }
   }, [open, node])
 
@@ -52,14 +55,14 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
   const handleSave = async () => {
     const value = tryParseActualValue(draft)
     if (value == null) {
-      setError('Введите корректное число (≥ 0)')
+      setError(t('kpi.badNumber'))
       return
     }
     setError(null)
     try {
       await onSave(node, value)
     } catch {
-      setError('Не удалось сохранить. Попробуйте ещё раз.')
+      setError(t('kpi.saveFailed'))
     }
   }
 
@@ -68,9 +71,9 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[2px]" />
         <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)] rounded-t-[28px] outline-none max-h-[94vh] flex flex-col">
-          <Drawer.Title className="sr-only">Ввод факта по KPI</Drawer.Title>
+          <Drawer.Title className="sr-only">{t('kpi.editSr')}</Drawer.Title>
           <Drawer.Description className="sr-only">
-            Введите фактическое значение для конечного KPI
+            {t('kpi.editSrDesc')}
           </Drawer.Description>
 
           <div className="flex justify-center pt-3 pb-1">
@@ -88,14 +91,14 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
                 onClick={onClose}
                 disabled={saving}
                 className="shrink-0 -mt-0.5 -mr-1 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-muted)] border-0 text-[var(--text-secondary)] cursor-pointer active:bg-gray-200 disabled:opacity-60"
-                aria-label="Закрыть"
+                aria-label={t('common.close')}
               >
                 <Icon icon="mdi:close" width={18} />
               </button>
             </div>
             <p className="m-0 mb-4 text-[12px] text-[var(--text-muted)]">
-              Период: {formatCompactPeriodLabel(node.periodType, node.startDate, node.endDate)}
-              {node.source ? ` · Источник: ${node.source}` : ''}
+              {t('kpi.period', { period: formatCompactPeriodLabel(node.periodType, node.startDate, node.endDate) })}
+              {node.source ? t('kpi.source', { source: node.source }) : ''}
             </p>
 
             {node.description ? (
@@ -111,7 +114,7 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="m-0 text-[10.5px] uppercase tracking-wider text-[var(--text-muted)] font-semibold">
-                    План
+                    {t('kpi.plan')}
                   </p>
                   <p className="m-0 mt-0.5 text-[18px] font-extrabold text-[var(--text-main)]">
                     {formatValueWithSymbol(node.planTotal, node.valueSymbol, node.valueSymbolPosition)}
@@ -119,7 +122,7 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
                 </div>
                 <div className="text-right">
                   <p className="m-0 text-[10.5px] uppercase tracking-wider text-[var(--text-muted)] font-semibold">
-                    Будет
+                    {t('kpi.willBe')}
                   </p>
                   <p className={`m-0 mt-0.5 text-[18px] font-extrabold ${tone.text}`}>
                     {projectedPercent}%
@@ -140,7 +143,7 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
                 <div className="flex items-center gap-2 min-w-0">
                   <Icon icon="mdi:cash-multiple" width={16} className="text-amber-600 shrink-0" />
                   <p className="m-0 text-[11.5px] font-semibold text-amber-800 truncate">
-                    Вознаграждение при 100%: {formatNumber(node.rewardAmount)}
+                    {t('kpi.reward', { amount: formatNumber(node.rewardAmount) })}
                   </p>
                 </div>
                 <p className="m-0 shrink-0 text-[13px] font-extrabold text-amber-700">
@@ -152,7 +155,7 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
             {/* Input */}
             <div className="mt-4">
               <label className="block text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-semibold mb-1.5">
-                Фактическое значение
+                {t('kpi.actualValue')}
               </label>
               <div className="relative">
                 <input
@@ -178,7 +181,7 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
                 </p>
               ) : (
                 <p className="m-0 mt-1.5 text-[11.5px] text-[var(--text-muted)]">
-                  Текущий факт: {formatValueWithSymbol(node.actualTotal, node.valueSymbol, node.valueSymbolPosition)}
+                  {t('kpi.currentFact', { value: formatValueWithSymbol(node.actualTotal, node.valueSymbol, node.valueSymbolPosition) })}
                 </p>
               )}
             </div>
@@ -187,9 +190,9 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
             {node.planTotal > 0 ? (
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {[
-                  { label: '50% плана', value: node.planTotal * 0.5 },
-                  { label: '75% плана', value: node.planTotal * 0.75 },
-                  { label: '100% плана', value: node.planTotal },
+                  { label: t('kpi.planPercentN', { percent: 50 }), value: node.planTotal * 0.5 },
+                  { label: t('kpi.planPercentN', { percent: 75 }), value: node.planTotal * 0.75 },
+                  { label: t('kpi.planPercentN', { percent: 100 }), value: node.planTotal },
                 ].map((preset) => (
                   <button
                     key={preset.label}
@@ -207,7 +210,7 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
                   disabled={saving}
                   className="px-3 py-1.5 rounded-full bg-gray-100 border-0 text-[11.5px] font-bold text-[var(--text-secondary)] cursor-pointer active:scale-95 disabled:opacity-60"
                 >
-                  Сбросить
+                  {t('kpi.reset')}
                 </button>
               </div>
             ) : null}
@@ -220,7 +223,7 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
                 disabled={saving}
                 className="flex-1 h-12 rounded-2xl border border-[var(--line)] bg-[var(--surface)] text-[14px] font-bold text-[var(--text-secondary)] cursor-pointer active:bg-[var(--surface-muted)] disabled:opacity-60"
               >
-                Отмена
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -232,10 +235,10 @@ export function KpiEditSheet({ node, open, saving, brandColor, onClose, onSave }
                 {saving ? (
                   <span className="inline-flex items-center gap-2 justify-center">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                    Сохранение…
+                    {t('kpi.saving')}
                   </span>
                 ) : (
-                  'Сохранить факт'
+                  t('kpi.saveFact')
                 )}
               </button>
             </div>

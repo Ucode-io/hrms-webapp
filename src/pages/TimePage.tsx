@@ -1,19 +1,21 @@
 import { useState } from 'react'
 import { Icon } from '@iconify/react'
+import { useT, type TKey } from '../i18n'
 import { TimeRequestsTab } from './time/TimeRequestsTab'
 import { TimeSheetTab } from './time/TimeSheetTab'
 import { TimeScheduleTab } from './time/TimeScheduleTab'
 
 type TimeTab = 'requests' | 'timesheet' | 'schedule'
 
-const TABS: { key: TimeTab; label: string; icon: string }[] = [
-  { key: 'requests', label: 'Заявки', icon: 'mdi:card-text-outline' },
-  { key: 'timesheet', label: 'Табель', icon: 'mdi:check-circle-outline' },
-  { key: 'schedule', label: 'График', icon: 'mdi:view-grid-outline' },
+const TABS: { key: TimeTab; label: TKey; icon: string }[] = [
+  { key: 'requests', label: 'time.requests', icon: 'mdi:card-text-outline' },
+  { key: 'timesheet', label: 'time.timesheet', icon: 'mdi:check-circle-outline' },
+  { key: 'schedule', label: 'time.schedule', icon: 'mdi:view-grid-outline' },
 ]
 
 export function TimePage() {
   const [tab, setTab] = useState<TimeTab>('requests')
+  const t = useT()
 
   return (
     <>
@@ -37,7 +39,7 @@ export function TimePage() {
               >
                 <Icon icon={icon} width={22} className={isActive ? 'opacity-100' : 'opacity-60'} />
                 <span className={`text-[10px] leading-tight font-semibold ${isActive ? 'opacity-100' : 'opacity-60'}`}>
-                  {label}
+                  {t(label)}
                 </span>
               </button>
             )

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Icon } from '@iconify/react'
+import { useT, type TKey, formatDateLocal } from '../i18n'
 import { useAuth } from '../context/AuthContext'
 import { useCompany } from '../context/CompanyContext'
 import { getUpcomingEvents } from '../api/dashboardService'
@@ -26,10 +27,10 @@ interface CalendarEntry {
   color: string
 }
 
-const ABSENCE_STATUS_LABEL: Record<string, string> = {
-  pending: 'На согласовании',
-  approved: 'Согласовано',
-  rejected: 'Отклонено',
+const ABSENCE_STATUS_LABEL: Record<string, TKey> = {
+  pending: 'cal.pending',
+  approved: 'cal.approved',
+  rejected: 'status.rejected',
 }
 
 const toIso = (value: string | null | undefined): string | null => {
@@ -42,16 +43,16 @@ const toIso = (value: string | null | undefined): string | null => {
 const formatShortDate = (iso: string): string => {
   const parsed = new Date(`${iso}T00:00:00`)
   if (Number.isNaN(parsed.getTime())) return ''
-  return parsed.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '')
+  return formatDateLocal(parsed, { day: 'numeric', month: 'short' }).replace('.', '')
 }
 
 const formatSpan = (from: string, to: string): string =>
   from === to ? formatShortDate(from) : `${formatShortDate(from)} — ${formatShortDate(to)}`
 
-const SECTION_TITLE: Record<CalendarView, string> = {
-  month: 'События в этом месяце',
-  week: 'События на неделю',
-  day: 'События на день',
+const SECTION_TITLE: Record<CalendarView, TKey> = {
+  month: 'cal.monthEvents',
+  week: 'cal.weekEvents',
+  day: 'cal.dayEvents',
 }
 
 /** Все дни, которые событие занимает — нужны и маркерам сетки, и фильтру периода. */
@@ -70,6 +71,8 @@ const spanDates = (entry: CalendarEntry): string[] => {
 }
 
 export function CalendarPage() {
+  const t = useT()
+
   const { session, profile } = useAuth()
   const { company } = useCompany()
   const accentColor = company.mainColor || '#3b6cf5'
@@ -139,7 +142,7 @@ export function CalendarPage() {
         date: iso,
         endDate: iso,
         title: event.title,
-        subtitle: event.type === 'working_holiday' ? 'Рабочий праздник' : 'Праздник',
+        subtitle: event.type === 'working_holiday' ? t('events.workingHoliday') : t('events.holiday'),
         icon: 'mdi:party-popper',
         color: '#f43f5e',
       })
@@ -153,8 +156,11 @@ export function CalendarPage() {
         id: `absence-${request.guid}`,
         date: from,
         endDate: to,
-        title: request.policy?.title || 'Отсутствие',
-        subtitle: `${ABSENCE_STATUS_LABEL[request.status] || request.status} · ${request.requested_days} дн.`,
+        title: request.policy?.title || t('absence.defaultTitle'),
+        subtitle: t('cal.absenceSubtitle', {
+          status: ABSENCE_STATUS_LABEL[request.status] ? t(ABSENCE_STATUS_LABEL[request.status]) : request.status,
+          days: request.requested_days,
+        }),
         icon: 'mdi:beach',
         color: '#f59e0b',
       })
@@ -168,8 +174,8 @@ export function CalendarPage() {
         id: `training-${training.guid}`,
         date: from,
         endDate: to,
-        title: training.title || 'Тренинг',
-        subtitle: [training.location, training.trainer_name].filter(Boolean).join(' · ') || 'Тренинг',
+        title: training.title || t('page.trainingDetail'),
+        subtitle: [training.location, training.trainer_name].filter(Boolean).join(' · ') || t('page.trainingDetail'),
         icon: 'mdi:school-outline',
         color: '#8b5cf6',
       })
@@ -205,7 +211,7 @@ export function CalendarPage() {
       />
 
       <p className="m-0 px-1 text-[13px] font-semibold text-[var(--text-muted)]">
-        {SECTION_TITLE[view]}
+        {t(SECTION_TITLE[view])}
       </p>
 
       {holidaysPending ? (
@@ -218,7 +224,7 @@ export function CalendarPage() {
         <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)] px-6 py-10 text-center">
           <Icon icon="mdi:calendar-blank-outline" width={36} className="text-[var(--text-muted)] opacity-40" />
           <p className="m-0 text-[13px] font-semibold text-[var(--text-muted)]">
-            Событий на этот период нет
+            {t('cal.empty')}
           </p>
         </div>
       ) : (

@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Icon } from '@iconify/react'
+import { useT, formatDateLocal } from '../i18n'
 import {
   articleAncestors,
   articleChildren,
@@ -21,10 +22,12 @@ const formatDate = (value: string): string => {
   if (!value) return ''
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return ''
-  return parsed.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+  return formatDateLocal(parsed, { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 export function KnowledgeArticlePage() {
+  const t = useT()
+
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const articleId = id || ''
@@ -105,7 +108,7 @@ export function KnowledgeArticlePage() {
 
         <p className="m-0 flex items-center justify-center gap-1.5 py-1 text-[12px] font-semibold text-[var(--text-muted)]">
           <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--accent)]/25 border-t-[var(--accent)]" />
-          Загружаем статью…
+          {t('knowledge.loadingArticle')}
         </p>
       </div>
     )
@@ -115,13 +118,13 @@ export function KnowledgeArticlePage() {
     return (
       <div className="mx-auto flex w-full max-w-[760px] flex-col items-center gap-2 rounded-2xl bg-[var(--surface)] p-8 text-center shadow-sm">
         <Icon icon="mdi:file-remove-outline" width={40} className="text-gray-300" />
-        <p className="m-0 text-sm text-gray-500">Статья не найдена или была удалена</p>
+        <p className="m-0 text-sm text-gray-500">{t('knowledge.articleMissing')}</p>
         <button
           type="button"
           onClick={() => navigate('/knowledge')}
           className="mt-1 cursor-pointer rounded-xl border-0 bg-[var(--accent)] px-4 py-2 text-[13px] font-bold text-white active:scale-95"
         >
-          К списку статей
+          {t('knowledge.toArticles')}
         </button>
       </div>
     )
@@ -164,7 +167,7 @@ export function KnowledgeArticlePage() {
         {updatedAt ? (
           <p className="m-0 mt-1.5 flex items-center gap-1 text-[12px] text-[var(--text-muted)]">
             <Icon icon="mdi:clock-outline" width={13} />
-            Обновлено {updatedAt}
+            {t('knowledge.updatedAt', { date: updatedAt })}
           </p>
         ) : null}
       </header>
@@ -189,7 +192,7 @@ export function KnowledgeArticlePage() {
       ) : children.length > 0 ? (
         <section className="rounded-2xl bg-[var(--surface)] p-5 shadow-sm">
           <h2 className="m-0 mb-3 text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-            Подстатьи ({children.length})
+            {t('knowledge.children', { count: children.length })}
           </h2>
           <div className="space-y-2">
             {children.map((child) => (

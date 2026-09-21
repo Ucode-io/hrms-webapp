@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react'
 import { Icon } from '@iconify/react'
+import { useT } from '../i18n'
 import { Drawer } from 'vaul'
 
 type PreviewKind = 'image' | 'pdf' | 'office' | 'text' | 'video' | 'audio' | 'unsupported'
@@ -56,6 +57,8 @@ export function FilePreviewDrawer({
   fileUrl: string
   fileName: string
 }) {
+  const t = useT()
+
   const kind = resolvePreviewKind(fileUrl, fileName)
   const [text, setText] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -78,7 +81,7 @@ export function FilePreviewDrawer({
         setText(body.length > 200_000 ? `${body.slice(0, 200_000)}\n…` : body)
       })
       .catch(() => {
-        if (!cancelled) setError('Не удалось загрузить содержимое файла.')
+        if (!cancelled) setError(t('file.loadFailed'))
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false)
@@ -94,7 +97,7 @@ export function FilePreviewDrawer({
         <Drawer.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" />
         <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[92dvh] flex-col rounded-t-[28px] bg-[var(--surface)] outline-none">
           <Drawer.Title className="sr-only">{fileName}</Drawer.Title>
-          <Drawer.Description className="sr-only">Предпросмотр файла</Drawer.Description>
+          <Drawer.Description className="sr-only">{t('file.previewSr')}</Drawer.Description>
 
           <div className="flex shrink-0 justify-center pt-3 pb-1">
             <div className="h-1 w-10 rounded-full bg-gray-300" />
@@ -109,7 +112,7 @@ export function FilePreviewDrawer({
               target="_blank"
               rel="noreferrer noopener"
               className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--app-bg)] text-[var(--text-secondary)] no-underline"
-              aria-label="Открыть файл"
+              aria-label={t('file.open')}
             >
               <Icon icon="mdi:open-in-new" width={16} />
             </a>
@@ -117,7 +120,7 @@ export function FilePreviewDrawer({
               type="button"
               onClick={onClose}
               className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--app-bg)] text-[var(--text-secondary)]"
-              aria-label="Закрыть"
+              aria-label={t('common.close')}
             >
               <Icon icon="mdi:close" width={18} />
             </button>
@@ -144,7 +147,7 @@ export function FilePreviewDrawer({
             ) : kind === 'text' ? (
               <div className="rounded-2xl bg-[var(--surface)] p-3">
                 {isLoading && (
-                  <p className="m-0 py-8 text-center text-[13px] text-[var(--text-muted)]">Загрузка…</p>
+                  <p className="m-0 py-8 text-center text-[13px] text-[var(--text-muted)]">{t('file.loading')}</p>
                 )}
                 {error && <p className="m-0 py-8 text-center text-[13px] text-rose-600">{error}</p>}
                 {!isLoading && !error && (
@@ -157,7 +160,7 @@ export function FilePreviewDrawer({
               <div className="flex flex-col items-center gap-3 py-10 text-center">
                 <Icon icon="mdi:file-question-outline" width={44} className="text-[var(--text-muted)] opacity-40" />
                 <p className="m-0 text-[13px] text-[var(--text-muted)]">
-                  Предпросмотр для этого типа файла недоступен.
+                  {t('file.previewUnavailable')}
                 </p>
                 <a
                   href={fileUrl}
@@ -166,7 +169,7 @@ export function FilePreviewDrawer({
                   className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--surface)] px-4 text-[12.5px] font-semibold text-[var(--text-main)] no-underline"
                 >
                   <Icon icon="mdi:open-in-new" width={14} />
-                  Открыть файл
+                  {t('file.open')}
                 </a>
               </div>
             )}
@@ -194,6 +197,8 @@ export function FilePreviewButton({
   className?: string
   size?: number
 }) {
+  const t = useT()
+
   const [open, setOpen] = useState(false)
   if (!fileUrl) return null
 
@@ -206,7 +211,7 @@ export function FilePreviewButton({
           e.stopPropagation()
           setOpen(true)
         }}
-        aria-label="Предпросмотр файла"
+        aria-label={t('file.previewSr')}
         className={
           className ??
           'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-light)] text-[var(--accent)]'

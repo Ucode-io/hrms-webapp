@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth, getDisplayName, getInitials } from '../context/AuthContext'
 import { Icon } from '@iconify/react'
 import { BellIcon } from './Icons'
+import { useT } from '../i18n'
 
 export function AppHeader() {
   const { company } = useCompany()
   const { profile, newsFeed } = useAuth()
   const navigate = useNavigate()
+  const t = useT()
   const notificationCount = Math.min(newsFeed.length, 9)
   const displayName = getDisplayName(profile)
   const avatar =
@@ -33,7 +35,7 @@ export function AppHeader() {
             {company.name}
           </p>
           <p className="m-0 text-[11px] font-medium text-[var(--text-muted)] leading-tight truncate">
-            Employee Portal
+            {t('header.portal')}
           </p>
         </div>
       </div>
@@ -45,7 +47,7 @@ export function AppHeader() {
         <button
           type="button"
           onClick={() => navigate('/news')}
-          aria-label="Новости"
+          aria-label={t('header.news')}
           className="relative flex items-center justify-center w-9 h-9 rounded-full border border-[var(--line)] bg-[var(--surface-muted)] text-[var(--text-main)] cursor-pointer transition-transform active:scale-95"
         >
           <BellIcon size={17} />
@@ -59,7 +61,7 @@ export function AppHeader() {
         <button
           type="button"
           onClick={() => navigate('/copilot')}
-          aria-label="ИИ Помощник"
+          aria-label={t('header.copilot')}
           className="flex items-center justify-center w-9 h-9 rounded-full border border-[var(--line)] bg-[var(--surface-muted)] text-[var(--text-main)] cursor-pointer transition-transform active:scale-95"
         >
           <Icon icon="mdi:auto-awesome" width={17} className="text-[var(--text-main)]" />

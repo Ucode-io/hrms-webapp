@@ -4,10 +4,11 @@ import { useCompany } from '../context/CompanyContext'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { LogoutConfirmDrawer } from '../components/LogoutConfirmDrawer'
+import { useT, type TKey } from '../i18n'
 
 interface ServiceCard {
-  label: string
-  desc: string
+  label: TKey
+  desc: TKey
   icon: string
   onClick?: () => void
 }
@@ -16,73 +17,74 @@ export function MorePage() {
   const navigate = useNavigate()
   const { profile } = useAuth()
   const { company } = useCompany()
+  const t = useT()
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const displayName = getDisplayName(profile)
 
   const services: ServiceCard[] = [
     {
-      label: 'AI-помощник',
-      desc: 'Спросить про отпуск, зарплату, график',
+      label: 'page.copilot',
+      desc: 'more.desc.copilot',
       icon: 'mdi:robot-happy-outline',
       onClick: () => navigate('/copilot'),
     },
     {
-      label: 'Спорт',
-      desc: 'Посещение спорта',
+      label: 'page.sport',
+      desc: 'more.desc.sport',
       icon: 'mdi:dumbbell',
       onClick: () => navigate('/sport'),
     },
     {
-      label: 'Контакты',
-      desc: 'Телефоны и почта коллег',
+      label: 'page.contacts',
+      desc: 'more.desc.contacts',
       icon: 'mdi:account-box-multiple-outline',
       onClick: () => navigate('/contacts'),
     },
     {
-      label: 'Орг структура',
-      desc: 'Отделы и сотрудники',
+      label: 'page.orgStructure',
+      desc: 'more.desc.orgStructure',
       icon: 'mdi:office-building-outline',
       onClick: () => navigate('/org-structure'),
     },
     {
-      label: 'KPI',
-      desc: 'Цели по должности',
+      label: 'page.kpi',
+      desc: 'more.desc.kpi',
       icon: 'mdi:target-arrow',
       onClick: () => navigate('/kpi'),
     },
     {
-      label: 'Задачи',
-      desc: 'Мои задачи и сроки',
+      label: 'page.tasks',
+      desc: 'more.desc.tasks',
       icon: 'mdi:checkbox-marked-outline',
       onClick: () => navigate('/tasks'),
     },
     {
-      label: 'Документы',
-      desc: 'Мои файлы и документы',
+      label: 'page.documents',
+      desc: 'more.desc.documents',
       icon: 'mdi:file-document-outline',
       onClick: () => navigate('/documents'),
     },
     {
-      label: 'Имущество',
-      desc: 'Закреплённое имущество',
+      label: 'page.property',
+      desc: 'more.desc.property',
       icon: 'mdi:package-variant-closed',
       onClick: () => navigate('/property'),
     },
     {
-      label: 'Опросы',
-      desc: 'Назначенные опросники',
+      label: 'page.surveys',
+      desc: 'more.desc.surveys',
       icon: 'mdi:clipboard-text-outline',
       onClick: () => navigate('/surveys'),
     },
     {
-      label: 'Тренинги',
-      desc: 'Обучение и домашние задания',
+      label: 'page.trainings',
+      desc: 'more.desc.trainings',
       icon: 'mdi:school-outline',
       onClick: () => navigate('/trainings'),
     },
     {
-      label: 'База знаний',
-      desc: 'Регламенты и инструкции',
+      label: 'page.knowledge',
+      desc: 'more.desc.knowledge',
       icon: 'mdi:book-open-page-variant-outline',
       onClick: () => navigate('/knowledge'),
     },
@@ -105,10 +107,10 @@ export function MorePage() {
                 <Icon icon={item.icon} width={24} />
               </div>
               <p className="m-0 mt-3 text-[13px] font-bold text-[var(--text-main)] leading-tight">
-                {item.label}
+                {t(item.label)}
               </p>
               <p className="m-0 mt-1 text-[11px] text-[var(--text-muted)] leading-tight">
-                {item.desc}
+                {t(item.desc)}
               </p>
             </button>
           ))}
@@ -121,11 +123,11 @@ export function MorePage() {
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-red-200 bg-[var(--surface)] text-red-600 text-[13px] font-bold cursor-pointer transition-all active:scale-95 active:bg-red-50"
         >
           <Icon icon="mdi:logout" width={16} />
-          Выйти из аккаунта
+          {t('more.logout')}
         </button>
         {displayName ? (
           <p className="m-0 text-[11px] text-[var(--text-muted)]">
-            Вы вошли как <span className="font-semibold text-[var(--text-secondary)]">{displayName}</span>
+            {t('more.signedInAs')} <span className="font-semibold text-[var(--text-secondary)]">{displayName}</span>
           </p>
         ) : null}
       </div>

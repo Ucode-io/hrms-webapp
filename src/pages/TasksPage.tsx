@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Icon } from '@iconify/react'
+import { useT, type TKey } from '../i18n'
 import { useAuth } from '../context/AuthContext'
 import {
   reportsService,
@@ -14,9 +15,9 @@ import { takePendingTaskId } from '../telegram/startParam'
 
 type ViewMode = 'status' | 'deadline'
 
-const VIEW_TABS: Array<{ key: ViewMode; label: string; icon: string }> = [
-  { key: 'status', label: 'Доска', icon: 'mdi:view-column-outline' },
-  { key: 'deadline', label: 'По срокам', icon: 'mdi:calendar-clock-outline' },
+const VIEW_TABS: Array<{ key: ViewMode; label: TKey; icon: string }> = [
+  { key: 'status', label: 'tasks.board', icon: 'mdi:view-column-outline' },
+  { key: 'deadline', label: 'tasks.byDeadline', icon: 'mdi:calendar-clock-outline' },
 ]
 
 const NO_STATUS_KEY = 'no-status'
@@ -106,6 +107,8 @@ function StatTile({
 }
 
 export function TasksPage() {
+  const t = useT()
+
   const { session, profile } = useAuth()
   const queryClient = useQueryClient()
   const [view, setView] = useState<ViewMode>('status')
@@ -175,7 +178,7 @@ export function TasksPage() {
     },
     onError: (_error, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous)
-      showToast('Не удалось переместить задачу')
+      showToast(t('tasks.moveFailed'))
     },
     // Рефетч в любом случае: сервер при смене статуса двигает ещё и даты
     // (begin_at/completed_at), их локально не предскажешь.
@@ -209,9 +212,9 @@ export function TasksPage() {
         <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent-soft)]">
           <Icon icon="mdi:account-question-outline" width={26} className="text-[var(--accent)]" />
         </div>
-        <p className="m-0 text-[15px] font-bold text-[var(--text-main)]">Сотрудник не определён</p>
+        <p className="m-0 text-[15px] font-bold text-[var(--text-main)]">{t('tasks.noEmployee')}</p>
         <p className="m-0 mt-1 text-[13px] text-[var(--text-muted)]">
-          Не удалось определить ваш профиль для загрузки задач.
+          {t('tasks.noEmployeeHint')}
         </p>
       </div>
     )
@@ -253,7 +256,7 @@ export function TasksPage() {
           />
           <div className="flex-1">
             <p className="m-0 text-[13.5px] font-bold text-[var(--error-text)]">
-              Не удалось загрузить задачи
+              {t('tasks.loadFailed')}
             </p>
             <button
               type="button"
@@ -261,7 +264,7 @@ export function TasksPage() {
               className="mt-2 inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[var(--error-line)] bg-[var(--surface)] px-3 py-1.5 text-[12px] font-bold text-[var(--error-text)] active:scale-95"
             >
               <Icon icon="mdi:refresh" width={13} />
-              Повторить
+              {t('events.repeat')}
             </button>
           </div>
         </div>
@@ -271,7 +274,7 @@ export function TasksPage() {
 
   const boardColumns: KanbanColumn[] = (data?.views?.by_status ?? []).map((column) => ({
     key: column.statusId || NO_STATUS_KEY,
-    title: column.title || 'Без статуса',
+    title: column.title || t('tasks.noStatus'),
     accent: column.color || undefined,
     tasks: pickTasks(column.taskIds),
     droppable: Boolean(column.statusId),
@@ -324,7 +327,7 @@ export function TasksPage() {
                 width={15}
                 className={isActive ? 'text-[var(--accent)]' : undefined}
               />
-              {tab.label}
+              {t(tab.label)}
             </button>
           )
         })}
@@ -332,12 +335,12 @@ export function TasksPage() {
 
       {/* Сводка */}
       <section className="grid shrink-0 grid-cols-3 gap-2">
-        <StatTile label="Всего" value={total} icon="mdi:format-list-checks" tone="neutral" />
+        <StatTile label={t('tasks.total')} value={total} icon="mdi:format-list-checks" tone="neutral" />
         {/* Незавершённые целиком, а не только группа «В работе» — иначе
             подпись расходилась бы с числом. */}
-        <StatTile label="Активные" value={openCount} icon="mdi:progress-clock" tone="accent" />
+        <StatTile label={t('tasks.active')} value={openCount} icon="mdi:progress-clock" tone="accent" />
         <StatTile
-          label="Просрочено"
+          label={t('tasks.overdue')}
           value={overdueCount}
           icon="mdi:fire"
           tone={overdueCount > 0 ? 'danger' : 'neutral'}
@@ -353,9 +356,9 @@ export function TasksPage() {
               className="text-[var(--accent)]"
             />
           </div>
-          <p className="m-0 text-[14.5px] font-bold text-[var(--text-main)]">Задач нет</p>
+          <p className="m-0 text-[14.5px] font-bold text-[var(--text-main)]">{t('tasks.empty')}</p>
           <p className="m-0 mt-1 text-[12px] text-[var(--text-muted)]">
-            На вас пока не назначено ни одной задачи.
+            {t('tasks.emptyHint')}
           </p>
         </div>
       ) : view === 'status' ? (
@@ -376,7 +379,7 @@ export function TasksPage() {
       )}
 
       {isFetching && !moveMutation.isPending ? (
-        <p className="m-0 shrink-0 text-center text-[11px] text-[var(--text-muted)]">Обновляем…</p>
+        <p className="m-0 shrink-0 text-center text-[11px] text-[var(--text-muted)]">{t('tasks.refreshing')}</p>
       ) : null}
 
       {/* Тост об ошибке переноса — поверх таббара, в границах мобильной колонки. */}

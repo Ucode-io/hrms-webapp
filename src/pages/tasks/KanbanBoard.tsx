@@ -15,6 +15,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { Icon } from '@iconify/react'
+import { useT } from '../../i18n'
 import type { MyTask } from '../../api/reportsService'
 import { TaskCard } from './TaskCard'
 
@@ -184,6 +185,8 @@ function BoardColumn({
   dropRef?: (element: HTMLElement | null) => void
   children: React.ReactNode
 }) {
+  const t = useT()
+
   const accent = column.accent || 'var(--accent)'
 
   return (
@@ -227,10 +230,10 @@ function BoardColumn({
               {isDragActive && column.droppable ? (
                 <>
                   <Icon icon="mdi:tray-arrow-down" width={14} />
-                  Отпустите здесь
+                  {t('tasks.dropHere')}
                 </>
               ) : (
-                'Задач нет'
+                t('tasks.empty')
               )}
             </p>
           </div>
@@ -268,6 +271,8 @@ function DroppableColumn({
 
 /** Пилюля статуса в нижней панели — основная цель дропа на телефоне. */
 function StatusDropPill({ column, current }: { column: KanbanColumn; current: boolean }) {
+  const t = useT()
+
   const { setNodeRef, isOver } = useDroppable({
     id: `${PILL_PREFIX}${column.key}`,
     disabled: !column.droppable || current,
@@ -291,7 +296,7 @@ function StatusDropPill({ column, current }: { column: KanbanColumn; current: bo
         {column.title}
       </span>
       {current ? (
-        <span className="text-[10.5px] font-semibold text-[var(--text-muted)]">сейчас</span>
+        <span className="text-[10.5px] font-semibold text-[var(--text-muted)]">{t('tasks.now')}</span>
       ) : null}
     </div>
   )
@@ -305,6 +310,8 @@ export function KanbanBoard({
   draggable = true,
   showCardStatus,
 }: KanbanBoardProps) {
+  const t = useT()
+
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const suppressClickRef = useRef(false)
   const [activeTask, setActiveTask] = useState<MyTask | null>(null)
@@ -441,7 +448,7 @@ export function KanbanBoard({
                     key={column.key}
                     type="button"
                     onClick={() => scrollToColumn(index)}
-                    aria-label={`Перейти к колонке «${column.title}»`}
+                    aria-label={t('tasks.goToColumn', { column: column.title })}
                     className="cursor-pointer border-0 bg-transparent p-0.5"
                   >
                     <span
@@ -458,7 +465,7 @@ export function KanbanBoard({
             </div>
             {draggable ? (
               <p className="m-0 text-[10.5px] font-medium text-[var(--text-muted)]">
-                Удерживайте карточку, чтобы перенести её в другой статус
+                {t('tasks.dragHint')}
               </p>
             ) : null}
           </div>
@@ -494,7 +501,7 @@ export function KanbanBoard({
             // а полупрозрачная полоса поверх него читалась бы грязно.
             <div className="board-drag-layer fixed inset-x-0 bottom-0 z-[65] rounded-t-2xl bg-[var(--surface)] px-3 pb-[calc(16px+env(safe-area-inset-bottom))] pt-2.5 shadow-[0_-8px_32px_rgba(12,26,46,0.20)]">
               <p className="m-0 px-1 pb-1.5 text-[10.5px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
-                Перенести в статус
+                {t('tasks.moveToStatus')}
               </p>
               <div className="scrollbar-hide flex gap-1.5 overflow-x-auto">
                 {columns

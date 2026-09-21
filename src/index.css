@@ -278,6 +278,28 @@ input, select, textarea { font-size: 16px; }
 .animate-delay-3                 { animation-delay: 0.15s; }
 .animate-delay-4                 { animation-delay: 0.20s; }
 
+/* ── Success-экран отметки ─────────────────────────────────────────────── */
+/* Круг «выпрыгивает» с перелётом, галочка дорисовывается штрихом, кольцо
+   уходит волной наружу. Всё на CSS: три keyframes дешевле любой lottie. */
+@keyframes successPop {
+  0%   { opacity: 0; transform: scale(0.3); }
+  60%  { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes successDraw { to { stroke-dashoffset: 0; } }
+@keyframes successRing {
+  0%   { opacity: 0.55; transform: scale(1); }
+  100% { opacity: 0;    transform: scale(2.1); }
+}
+.success-pop  { animation: successPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+/* Волна ровно одна: повтор превращал экран успеха в «загрузку». */
+.success-ring { animation: successRing 0.9s ease-out 0.15s both; }
+.success-draw {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: successDraw 0.4s ease-out 0.3s both;
+}
+
 /* ── Auth hero (gradient + decorative circles) ─────────────────────────── */
 .auth-hero-section {
   position: relative;

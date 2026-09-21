@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react'
+import { tr, formatDateLocal } from '../../i18n'
 import type { MyTask } from '../../api/reportsService'
 
 /**
@@ -20,7 +21,7 @@ const initials = (name: string): string =>
 const formatDeadline = (iso: string): string => {
   const parsed = new Date(`${iso}T00:00:00`)
   if (Number.isNaN(parsed.getTime())) return ''
-  return parsed.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })
+  return formatDateLocal(parsed, { day: '2-digit', month: 'short' })
 }
 
 /** Пилюля срока: цвет = срочность. Для завершённых срок уже не тревога. */
@@ -29,7 +30,7 @@ const deadlinePill = (
 ): { text: string; className: string; icon: string } | null => {
   if (task.statusGroup === 'completed') {
     return {
-      text: 'Завершена',
+      text: tr('tasks.done'),
       icon: 'mdi:check-circle-outline',
       className: 'bg-emerald-50 text-emerald-600',
     }
@@ -38,16 +39,16 @@ const deadlinePill = (
   const days = task.daysLeft
   if (days != null && days < 0) {
     return {
-      text: `${Math.abs(days)} дн. просрочки`,
+      text: tr('tasks.overdueDays', { days: Math.abs(days) }),
       icon: 'mdi:fire',
       className: 'bg-rose-50 text-rose-600',
     }
   }
   if (days === 0) {
-    return { text: 'Сегодня', icon: 'mdi:clock-alert-outline', className: 'bg-amber-50 text-amber-600' }
+    return { text: tr('common.today'), icon: 'mdi:clock-alert-outline', className: 'bg-amber-50 text-amber-600' }
   }
   if (days === 1) {
-    return { text: 'Завтра', icon: 'mdi:clock-outline', className: 'bg-amber-50 text-amber-600' }
+    return { text: tr('tasks.tomorrow'), icon: 'mdi:clock-outline', className: 'bg-amber-50 text-amber-600' }
   }
   return {
     text: formatDeadline(task.deadline),
@@ -144,7 +145,7 @@ export function TaskCard({ task, onOpen, showStatus, overlay, plain }: TaskCardP
       )}
 
       <p className="m-0 line-clamp-2 text-[13.5px] font-bold leading-snug text-[var(--text-main)]">
-        {task.title || 'Без названия'}
+        {task.title || tr('tasks.noName')}
       </p>
 
       {(showStatus || task.typeTitle || shownTags.length > 0) && (

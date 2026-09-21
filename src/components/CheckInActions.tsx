@@ -3,6 +3,7 @@ import { Drawer } from 'vaul'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Icon } from '@iconify/react'
 import { useAuth } from '../context/AuthContext'
+import { useT, type TKey } from '../i18n'
 import { resolveCompaniesId } from '../api/adminRequest'
 import { uploadFile } from '../api/dashboardService'
 import pico from '../lib/pico.js'
@@ -28,6 +29,7 @@ const CASCADE_URL = '/facefinder'
 const DETECT_INTERVAL_MS = 120 // ~8 к/с: на 320×240 проход занимает единицы мс
 const DETECT_MAX_SIDE = 320 // кадр для pico: 320×240 ≈ 77 тыс. пикселей на проход
 const COUNTDOWN_MS = 3_000
+const SUCCESS_MS = 2_000
 
 // Ручки калибровки. Камеры и освещение в офисах разные, цифры подобраны на
 // столе: если автоснимок срабатывает сам по себе — поднимать FACE_MIN_QUALITY
@@ -39,7 +41,9 @@ const FACE_MIN_WIDTH = 0.31 // ~100 px при кадре 320 — отсекае�
 const FACE_MAX_OFFSET = 0.25 // смещение от центра кадра, в долях ширины
 const FACE_STABLE_TICKS = 3 // 3 × 120 мс ≈ 0.36 с непрерывного лица
 
-const ACTION_LABEL: Record<MarkAction, string> = { IN: 'Приход', OUT: 'Уход' }
+const ACTION_LABEL: Record<MarkAction, TKey> = { IN: 'check.in', OUT: 'check.out' }
+const ACTION_MARK: Record<MarkAction, TKey> = { IN: 'check.markIn', OUT: 'check.markOut' }
+const ACTION_DONE: Record<MarkAction, TKey> = { IN: 'check.doneIn', OUT: 'check.doneOut' }
 
 type Classify = ReturnType<typeof pico.unpack_cascade>
 
@@ -136,9 +140,21 @@ function requestLocation(onResult: (location: string) => void): void {
     return
   }
 
-  navigator.geolocation?.getCurrentPosition(
+  // Вне secure context (http по IP или по дев-туннелю без TLS) Chrome вообще
+  // не отдаёт navigator.geolocation — без этой ветки отметка молча ждала
+  // таймаут и писала «геолокация недоступна», хотя спросить было некого.
+  if (!navigator.geolocation) {
+    console.warn('Геолокации нет в этом контексте', { secure: window.isSecureContext })
+    onResult('')
+    return
+  }
+
+  navigator.geolocation.getCurrentPosition(
     (position) => onResult(formatLocation(position.coords.latitude, position.coords.longitude)),
-    () => onResult(''),
+    (geoError) => {
+      console.warn('Геолокация отказала', geoError.code, geoError.message)
+      onResult('')
+    },
     // enableHighAccuracy: false намеренно — GPS-фикс в помещении ищется
     // десятками секунд, а координаты по Wi-Fi приходят почти сразу и для
     // вопроса «человек в офисе или дома» точны более чем достаточно.
@@ -197,12 +213,14 @@ function hasFace(video: HTMLVideoElement, canvas: HTMLCanvasElement, classify: C
 
 function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => void }) {
   const { profile, session } = useAuth()
+  const t = useT()
   const queryClient = useQueryClient()
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [cameraReady, setCameraReady] = useState(false)
   const [location, setLocation] = useState('')
   const [isSending, setIsSending] = useState(false)
+  const [isDone, setIsDone] = useState(false)
   const [error, setError] = useState('')
 
   // Автоснимок. Взводится, когда готовы камера и каскад, и выключается
@@ -379,10 +397,15 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
       // Поток событий — источник чередования: не сбросить его значит показать
       // ту же кнопку, что и до отметки.
       await queryClient.invalidateQueries({ queryKey: ['attendance-marks', employeeGuid] })
-      onClose()
+      // Экран успеха вместо мгновенного закрытия: отметка необратима, и
+      // человеку нужно увидеть, что она прошла. Таймер не чистим — шторка
+      // закроется сама, а повторный onClose ничего не ломает.
+      setIsDone(true)
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred?.('success')
+      window.setTimeout(onClose, SUCCESS_MS)
     } catch (submitError) {
       console.error('Отметка не записалась', submitError)
-      setError('Не удалось отметиться. Попробуйте ещё раз.')
+      setError(t('check.failed'))
     } finally {
       sendingRef.current = false
       setIsSending(false)
@@ -433,8 +456,29 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
           onPointerDownCapture={stopAuto}
           className="fixed inset-0 z-50 flex flex-col bg-[#0b1220] outline-none"
         >
-          <Drawer.Title className="sr-only">Отметить {ACTION_LABEL[action].toLowerCase()}</Drawer.Title>
-          <Drawer.Description className="sr-only">Снимок и геолокация в момент отметки</Drawer.Description>
+          <Drawer.Title className="sr-only">{t(ACTION_MARK[action])}</Drawer.Title>
+          <Drawer.Description className="sr-only">{t('check.sheetDescription')}</Drawer.Description>
+
+          {isDone && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-[#0b1220]">
+              <div className="success-pop relative flex h-28 w-28 items-center justify-center rounded-full bg-emerald-500">
+                <span className="success-ring absolute inset-0 rounded-full bg-emerald-500" />
+                <svg viewBox="0 0 24 24" width={64} height={64} fill="none" className="relative">
+                  <path
+                    className="success-draw"
+                    d="M5 12.5 10 17.5 19 7.5"
+                    stroke="#fff"
+                    strokeWidth={2.4}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+              <p className="animate-fade-in-up animate-delay-4 m-0 text-[16px] font-bold text-white">
+                {t(ACTION_DONE[action])}
+              </p>
+            </div>
+          )}
 
           <div className="relative flex flex-1 items-center justify-center overflow-hidden">
             <video
@@ -450,17 +494,14 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
               {countdown !== null && (
                 <div className="flex flex-col items-center gap-1 text-white">
                   <span className="text-[64px] font-bold leading-none">{countdown}</span>
-                  <span className="text-[13px] text-white/70">Снимаем автоматически</span>
+                  <span className="text-[13px] text-white/70">{t('check.autoShot')}</span>
                 </div>
               )}
 
               {!cameraReady && (
                 <div className="flex flex-col items-center gap-3 text-white/60">
                   <Icon icon="mdi:camera-outline" width={34} />
-                  <p className="m-0 text-[13px] leading-snug">
-                    Нет доступа к камере. Разрешите доступ в настройках браузера,
-                    либо продолжите без камеры.
-                  </p>
+                  <p className="m-0 text-[13px] leading-snug">{t('check.noCamera')}</p>
                 </div>
               )}
             </div>
@@ -470,7 +511,7 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
             {!cameraReady && (
               <div className="flex items-center gap-2.5 rounded-2xl bg-white/5 px-4 py-3 text-[13px] font-semibold text-white">
                 <Icon icon="mdi:alert-circle-outline" width={20} className="text-rose-400" />
-                Камера недоступна — можно продолжить вручную
+                {t('check.noCameraShort')}
               </div>
             )}
 
@@ -483,11 +524,11 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
               geoPending ? (
                 <div className="flex items-center justify-center gap-2 text-[13px] text-white/60">
                   <Icon icon="mdi:crosshairs-gps" width={18} className="animate-pulse" />
-                  Определяем геолокацию…
+                  {t('check.geoPending')}
                 </div>
               ) : geoOptional ? (
                 <p className="m-0 text-center text-[12px] text-amber-300">
-                  Геолокация недоступна — отметим без неё
+                  {t('check.geoOptional')}
                 </p>
               ) : (
                 <button
@@ -496,7 +537,7 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
                   className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/10 py-3 text-[14px] font-semibold text-white"
                 >
                   <Icon icon="mdi:crosshairs-gps" width={18} />
-                  Нужна геолокация — определить ещё раз
+                  {t('check.geoRetry')}
                 </button>
               )
             )}
@@ -505,7 +546,7 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
                 кнопка, автоснимок лишь бонус, и его отсутствие не новость. */}
             {isArmed && (
               <p className="m-0 text-center text-[12px] text-white/50">
-                {faceSeen ? 'Лицо в кадре — не двигайтесь' : 'Смотрите в камеру — снимем автоматически'}
+                {faceSeen ? t('check.faceSeen') : t('check.lookAtCamera')}
               </p>
             )}
 
@@ -515,7 +556,7 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
                 onClick={stopAuto}
                 className="w-full rounded-2xl bg-white/10 py-3 text-[14px] font-semibold text-white"
               >
-                Отменить автоснимок
+                {t('check.cancelAuto')}
               </button>
             )}
 
@@ -528,7 +569,7 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
               {isSending
                 ? <Icon icon="mdi:loading" width={20} className="animate-spin" />
                 : <Icon icon={action === 'IN' ? 'mdi:check-circle-outline' : 'mdi:clock-outline'} width={20} />}
-              Отметить {ACTION_LABEL[action].toLowerCase()}
+              {t(ACTION_MARK[action])}
             </button>
 
             <button
@@ -537,7 +578,7 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
               disabled={isSending}
               className="w-full py-2 text-[14px] text-white/50 disabled:opacity-40"
             >
-              Отмена
+              {t('common.cancel')}
             </button>
           </div>
         </Drawer.Content>
@@ -604,21 +645,24 @@ function useToday() {
 /** Карточки «Приход / Уход» над лентой — как в примере с Kirish/Chiqish. */
 export function CheckInSummary() {
   const { checkIn, checkOut } = useToday()
+  const t = useT()
 
   // Одной строкой, а не столбиком: над лентой это две подписи и два времени,
   // ради которых незачем занимать высоту в два ряда.
   const card = (label: string, time: string, icon: string, tone: string) => (
-    <div className={`flex flex-1 items-center justify-center gap-1.5 rounded-2xl px-2.5 py-1.5 ${tone}`}>
-      <Icon icon={icon} width={14} className="shrink-0" />
-      <span className="text-[12px] font-semibold">{label}</span>
+    // Те же py/шрифт/иконка, что у кнопки ниже: карточки и действие читаются
+    // как один блок, а не как подпись над ним.
+    <div className={`flex flex-1 items-center justify-center gap-2 rounded-2xl px-2.5 py-2.5 ${tone}`}>
+      <Icon icon={icon} width={18} className="shrink-0" />
+      <span className="text-[14px] font-semibold">{label}</span>
       <span className="text-[14px] font-bold tabular-nums">{time}</span>
     </div>
   )
 
   return (
     <section className="animate-fade-in-up flex gap-2">
-      {card('Приход', checkIn, 'mdi:login', 'bg-emerald-500/15 text-emerald-500')}
-      {card('Уход', checkOut, 'mdi:logout', 'bg-amber-500/15 text-amber-500')}
+      {card(t('check.in'), checkIn, 'mdi:login', 'bg-emerald-500/15 text-emerald-500')}
+      {card(t('check.out'), checkOut, 'mdi:logout', 'bg-amber-500/15 text-amber-500')}
     </section>
   )
 }
@@ -626,6 +670,7 @@ export function CheckInSummary() {
 export function CheckInActions() {
   const [action, setAction] = useState<MarkAction | null>(null)
   const { nextAction } = useToday()
+  const t = useT()
 
   // Каскад тянем заранее, пока человек ещё смотрит ленту: 234 КБ по мобильной
   // связи — это те самые секунды, на которые раньше опаздывал автоснимок.
@@ -646,7 +691,7 @@ export function CheckInActions() {
         }`}
       >
         <Icon icon={nextAction === 'IN' ? 'mdi:login' : 'mdi:logout'} width={18} />
-        {ACTION_LABEL[nextAction]}
+        {t(ACTION_LABEL[nextAction])}
       </button>
 
       {action && <CameraSheet action={action} onClose={() => setAction(null)} />}

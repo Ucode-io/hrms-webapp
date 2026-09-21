@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Icon } from '@iconify/react'
+import { useT } from '../i18n'
 import {
   buildArticleTree,
   knowledgeService,
@@ -34,6 +35,8 @@ function TreeRow({
   onToggle: (id: string) => void
   onOpen: (id: string) => void
 }) {
+  const t = useT()
+
   const isOpen = expanded.has(node.id)
   const hasChildren = node.children.length > 0
 
@@ -49,7 +52,7 @@ function TreeRow({
           <button
             type="button"
             onClick={() => onToggle(node.id)}
-            aria-label={isOpen ? 'Свернуть' : 'Развернуть'}
+            aria-label={isOpen ? t('knowledge.collapse') : t('knowledge.expand')}
             className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-[var(--text-muted)] active:bg-gray-100"
           >
             <Icon
@@ -97,6 +100,8 @@ function TreeRow({
 }
 
 export function KnowledgePage() {
+  const t = useT()
+
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -154,14 +159,14 @@ export function KnowledgePage() {
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Поиск по статьям..."
+          placeholder={t('knowledge.searchPlaceholder')}
           className="h-11 w-full rounded-2xl border border-[var(--line)] bg-[var(--surface)] pl-10 pr-10 text-[13.5px] text-[var(--text-main)] shadow-[0_1px_4px_rgba(0,0,0,0.05)] outline-none transition-shadow focus:shadow-[0_1px_8px_rgba(0,0,0,0.1)]"
         />
         {search ? (
           <button
             type="button"
             onClick={() => setSearch('')}
-            aria-label="Очистить поиск"
+            aria-label={t('knowledge.clearSearch')}
             className="absolute right-3 top-1/2 flex h-5 w-5 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--text-muted)]"
           >
             <Icon icon="mdi:close" width={12} className="text-white" />
@@ -191,7 +196,7 @@ export function KnowledgePage() {
           </section>
           <p className="m-0 flex items-center justify-center gap-1.5 text-[12px] font-semibold text-[var(--text-muted)]">
             <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--accent)]/25 border-t-[var(--accent)]" />
-            Загружаем базу знаний…
+            {t('knowledge.loading')}
           </p>
         </>
       ) : isError ? (
@@ -204,7 +209,7 @@ export function KnowledgePage() {
             />
             <div className="flex-1">
               <p className="m-0 text-[13.5px] font-bold text-[var(--error-text)]">
-                Не удалось загрузить базу знаний
+                {t('knowledge.loadFailed')}
               </p>
               <button
                 type="button"
@@ -212,7 +217,7 @@ export function KnowledgePage() {
                 className="mt-2 inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[var(--error-line)] bg-[var(--surface)] px-3 py-1.5 text-[12px] font-bold text-[var(--error-text)] active:scale-95"
               >
                 <Icon icon="mdi:refresh" width={13} />
-                Повторить
+                {t('events.repeat')}
               </button>
             </div>
           </div>
@@ -220,18 +225,18 @@ export function KnowledgePage() {
       ) : articles.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-2xl bg-[var(--surface)] p-8 text-center shadow-sm">
           <Icon icon="mdi:book-open-page-variant-outline" width={40} className="text-gray-300" />
-          <p className="m-0 text-sm text-gray-500">В базе знаний пока нет статей</p>
+          <p className="m-0 text-sm text-gray-500">{t('knowledge.empty')}</p>
         </div>
       ) : search ? (
         found.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-2xl bg-[var(--surface)] p-8 text-center shadow-sm">
             <Icon icon="mdi:magnify" width={40} className="text-gray-300" />
-            <p className="m-0 text-sm text-gray-500">Ничего не найдено</p>
+            <p className="m-0 text-sm text-gray-500">{t('knowledge.nothingFound')}</p>
           </div>
         ) : (
           <section className="space-y-2">
             <p className="m-0 px-1 text-[11.5px] font-semibold text-[var(--text-muted)]">
-              Найдено: {found.length}
+              {t('knowledge.found', { count: found.length })}
             </p>
             {found.map((article) => {
               const path = pathOf(article)

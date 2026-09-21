@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Icon } from '@iconify/react'
+import { useT } from '../i18n'
 import contactsService, {
   contactEmail,
   contactHaystack,
@@ -28,6 +29,8 @@ function ContactAction({ href, icon, label }: { href: string; icon: string; labe
 }
 
 function ContactRow({ contact }: { contact: ContactItem }) {
+  const t = useT()
+
   const name = contactName(contact)
   const phone = contactPhone(contact)
   const email = contactEmail(contact)
@@ -57,14 +60,16 @@ function ContactRow({ contact }: { contact: ContactItem }) {
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5">
-        {phone && <ContactAction href={`tel:${phone}`} icon="mdi:phone" label={`Позвонить ${name}`} />}
-        {email && <ContactAction href={`mailto:${email}`} icon="mdi:email-outline" label={`Написать ${name}`} />}
+        {phone && <ContactAction href={`tel:${phone}`} icon="mdi:phone" label={t('contacts.call', { name })} />}
+        {email && <ContactAction href={`mailto:${email}`} icon="mdi:email-outline" label={t('contacts.write', { name })} />}
       </div>
     </div>
   )
 }
 
 export function ContactsPage() {
+  const t = useT()
+
   const [query, setQuery] = useState('')
 
   const { data: contacts = [], isLoading, isError, refetch } = useQuery({
@@ -97,7 +102,7 @@ export function ContactsPage() {
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Имя, должность, отдел"
+          placeholder={t('contacts.searchPlaceholder')}
           className="w-full rounded-2xl border border-[var(--line)] bg-[var(--surface)] py-2.5 pl-10 pr-3.5 text-[14px] text-[var(--text-main)] outline-none placeholder:text-[var(--text-muted)]"
         />
       </div>
@@ -114,7 +119,7 @@ export function ContactsPage() {
       ) : isError ? (
         <div className="rounded-2xl border border-[var(--error-line)] bg-[var(--error-bg)] px-4 py-3">
           <p className="m-0 text-[13px] font-semibold text-[var(--error-text)]">
-            Не удалось загрузить контакты
+            {t('contacts.loadFailed')}
           </p>
           <button
             type="button"
@@ -123,20 +128,20 @@ export function ContactsPage() {
             }}
             className="mt-2 rounded-lg bg-[var(--error-text)] px-2.5 py-1.5 text-[12px] font-bold text-white"
           >
-            Повторить
+            {t('events.repeat')}
           </button>
         </div>
       ) : visible.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)] px-6 py-12 text-center">
           <Icon icon="mdi:account-search-outline" width={44} className="text-[var(--text-muted)] opacity-30" />
           <p className="m-0 text-[13px] font-semibold text-[var(--text-muted)]">
-            {query.trim() ? 'Никого не нашли' : 'Список коллег пуст'}
+            {query.trim() ? t('contacts.notFound') : t('contacts.empty')}
           </p>
         </div>
       ) : (
         <>
           <p className="m-0 text-[11px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
-            {visible.length} из {contacts.length}
+            {t('contacts.counter', { shown: visible.length, total: contacts.length })}
           </p>
           <div className="flex flex-col gap-2.5">
             {visible.map(({ contact }) => (

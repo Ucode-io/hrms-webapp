@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
+import { useT, formatDateLocal } from '../i18n'
 import { useAuth } from '../context/AuthContext'
 import { surveysService, type MySurvey } from '../api/surveysService'
 
@@ -9,7 +10,7 @@ const formatDate = (value: string | null): string => {
   if (!value) return ''
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return ''
-  return parsed.toLocaleDateString('ru-RU', {
+  return formatDateLocal(parsed, {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
@@ -17,6 +18,8 @@ const formatDate = (value: string | null): string => {
 }
 
 export function SurveysPage() {
+  const t = useT()
+
   const navigate = useNavigate()
   const { session, profile } = useAuth()
 
@@ -64,12 +67,12 @@ export function SurveysPage() {
       </div>
       <div className="min-w-0 flex-1">
         <p className="m-0 truncate text-[14px] font-bold text-[var(--text-main)]">
-          {survey.title || 'Без названия'}
+          {survey.title || t('surveys.noName')}
         </p>
         <p className="m-0 mt-0.5 text-[12px] text-[var(--text-muted)]">
           {survey.completed
-            ? `Пройден ${formatDate(survey.completed_at)}`
-            : 'Нажмите, чтобы пройти'}
+            ? t('surveys.passedAt', { date: formatDate(survey.completed_at) })
+            : t('surveys.tapToPass')}
         </p>
       </div>
       {/* Статус вынесен в бейдж (как в макете): по нему список читается
@@ -81,7 +84,7 @@ export function SurveysPage() {
             : 'bg-[var(--accent-light)] text-[var(--accent)]'
         }`}
       >
-        {survey.completed ? 'Пройден' : 'Новый'}
+        {survey.completed ? t('surveys.passed') : t('surveys.new')}
       </span>
     </button>
   )
@@ -96,12 +99,12 @@ export function SurveysPage() {
         </div>
       ) : isError ? (
         <div className="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
-          Не удалось загрузить опросы. Попробуйте позже.
+          {t('surveys.loadFailed')}
         </div>
       ) : surveys.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-2xl bg-white p-8 text-center shadow-sm">
           <Icon icon="mdi:clipboard-check-outline" width={40} className="text-gray-300" />
-          <p className="text-sm text-gray-500">Вам пока не назначены опросы</p>
+          <p className="text-sm text-gray-500">{t('surveys.empty')}</p>
         </div>
       ) : (
         <section className="space-y-2.5">{ordered.map(renderCard)}</section>

@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react'
+import { useT } from '../../i18n'
 import {
   clampPercent,
   formatCompactPeriodLabel,
@@ -42,6 +43,8 @@ export function KpiCard({
   onToggle,
   onEdit,
 }: KpiCardProps) {
+  const t = useT()
+
   const isLeaf = !node.hasChildren || node.children.length === 0
   const isExpanded = expandedIds.has(node.id)
   const isSaving = savingFactId === node.id
@@ -114,7 +117,7 @@ export function KpiCard({
               {node.percentTotal}%
             </span>
             <span className="text-[10px] text-[var(--text-muted)] font-semibold">
-              {isLeaf ? 'факт' : 'итог'}
+              {isLeaf ? t('kpi.fact') : t('kpi.totalShort')}
             </span>
           </div>
         </div>
@@ -131,7 +134,7 @@ export function KpiCard({
         <div className={`flex items-center justify-between gap-3 ${compact ? 'mt-2' : 'mt-2.5'}`}>
           <div className="min-w-0">
             <p className="m-0 text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold">
-              План
+              {t('kpi.plan')}
             </p>
             <p
               className={`m-0 mt-0.5 font-bold text-[var(--text-secondary)] truncate ${
@@ -143,7 +146,7 @@ export function KpiCard({
           </div>
           <div className="min-w-0 text-right">
             <p className="m-0 text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold">
-              Факт
+              {t('kpi.factCap')}
             </p>
             <p
               className={`m-0 mt-0.5 font-extrabold truncate ${tone.text} ${
@@ -170,12 +173,12 @@ export function KpiCard({
             {isSaving ? (
               <>
                 <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--accent)]/30 border-t-[var(--accent)]" />
-                Сохранение…
+                {t('kpi.saving')}
               </>
             ) : (
               <>
                 <Icon icon="mdi:pencil-outline" width={14} />
-                Ввести факт
+                {t('kpi.enterFact')}
               </>
             )}
           </button>
@@ -193,7 +196,7 @@ export function KpiCard({
             width={14}
             className={`transition-transform ${isExpanded ? '' : '-rotate-90'}`}
           />
-          {isExpanded ? 'Скрыть дочерние' : `Показать дочерние · ${node.children.length}`}
+          {isExpanded ? t('kpi.hideChildren') : t('kpi.showChildren', { count: node.children.length })}
         </button>
       )}
 

@@ -1,3 +1,4 @@
+import { tr } from '../i18n'
 // Справочник коллег — только чтение.
 //
 // Источник тот же, что у списка сотрудников в админке: коллекция `user_base`,
@@ -56,7 +57,7 @@ export function contactName(contact: ContactItem): string {
     .map(text)
     .filter(Boolean)
     .join(' ')
-  return full || 'Без имени'
+  return full || tr('fallback.noName')
 }
 
 export function contactInitials(contact: ContactItem): string {

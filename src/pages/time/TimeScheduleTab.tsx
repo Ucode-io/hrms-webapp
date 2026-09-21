@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth, getDisplayName, getInitials } from '../../context/AuthContext'
 import { toIsoDate } from '../../api/attendanceService'
+import { useT, tr, getLang, weekdayNames, formatDateLocal } from '../../i18n'
 import { getAgendaHolidays } from '../../api/dashboardService'
 import shiftsService, {
   SHIFT_KIND_META,
@@ -12,8 +13,7 @@ import shiftsService, {
   type ShiftRecord,
 } from '../../api/shiftsService'
 
-const WEEKDAY_SHORT = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС']
-const MONTH_SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
+
 
 function startOfWeek(date: Date): Date {
   const d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
@@ -29,8 +29,7 @@ function addDays(date: Date, days: number): Date {
 }
 
 function formatDayHeader(date: Date): string {
-  const weekday = date.toLocaleDateString('ru-RU', { weekday: 'long' })
-  return `${weekday}, ${date.getDate()} ${MONTH_SHORT[date.getMonth()]} ${date.getFullYear()}`.toUpperCase()
+  return formatDateLocal(date, { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase()
 }
 
 function shiftHours(shift: ShiftRecord): number {
@@ -52,6 +51,8 @@ const isWeekend = (date: Date): boolean => date.getDay() === 0 || date.getDay() 
  * добавить как в шапке «Табеля».
  */
 export function TimeScheduleTab() {
+  const t = useT()
+
   const { profile, session } = useAuth()
   const todayIso = toIsoDate(new Date())
   const weekStart = useMemo(() => startOfWeek(new Date()), [])
@@ -95,7 +96,7 @@ export function TimeScheduleTab() {
   const offDayByDate = useMemo(() => {
     const map = new Map<string, string>()
     for (const date of weekDays) {
-      if (isWeekend(date)) map.set(toIsoDate(date), 'Выходной')
+      if (isWeekend(date)) map.set(toIsoDate(date), tr('events.weekend'))
     }
     for (const holiday of holidays) {
       if (holiday.isWorkdayTransfer) map.delete(holiday.date)
@@ -152,7 +153,7 @@ export function TimeScheduleTab() {
                   isSelected ? 'text-white/70' : dayOff ? 'text-rose-400' : 'text-[var(--text-muted)]'
                 }`}
               >
-                {WEEKDAY_SHORT[idx]}
+                {weekdayNames(getLang())[idx].toUpperCase()}
               </span>
               <span className="text-[15px] font-extrabold">{date.getDate()}</span>
               {/* Точка — цвет вида смены, тот же, что в легенде планировщика. */}
@@ -189,7 +190,7 @@ export function TimeScheduleTab() {
                 </span>
                 {/* Название праздника важнее слова «Выходной»: суббота и так
                     видна по дате, а 8 марта — нет. */}
-                {dayOff && dayOff !== 'Выходной' && (
+                {dayOff && dayOff !== tr('events.weekend') && (
                   <span className="shrink-0 text-[11px] font-bold text-rose-500">{dayOff}</span>
                 )}
               </div>
@@ -210,7 +211,11 @@ export function TimeScheduleTab() {
                 dayShifts.map((shift) => {
                   const place = shift.locations_id_data?.title || ''
                   const position = shift.positions_id_data?.title || ''
-                  const meta = [displayName, place && `в ${place}`, position && `как ${position}`]
+                  const meta = [
+                    displayName,
+                    place && t('schedule.at', { place }),
+                    position && t('schedule.as', { position }),
+                  ]
                     .filter(Boolean)
                     .join(' ')
                   const kindMeta = SHIFT_KIND_META[shiftKind(shift)]
@@ -241,7 +246,7 @@ export function TimeScheduleTab() {
                         className="shrink-0 rounded-lg px-2 py-1 text-[11px] font-bold"
                         style={{ backgroundColor: kindMeta.soft, color: kindMeta.color }}
                       >
-                        {kindMeta.label}
+                        {t(kindMeta.label)}
                       </span>
                     </div>
                   )
@@ -254,7 +259,7 @@ export function TimeScheduleTab() {
 
       {/* Total */}
       <div className="flex items-center justify-between rounded-2xl bg-[var(--surface-muted)] px-4 py-3.5">
-        <span className="text-[14px] font-bold text-[var(--text-main)]">Итого часов</span>
+        <span className="text-[14px] font-bold text-[var(--text-main)]">{t('schedule.totalHours')}</span>
         <span className="text-[16px] font-extrabold text-[var(--text-main)]">{totalHours.toFixed(2)}</span>
       </div>
     </div>

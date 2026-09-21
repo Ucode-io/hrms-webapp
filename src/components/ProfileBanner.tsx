@@ -2,13 +2,14 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth, getDisplayName, getInitials } from '../context/AuthContext'
 import { BuildingIcon, MapPinIcon, BriefcaseIcon } from './Icons'
+import { useT, type TKey } from '../i18n'
 
-function getGreeting(): string {
+function greetingKey(): TKey {
   const h = new Date().getHours()
-  if (h >= 5 && h < 12) return 'Доброе утро'
-  if (h >= 12 && h < 17) return 'Добрый день'
-  if (h >= 17 && h < 22) return 'Добрый вечер'
-  return 'Доброй ночи'
+  if (h >= 5 && h < 12) return 'greeting.morning'
+  if (h >= 12 && h < 17) return 'greeting.day'
+  if (h >= 17 && h < 22) return 'greeting.evening'
+  return 'greeting.night'
 }
 
 function getRelationTitle(value: unknown): string {
@@ -20,6 +21,7 @@ function getRelationTitle(value: unknown): string {
 export function ProfileBanner({ disableNav = false }: { disableNav?: boolean }) {
   const { profile } = useAuth()
   const navigate = useNavigate()
+  const t = useT()
 
   const displayName = getDisplayName(profile)
   const avatar =
@@ -28,19 +30,19 @@ export function ProfileBanner({ disableNav = false }: { disableNav?: boolean }) 
 
   const highlights = useMemo(() => [
     {
-      label: 'Отдел',
+      label: 'banner.department' as TKey,
       value: getRelationTitle(profile?.departments_id_data) ||
         (typeof profile?.departments_id === 'string' ? profile.departments_id : '—'),
       Icon: BuildingIcon,
     },
     {
-      label: 'Локация',
+      label: 'banner.location' as TKey,
       value: getRelationTitle(profile?.locations_id_data) ||
         (typeof profile?.locations_id === 'string' ? profile.locations_id : '—'),
       Icon: MapPinIcon,
     },
     {
-      label: 'Занятость',
+      label: 'banner.employment' as TKey,
       value: getRelationTitle(profile?.employment_types_id_data) ||
         (typeof profile?.employment_types_id === 'string' ? profile.employment_types_id : '—'),
       Icon: BriefcaseIcon,
@@ -64,9 +66,9 @@ export function ProfileBanner({ disableNav = false }: { disableNav?: boolean }) 
           )}
         </div>
         <div className="min-w-0 flex-1 text-white">
-          <p className="m-0 text-xs font-medium opacity-80">{getGreeting()}</p>
+          <p className="m-0 text-xs font-medium opacity-80">{t(greetingKey())}</p>
           <h1 className="m-0 mt-0.5 text-xl font-black leading-tight tracking-tight">{displayName}</h1>
-          <p className="m-0 mt-0.5 text-xs opacity-75 font-medium">Мобильный HR кабинет</p>
+          <p className="m-0 mt-0.5 text-xs opacity-75 font-medium">{t('banner.subtitle')}</p>
         </div>
       </button>
 
@@ -79,7 +81,7 @@ export function ProfileBanner({ disableNav = false }: { disableNav?: boolean }) 
           >
             <item.Icon size={16} className="opacity-80 mb-1" />
             <span className="block text-[10px] opacity-70 font-medium uppercase tracking-[0.04em]">
-              {item.label}
+              {t(item.label)}
             </span>
             <span className="block mt-0.5 text-[11px] leading-tight font-bold break-words">
               {item.value || '—'}

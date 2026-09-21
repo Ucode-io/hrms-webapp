@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Preloader } from 'konsta/react'
 import { useAuth } from '../context/AuthContext'
+import { useI18n, type TKey, formatDateLocal } from '../i18n'
 import { CalendarOffIcon } from './Icons'
 import { useUpcomingEventsQuery, type UpcomingEventItem } from '../api/dashboardService'
 import shiftsService, { formatShiftRange, type ShiftRecord } from '../api/shiftsService'
@@ -32,39 +33,39 @@ const buildDayChips = (base: Date, count: number): DayChip[] =>
     const day = addDays(base, idx)
     return {
       dateKey: toIsoDate(day),
-      dayLabel: day.toLocaleDateString('ru-RU', { weekday: 'short' }).replace('.', ''),
-      dateLabel: day.toLocaleDateString('ru-RU', { day: '2-digit' }),
+      dayLabel: formatDateLocal(day, { weekday: 'short' }).replace('.', ''),
+      dateLabel: formatDateLocal(day, { day: '2-digit' }),
     }
   })
 
-const formatHumanDate = (iso: string): string => {
-  if (!iso) return 'Дата не выбрана'
+const formatHumanDate = (iso: string, fallback: string): string => {
+  if (!iso) return fallback
   const date = new Date(`${iso}T00:00:00`)
-  if (Number.isNaN(date.getTime())) return 'Дата не выбрана'
-  return date.toLocaleDateString('ru-RU', {
+  if (Number.isNaN(date.getTime())) return fallback
+  return formatDateLocal(date, {
     weekday: 'long',
     day: '2-digit',
     month: 'long',
   })
 }
 
-const getTypeBadge = (type: UpcomingEventItem['type']): { label: string; className: string } => {
+const getTypeBadge = (type: UpcomingEventItem['type']): { label: TKey; className: string } => {
   if (type === 'weekend') {
     return {
-      label: 'Выходной',
+      label: 'events.weekend',
       className: 'bg-amber-50 text-amber-700 border border-amber-200',
     }
   }
 
   if (type === 'working_holiday') {
     return {
-      label: 'Рабочий праздник',
+      label: 'events.workingHoliday',
       className: 'bg-violet-50 text-violet-700 border border-violet-200',
     }
   }
 
   return {
-    label: 'Праздник',
+    label: 'events.holiday',
     className: 'bg-rose-50 text-rose-700 border border-rose-200',
   }
 }
@@ -83,23 +84,28 @@ const getTypeBadge = (type: UpcomingEventItem['type']): { label: string; classNa
 const getDayChipStatusMeta = (
   items: UpcomingEventItem[] | undefined,
   shift: ShiftRecord | undefined,
+  t: (key: TKey) => string,
 ): { label: string; colorClass: string } => {
   if (shift) {
     const range = formatShiftRange(shift)
     return {
-      label: range !== '—' ? range : 'Р/д',
+      label: range !== '—' ? range : t('events.workday'),
       colorClass: 'text-emerald-500',
     }
   }
   const holiday = items?.find((item) => item.type === 'holiday' || item.type === 'working_holiday')
-  if (holiday) return { label: 'Праздник', colorClass: 'text-rose-500' }
-  return { label: 'Выходной', colorClass: 'text-amber-500' }
+  if (holiday) return { label: t('events.holiday'), colorClass: 'text-rose-500' }
+  return { label: t('events.weekend'), colorClass: 'text-amber-500' }
 }
 
 export function UpcomingEvents() {
   const { profile, session } = useAuth()
+  const { lang, t } = useI18n()
   const today = useMemo(() => new Date(), [])
-  const dayChips = useMemo(() => buildDayChips(today, DAY_CHIPS_COUNT), [today])
+  const dayChips = useMemo(
+    () => buildDayChips(today, DAY_CHIPS_COUNT),
+    [today, lang],
+  )
 
   const dateFrom = dayChips[0]?.dateKey || toIsoDate(today)
   const dateTo = dayChips[dayChips.length - 1]?.dateKey || toIsoDate(today)
@@ -162,7 +168,7 @@ export function UpcomingEvents() {
           дни» пересказывала ленту, которая и так под ней. */}
       <div className="flex items-center justify-between gap-2">
         <p className="m-0 text-[14px] font-extrabold text-[var(--text-main)] tracking-tight">
-          Предстоящие события
+          {t('events.title')}
         </p>
         <span className="shrink-0 text-[var(--accent)]">
           <CalendarOffIcon size={16} />
@@ -176,7 +182,7 @@ export function UpcomingEvents() {
           // Пока смены не приехали, «Выходной» был бы враньём на полсекунды.
           const statusMeta = shiftsLoading
             ? { label: '—', colorClass: 'text-[var(--text-muted)]' }
-            : getDayChipStatusMeta(dayEvents, shiftByDate.get(day.dateKey))
+            : getDayChipStatusMeta(dayEvents, shiftByDate.get(day.dateKey), t)
 
           return (
             <button
@@ -208,11 +214,11 @@ export function UpcomingEvents() {
       <div className="mt-2 rounded-xl border border-[var(--line)] bg-[var(--app-bg)] px-2.5 py-2">
         <div className="flex items-center justify-between gap-2">
           <p className="m-0 text-[11px] font-bold capitalize text-[var(--text-main)]">
-            {formatHumanDate(selectedDate)}
+            {formatHumanDate(selectedDate, t('events.noDate'))}
           </p>
           {!isLoading && !isError && selectedEvents.length === 0 && (
             <span className="shrink-0 text-[10px] font-semibold text-[var(--text-muted)]">
-              Без событий
+              {t('events.none')}
             </span>
           )}
         </div>
@@ -224,7 +230,7 @@ export function UpcomingEvents() {
         ) : isError ? (
           <div className="mt-1.5 rounded-lg border border-[var(--error-line)] bg-[var(--error-bg)] px-2.5 py-1.5">
             <p className="m-0 text-[11px] font-semibold text-[var(--error-text)]">
-              Не удалось загрузить календарь событий
+              {t('events.loadFailed')}
             </p>
             <button
               type="button"
@@ -233,7 +239,7 @@ export function UpcomingEvents() {
               }}
               className="mt-1.5 rounded-lg bg-[var(--error-text)] px-2.5 py-1 text-[11px] font-bold text-white"
             >
-              Повторить
+              {t('events.repeat')}
             </button>
           </div>
         ) : selectedEvents.length > 0 ? (
@@ -249,7 +255,7 @@ export function UpcomingEvents() {
                     {item.title}
                   </p>
                   <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${badge.className}`}>
-                    {badge.label}
+                    {t(badge.label)}
                   </span>
                 </div>
               )

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Icon } from '@iconify/react'
+import { useT, type TKey, formatDateLocal } from '../i18n'
 import { useAuth } from '../context/AuthContext'
 import { useCompany } from '../context/CompanyContext'
 import { reportsService, type MyTask } from '../api/reportsService'
@@ -23,16 +24,18 @@ const deadlineIso = (task: MyTask): string | null => {
 const formatShortDate = (iso: string): string => {
   const parsed = new Date(`${iso}T00:00:00`)
   if (Number.isNaN(parsed.getTime())) return ''
-  return parsed.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '')
+  return formatDateLocal(parsed, { day: 'numeric', month: 'short' }).replace('.', '')
 }
 
-const SECTION_TITLE: Record<CalendarView, string> = {
-  month: 'Дедлайны в этом месяце',
-  week: 'Задачи на неделю',
-  day: 'Задачи на день',
+const SECTION_TITLE: Record<CalendarView, TKey> = {
+  month: 'cal.monthDeadlines',
+  week: 'cal.weekTasks',
+  day: 'cal.dayTasks',
 }
 
 export function TasksCalendarPage() {
+  const t = useT()
+
   const { session, profile } = useAuth()
   const { company } = useCompany()
   const accentColor = company.mainColor || '#3b6cf5'
@@ -104,7 +107,7 @@ export function TasksCalendarPage() {
       />
 
       <p className="m-0 px-1 text-[13px] font-semibold text-[var(--text-muted)]">
-        {SECTION_TITLE[view]}
+        {t(SECTION_TITLE[view])}
       </p>
 
       {isPending ? (
@@ -116,7 +119,7 @@ export function TasksCalendarPage() {
       ) : isError ? (
         <div className="rounded-2xl border border-[var(--error-line)] bg-[var(--error-bg)] px-4 py-4 text-center">
           <p className="m-0 text-[13.5px] font-bold text-[var(--error-text)]">
-            Не удалось загрузить задачи
+            {t('tasks.loadFailed')}
           </p>
           <button
             type="button"
@@ -124,14 +127,14 @@ export function TasksCalendarPage() {
             className="mt-2 inline-flex items-center gap-1 rounded-lg border border-[var(--error-line)] bg-[var(--surface)] px-3 py-1.5 text-[12px] font-bold text-[var(--error-text)] active:scale-95"
           >
             <Icon icon="mdi:refresh" width={13} />
-            Повторить
+            {t('events.repeat')}
           </button>
         </div>
       ) : visibleTasks.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)] px-6 py-10 text-center">
           <Icon icon="mdi:calendar-check-outline" width={36} className="text-[var(--text-muted)] opacity-40" />
           <p className="m-0 text-[13px] font-semibold text-[var(--text-muted)]">
-            Дедлайнов на этот период нет
+            {t('cal.noDeadlines')}
           </p>
         </div>
       ) : (
@@ -151,7 +154,7 @@ export function TasksCalendarPage() {
               >
                 <div className="min-w-0 flex-1">
                   <p className="m-0 truncate text-[14px] font-bold text-[var(--text-main)]">
-                    {task.title || 'Без названия'}
+                    {task.title || t('tasks.noName')}
                   </p>
                   <p className="m-0 mt-0.5 truncate text-[12px] text-[var(--text-muted)]">
                     {[iso ? formatShortDate(iso) : null, task.sheet?.title || task.code]
@@ -171,7 +174,7 @@ export function TasksCalendarPage() {
                         }
                   }
                 >
-                  {isOverdue ? 'Просрочено' : task.statusTitle || 'Без статуса'}
+                  {isOverdue ? t('tasks.overdue') : task.statusTitle || t('tasks.noStatus')}
                 </span>
               </button>
             )

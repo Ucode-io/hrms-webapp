@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
+import { useT, type TKey } from '../i18n'
 import { useAuth, getDisplayName, getInitials } from '../context/AuthContext'
 import { LogoutConfirmDrawer } from '../components/LogoutConfirmDrawer'
 
@@ -11,7 +12,7 @@ function getRelationTitle(value: unknown): string {
 }
 
 interface MenuItem {
-  label: string
+  label: TKey
   icon: string
   tint: string
   fg: string
@@ -19,16 +20,18 @@ interface MenuItem {
 }
 
 const MENU_ITEMS: MenuItem[] = [
-  { label: 'Мои данные', icon: 'mdi:account-outline', tint: 'rgba(59,108,245,0.14)', fg: '#6c9bff', to: '/profile/my-data' },
-  { label: 'Режим киоска', icon: 'mdi:crop-free', tint: 'rgba(16,185,129,0.14)', fg: '#34d399', to: '/kiosk-mode' },
-  { label: 'Язык и тема', icon: 'mdi:web', tint: 'rgba(139,92,246,0.14)', fg: '#a78bfa', to: '/language-theme' },
-  { label: 'Настройки отслеживания', icon: 'mdi:target-variant', tint: 'rgba(217,119,6,0.14)', fg: '#f0b34d', to: '/tracking-settings' },
-  { label: 'Сменить пароль', icon: 'mdi:lock-outline', tint: 'rgba(239,68,68,0.14)', fg: '#f87171', to: '/change-password' },
-  { label: 'Политика конфиденциальности', icon: 'mdi:file-document-outline', tint: 'rgba(59,108,245,0.14)', fg: '#6c9bff', to: '/privacy-policy' },
-  { label: 'Поддержка', icon: 'mdi:chat-outline', tint: 'rgba(16,185,129,0.14)', fg: '#34d399', to: '/support' },
+  { label: 'page.myData', icon: 'mdi:account-outline', tint: 'rgba(59,108,245,0.14)', fg: '#6c9bff', to: '/profile/my-data' },
+  { label: 'page.kiosk', icon: 'mdi:crop-free', tint: 'rgba(16,185,129,0.14)', fg: '#34d399', to: '/kiosk-mode' },
+  { label: 'page.languageTheme', icon: 'mdi:web', tint: 'rgba(139,92,246,0.14)', fg: '#a78bfa', to: '/language-theme' },
+  { label: 'page.tracking', icon: 'mdi:target-variant', tint: 'rgba(217,119,6,0.14)', fg: '#f0b34d', to: '/tracking-settings' },
+  { label: 'profile.changePassword', icon: 'mdi:lock-outline', tint: 'rgba(239,68,68,0.14)', fg: '#f87171', to: '/change-password' },
+  { label: 'page.privacy', icon: 'mdi:file-document-outline', tint: 'rgba(59,108,245,0.14)', fg: '#6c9bff', to: '/privacy-policy' },
+  { label: 'page.support', icon: 'mdi:chat-outline', tint: 'rgba(16,185,129,0.14)', fg: '#34d399', to: '/support' },
 ]
 
 export function ProfilePage() {
+  const t = useT()
+
   const { profile } = useAuth()
   const navigate = useNavigate()
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
@@ -71,7 +74,7 @@ export function ProfilePage() {
             >
               <Icon icon={item.icon} width={18} />
             </div>
-            <span className="flex-1 text-[14px] font-semibold text-[var(--text-main)]">{item.label}</span>
+            <span className="flex-1 text-[14px] font-semibold text-[var(--text-main)]">{t(item.label)}</span>
             <Icon icon="mdi:chevron-right" width={18} className="text-[var(--text-muted)]" />
           </button>
         ))}
@@ -83,7 +86,7 @@ export function ProfilePage() {
         className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl border border-red-200 bg-[var(--surface)] text-red-600 text-[14px] font-bold cursor-pointer transition-all active:scale-[0.985] active:bg-red-50"
       >
         <Icon icon="mdi:logout" width={16} />
-        Выйти
+        {t('profile.logout')}
       </button>
 
       <LogoutConfirmDrawer open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm} />

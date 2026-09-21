@@ -1,3 +1,4 @@
+import { tr, type TKey, formatDateLocal, formatNumberLocal } from '../../i18n'
 import type {
   KpiAggregationType,
   KpiPeriodType,
@@ -32,11 +33,11 @@ export type KpiGroup = {
   items: KpiNode[]
 }
 
-export const KPI_PERIOD_TABS: Array<{ key: KpiPeriodType; short: string; label: string }> = [
-  { key: 'yearly', short: 'Год', label: 'Год' },
-  { key: 'quarterly', short: 'Кв', label: 'Квартал' },
-  { key: 'monthly', short: 'Мес', label: 'Месяц' },
-  { key: 'weekly', short: 'Нед', label: 'Неделя' },
+export const KPI_PERIOD_TABS: Array<{ key: KpiPeriodType; short: TKey; label: TKey }> = [
+  { key: 'yearly', short: 'kpi.yearShort', label: 'kpi.year' },
+  { key: 'quarterly', short: 'kpi.quarterShort', label: 'kpi.quarter' },
+  { key: 'monthly', short: 'kpi.monthShort', label: 'kpi.month' },
+  { key: 'weekly', short: 'kpi.weekShort', label: 'kpi.week' },
 ]
 
 const pad = (value: number): string => String(value).padStart(2, '0')
@@ -86,9 +87,9 @@ export const getPeriodRange = (cursorDate: Date, mode: KpiPeriodType): { from: s
 
 export const formatPeriodLabel = (cursorDate: Date, mode: KpiPeriodType): string => {
   if (mode === 'yearly') return `${cursorDate.getFullYear()}`
-  if (mode === 'quarterly') return `${Math.floor(cursorDate.getMonth() / 3) + 1}-й квартал ${cursorDate.getFullYear()}`
+  if (mode === 'quarterly') return tr('kpi.quarterOf', { quarter: Math.floor(cursorDate.getMonth() / 3) + 1, year: cursorDate.getFullYear() })
   if (mode === 'monthly') {
-    const formatted = new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric' }).format(cursorDate)
+    const formatted = formatDateLocal(cursorDate, { month: 'long', year: 'numeric' })
     return formatted.charAt(0).toUpperCase() + formatted.slice(1)
   }
   const start = getWeekStart(cursorDate)
@@ -151,8 +152,8 @@ export const calcPercent = (actual: number, plan: number): number => {
 
 export const formatNumber = (value: number): string => {
   const rounded = Math.round(value * 100) / 100
-  if (Number.isInteger(rounded)) return new Intl.NumberFormat('ru-RU').format(rounded)
-  return rounded.toLocaleString('ru-RU', { maximumFractionDigits: 2, minimumFractionDigits: 0 })
+  if (Number.isInteger(rounded)) return formatNumberLocal(rounded)
+  return formatNumberLocal(rounded, { maximumFractionDigits: 2, minimumFractionDigits: 0 })
 }
 
 export const formatValueWithSymbol = (value: number, symbol: string, position: 'prefix' | 'suffix'): string => {
@@ -167,9 +168,9 @@ export const formatCompactPeriodLabel = (periodType: KpiPeriodType, startDateIso
   const end = parseIsoDate(endDateIso)
   if (!start || !end) return '—'
   if (periodType === 'yearly') return String(start.getFullYear())
-  if (periodType === 'quarterly') return `${Math.floor(start.getMonth() / 3) + 1} кв. ${start.getFullYear()}`
+  if (periodType === 'quarterly') return tr('kpi.quarterCompact', { quarter: Math.floor(start.getMonth() / 3) + 1, year: start.getFullYear() })
   if (periodType === 'monthly') {
-    const monthShort = new Intl.DateTimeFormat('ru-RU', { month: 'long' }).format(start)
+    const monthShort = formatDateLocal(start, { month: 'long' })
     return monthShort.charAt(0).toUpperCase() + monthShort.slice(1)
   }
   if (periodType === 'weekly') return `${pad(start.getDate())}.${pad(start.getMonth() + 1)} – ${pad(end.getDate())}.${pad(end.getMonth() + 1)}`
@@ -177,11 +178,11 @@ export const formatCompactPeriodLabel = (periodType: KpiPeriodType, startDateIso
 }
 
 export const getTypeLabel = (periodType: KpiPeriodType): string => {
-  if (periodType === 'yearly') return 'Год'
-  if (periodType === 'quarterly') return 'Квартал'
-  if (periodType === 'monthly') return 'Месяц'
-  if (periodType === 'weekly') return 'Неделя'
-  return 'День'
+  if (periodType === 'yearly') return tr('kpi.year')
+  if (periodType === 'quarterly') return tr('kpi.quarter')
+  if (periodType === 'monthly') return tr('kpi.month')
+  if (periodType === 'weekly') return tr('kpi.week')
+  return tr('kpi.day')
 }
 
 export const getTypeChipClass = (periodType: KpiPeriodType): string => {
@@ -218,10 +219,10 @@ export const normalizeNode = (raw: KpiTableItem): KpiNode => {
   return {
     id: raw.guid,
     parentId: typeof raw.parent_id === 'string' ? raw.parent_id : null,
-    position: typeof raw.position === 'string' && raw.position.trim() ? raw.position : 'Без должности',
-    title: typeof raw.title === 'string' && raw.title.trim() ? raw.title : 'Без названия',
+    position: typeof raw.position === 'string' && raw.position.trim() ? raw.position : tr('fallback.noPosition'),
+    title: typeof raw.title === 'string' && raw.title.trim() ? raw.title : tr('fallback.noArticleTitle'),
     description: typeof raw.description === 'string' ? raw.description : '',
-    source: typeof raw.source === 'string' && raw.source.trim() ? raw.source : 'Вручную',
+    source: typeof raw.source === 'string' && raw.source.trim() ? raw.source : tr('kpi.manualSource'),
     valueSymbol: typeof raw.value_symbol === 'string' ? raw.value_symbol : '',
     valueSymbolPosition: raw.value_symbol_position === 'prefix' ? 'prefix' : 'suffix',
     periodType,
@@ -249,7 +250,7 @@ export const normalizeGroups = (response: { groups?: KpiTableGroup[]; items?: Kp
   const rawGroups = Array.isArray(response.groups) ? response.groups : []
   if (rawGroups.length > 0) {
     return rawGroups.map((group) => ({
-      position: typeof group.position === 'string' && group.position.trim() ? group.position : 'Без должности',
+      position: typeof group.position === 'string' && group.position.trim() ? group.position : tr('fallback.noPosition'),
       items: Array.isArray(group.items) ? group.items.filter(isRoot).map(normalizeNode) : [],
     }))
   }
