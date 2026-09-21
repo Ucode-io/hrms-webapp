@@ -389,24 +389,30 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
         location,
       })
 
-      // ponytail: судьбу события не отслеживаем — конвейер может отбросить его
-      // как нерабочий день уже после 201. Правду покажет строка состояния,
-      // когда обновится. Понадобится предупреждать заранее — проверять день
-      // надо до нажатия, по тем же данным, что рисуют «Эта неделя».
-      await queryClient.invalidateQueries({ queryKey: ['attendance', employeeGuid] })
-      // Поток событий — источник чередования: не сбросить его значит показать
-      // ту же кнопку, что и до отметки.
-      await queryClient.invalidateQueries({ queryKey: ['attendance-marks', employeeGuid] })
       // Экран успеха вместо мгновенного закрытия: отметка необратима, и
-      // человеку нужно увидеть, что она прошла. Таймер не чистим — шторка
+      // человеку нужно увидеть, что она прошла. Показываем сразу после 201 и
+      // до обновления данных: `invalidateQueries` в v5 ждёт реального
+      // перезапроса, а он идёт секунды и может не ответить вовсе — экран
+      // успеха при этом не показывался вообще. Таймер не чистим — шторка
       // закроется сама, а повторный onClose ничего не ломает.
       setIsDone(true)
       window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred?.('success')
       window.setTimeout(onClose, SUCCESS_MS)
+
+      // ponytail: судьбу события не отслеживаем — конвейер может отбросить его
+      // как нерабочий день уже после 201. Правду покажет строка состояния,
+      // когда обновится. Понадобится предупреждать заранее — проверять день
+      // надо до нажатия, по тем же данным, что рисуют «Эта неделя».
+      void queryClient.invalidateQueries({ queryKey: ['attendance', employeeGuid] })
+      // Поток событий — источник чередования: не сбросить его значит показать
+      // ту же кнопку, что и до отметки.
+      void queryClient.invalidateQueries({ queryKey: ['attendance-marks', employeeGuid] })
     } catch (submitError) {
       console.error('Отметка не записалась', submitError)
       setError(t('check.failed'))
-    } finally {
+      // Замок снимается только на ошибке. После успеха шторка закрывается сама,
+      // а снятый замок успел бы пустить второй заход: детект перевзводится, как
+      // только isSending падает, и через три секунды отправил бы ещё отметку.
       sendingRef.current = false
       setIsSending(false)
     }
