@@ -1,4 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
+import { loadSession, updateSessionTokens } from '../auth/session'
+import { refreshTokens } from './authService'
 import { handleUnauthorized } from './unauthorizedHandler'
 
 const API_BASE_URL = 'https://api.admin.u-code.io/'
@@ -174,13 +176,65 @@ adminRequest.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config
 })
 
+// Один общий запрос на все параллельные 401: иначе десяток висящих запросов
+// дёрнет /v2/refresh десять раз, и каждый следующий пойдёт с уже отозванным
+// refresh-токеном.
+let refreshing: Promise<string | null> | null = null
+
+const refreshAccessToken = (): Promise<string | null> => {
+  if (!refreshing) {
+    refreshing = (async () => {
+      const refreshToken = loadSession()?.refreshToken
+      if (!refreshToken) return null
+      try {
+        const token = await refreshTokens(refreshToken)
+        updateSessionTokens(token.access_token, token.refresh_token)
+        return token.access_token
+      } catch {
+        return null
+      }
+    })().finally(() => {
+      refreshing = null
+    })
+  }
+
+  return refreshing
+}
+
 adminRequest.interceptors.response.use(
   (response) => response?.data?.data?.data ?? response?.data?.data ?? response?.data,
-  (error: AxiosError) => {
-    // A 401 on an authenticated request means the token is dead — force logout.
+  async (error: AxiosError) => {
+    // A 401 on an authenticated request means the access token is dead. Access
+    // lives a day, the session 30 — сначала пробуем обновить токен и повторить
+    // запрос, и только если обновить нечем или не вышло — разлогиниваем.
     // Only act when we actually had a Bearer token (API-KEY calls can 401 for
     // unrelated reasons and must not bounce an anonymous user).
     if (error.response?.status === 401 && localStorage.getItem('auth_token')) {
+      const config = error.config as (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined
+
+      // Пачка запросов приходит волнами, а не одновременно: общего in-flight
+      // мало, каждая следующая волна дёргала бы /v2/refresh заново. Если токен
+      // в хранилище уже не тот, с которым запрос ушёл, — его обновил сосед по
+      // пачке, просто повторяем с актуальным.
+      const current = localStorage.getItem('auth_token')
+      const refreshedByNeighbour =
+        Boolean(current) && config?.headers?.Authorization !== `Bearer ${current}`
+
+      if (config && !config._retried && (refreshedByNeighbour || (await refreshAccessToken()))) {
+        config._retried = true
+        // Тело здесь уже сериализовано в строку, а request-интерцептор
+        // дописывает companies_id только в объект — иначе payload потеряется.
+        if (typeof config.data === 'string') {
+          try {
+            config.data = JSON.parse(config.data)
+          } catch {
+            // Не JSON (form-data и т.п.) — отправляем как есть.
+          }
+        }
+        // Authorization подставит request-интерцептор из обновлённого localStorage.
+        return adminRequest(config)
+      }
+
       handleUnauthorized()
     }
     return Promise.reject(error)

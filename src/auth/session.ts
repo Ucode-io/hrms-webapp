@@ -91,6 +91,27 @@ export const loadSession = (): AuthSession | null => {
   }
 }
 
+// После /v2/refresh меняются только токены: пользователя эндпоинт не отдаёт,
+// поэтому сохранённую сессию перезаписываем поверх, не теряя user_data.
+export const updateSessionTokens = (accessToken: string, refreshToken: string): void => {
+  localStorage.setItem(AUTH_TOKEN_KEY, accessToken)
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+
+  const raw = localStorage.getItem(PERSIST_KEY)
+  if (!raw) return
+
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!isRecord(parsed)) return
+    localStorage.setItem(
+      PERSIST_KEY,
+      JSON.stringify({ ...parsed, token: accessToken, refreshToken }),
+    )
+  } catch {
+    localStorage.removeItem(PERSIST_KEY)
+  }
+}
+
 export const clearSession = (): void => {
   localStorage.removeItem(PERSIST_KEY)
   localStorage.removeItem(AUTH_TOKEN_KEY)

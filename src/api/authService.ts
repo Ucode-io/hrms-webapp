@@ -39,6 +39,12 @@ interface LoginResponse {
   data: LoginResponseData
 }
 
+interface RefreshResponse {
+  status: string
+  description: string
+  data: { token: TokenData }
+}
+
 export const loginWithPassword = async (
   username: string,
   password: string,
@@ -54,4 +60,16 @@ export const loginWithPassword = async (
   })
 
   return response.data.data
+}
+
+// Access-токен живёт сутки, сессия в auth-сервисе — 30 дней. Эндпоинт открыт
+// (до LoginMiddleware), тело — только refresh_token: role_id/client_type_id
+// сервис берёт из самой сессии. В ответе приходят одни токены, данные
+// пользователя остаются прежними.
+export const refreshTokens = async (refreshToken: string): Promise<TokenData> => {
+  const response = await authRequest.put<RefreshResponse>('/v2/refresh', {
+    refresh_token: refreshToken,
+  })
+
+  return response.data.data.token
 }
