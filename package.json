@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run check:lang && tsc -b && vite build",
+    "check:lang": "node --experimental-strip-types src/i18n/pickLang.check.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },

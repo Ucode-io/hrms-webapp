@@ -21,5 +21,8 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Проверки запускаются node'ом напрямую и тянут node:assert — в сборку
+  // приложения они не входят, типы им даёт tsconfig.node.json.
+  "exclude": ["src/**/*.check.ts"]
 }

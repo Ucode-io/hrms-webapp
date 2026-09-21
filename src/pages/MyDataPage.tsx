@@ -174,7 +174,6 @@ export function MyDataPage() {
     position: getRelationTitle(profile?.roles_id_data),
     level: getRelationTitle(profile?.levels_id_data),
     department: getRelationTitle(profile?.departments_id_data),
-    unit: getRelationTitle(profile?.divisions_id_data),
     location: getRelationTitle(profile?.locations_id_data),
     manager: getRelationTitle(profile?.managers_id_data),
   }
@@ -224,7 +223,6 @@ export function MyDataPage() {
               {renderReadField(t('myData.position'), workingData.position)}
               {renderReadField(t('myData.level'), workingData.level)}
               {renderReadField(t('myData.department'), workingData.department)}
-              {renderReadField(t('myData.unit'), workingData.unit)}
               {renderReadField(t('myData.location'), workingData.location)}
               {renderReadField(t('myData.tenure'), calcWorkPeriod(workingData.startDate))}
             </div>

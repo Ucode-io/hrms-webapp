@@ -7,7 +7,6 @@ import { useAuth } from '../../context/AuthContext'
 import { useCompany } from '../../context/CompanyContext'
 import {
   attendanceService,
-  computeDelayTimeFromCheckIn,
   normalizeActionStatus,
   normalizeTime,
   normalizeWorkflowStatus,
@@ -262,7 +261,10 @@ function RecordDetailDrawer({ record, open, onClose }: {
   const actionStatus = normalizeActionStatus(record.action_status)
   const workflowStatus = normalizeWorkflowStatus(record.status)
   const actionCfg = ACTION_BADGE[actionStatus] || ACTION_BADGE.unknown
-  const delay = normalizeTime(String(record.delay_time || '')) || computeDelayTimeFromCheckIn(String(record.check_in_time || ''))
+  // Только записанное опоздание: своего расчёта здесь нет, он был бы
+  // вычитанием чужих 09:00 (CONTEXT.md, Lateness). В строке уже лежит цифра,
+  // посчитанная по графику сотрудника при записи.
+  const delay = normalizeTime(String(record.delay_time || '')) || '00:00'
   const d = iso ? new Date(iso) : null
 
   return (
@@ -363,11 +365,9 @@ function AddRecordDrawer({ open, defaultDate, employeeGuid, companyId, accentCol
     }
   }
 
-  const delay = useMemo(
-    () => (normalizeTime(form.checkIn) ? computeDelayTimeFromCheckIn(form.checkIn) : null),
-    [form.checkIn],
-  )
-
+  // ponytail: предпросмотр опоздания убран вместе с местной арифметикой —
+  // честное число знает только сервер (он читает график), а спрашивать его на
+  // каждый тик поля времени дорого. Цифра появляется в строке после сохранения.
   const handleSave = async () => {
     if (!normalizeTime(form.checkIn)) { setError(t('sheet.needCheckIn')); return }
     try {
@@ -412,20 +412,6 @@ function AddRecordDrawer({ open, defaultDate, employeeGuid, companyId, accentCol
                 </label>
               ))}
             </div>
-
-            {/* Delay preview */}
-            {delay !== null && (
-              <div className={`mt-3 rounded-2xl px-4 py-3 flex items-center gap-3 ${delay === '00:00' ? 'bg-emerald-500/15' : 'bg-amber-500/15'}`}>
-                <Icon icon={delay === '00:00' ? 'mdi:check-circle' : 'mdi:clock-alert'} width={20}
-                  className={delay === '00:00' ? 'text-emerald-500' : 'text-amber-500'} />
-                <div>
-                  <p className="m-0 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">{t('sheet.delay')}</p>
-                  <p className={`m-0 text-[15px] font-extrabold ${delay === '00:00' ? 'text-emerald-500' : 'text-amber-500'}`}>
-                    {delay === '00:00' ? t('sheet.onTimeMark') : `+${delay}`}
-                  </p>
-                </div>
-              </div>
-            )}
 
             {error && (
               <div className="mt-3 rounded-2xl bg-rose-500/15 px-4 py-3 text-[13px] font-semibold text-rose-500">

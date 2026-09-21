@@ -1,12 +1,12 @@
 import { formatDateLocal } from '../i18n'
 import adminRequest, { getCompaniesId } from './adminRequest'
+import { DEFAULT_TIME_ZONE } from './regionService'
 
 const ATTENDANCE_COLLECTION = 'attendance'
 // Сырой поток событий прохода: сюда же пишет интеграция с турникетами.
 // Запись именно через объектное API — на ней висит custom_event AFTER CREATE,
 // который апсертит день в `attendance` и шлёт карточку в Telegram.
 const ATTENDANCE_RECORDS_COLLECTION = 'attendance_records'
-const COMPANY_TIME_ZONE = 'Asia/Tashkent'
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/
 
 export type AttendanceWorkflowStatus = 'accepted' | 'rejected' | 'requested' | 'unknown'
@@ -103,32 +103,48 @@ export function normalizeActionStatus(value: unknown): AttendanceActionStatus {
   return 'unknown'
 }
 
-function parseTimeToMinutes(value: string): number | null {
-  const normalized = normalizeTime(value)
-  if (!normalized) return null
-  const [hours, minutes] = normalized.split(':').map(Number)
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null
-  return hours * 60 + minutes
+export interface LatenessResult {
+  delay_time: string
+  action_status: Exclude<AttendanceActionStatus, 'unknown'>
+  /** null — графика на этот день нет, порогом стали дефолтные 09:00. */
+  work_start_minutes: number | null
 }
 
-function toDelayString(minutes: number): string {
-  const safe = Math.max(0, Math.floor(minutes))
-  const hh = String(Math.floor(safe / 60)).padStart(2, '0')
-  const mm = String(safe % 60).padStart(2, '0')
-  return `${hh}:${mm}`
-}
-
-export function computeDelayTimeFromCheckIn(checkInTime: string): string {
-  const checkInMinutes = parseTimeToMinutes(checkInTime)
-  if (checkInMinutes == null) return '00:00'
-  const lateMinutes = Math.max(0, checkInMinutes - 9 * 60)
-  return toDelayString(lateMinutes)
-}
-
-export function resolveActionStatusFromCheckIn(checkInTime: string): Exclude<AttendanceActionStatus, 'unknown'> {
+/**
+ * Опоздание и статус считает сервер — тем же расчётом, что применяется к
+ * проходу через турникет (`compute_lateness` в udevs-hrms-hickvision).
+ *
+ * Местной копии здесь нет намеренно: она вычитала бы жёсткие 09:00, а
+ * опоздание меряется от начала рабочего дня ЭТОГО сотрудника (ADR-0005,
+ * Lateness в CONTEXT.md). `companies_id` дописывает интерцептор adminRequest.
+ */
+export async function computeLateness(
+  userBaseId: string,
+  date: string,
+  checkInTime: string,
+): Promise<LatenessResult> {
   const normalized = normalizeTime(checkInTime)
-  if (!normalized) return 'absent'
-  return computeDelayTimeFromCheckIn(normalized) === '00:00' ? 'present' : 'late'
+  // Нет прихода — считать нечего, и сервер на этот случай отвечает константой.
+  // Гейт здесь, а не у вызывающих: недоступный шлюз не должен мешать сохранить
+  // запись, в которой расчёт не участвует.
+  if (!normalized) {
+    return { delay_time: '00:00', action_status: 'absent', work_start_minutes: null }
+  }
+
+  const res = await adminRequest.post('/v2/invoke_function/udevs-hrms-hickvision', {
+    data: {
+      method: 'compute_lateness',
+      data: { user_base_id: userBaseId, date, check_in_time: normalized },
+    },
+  })
+
+  const payload = (res && typeof res === 'object' ? res : {}) as Record<string, unknown>
+  const result = (payload.result ?? payload) as Partial<LatenessResult>
+  if (typeof result?.delay_time !== 'string' || typeof result?.action_status !== 'string') {
+    throw new Error('Unexpected response format for compute_lateness')
+  }
+
+  return result as LatenessResult
 }
 
 export type MarkAction = 'IN' | 'OUT'
@@ -147,12 +163,16 @@ export interface MarkTimes {
  * причине дату берём отсюда же, а не из `toIsoDate` — около полуночи они
  * разъезжаются на сутки.
  *
- * Аргументом принимает момент, а не зовёт `new Date()` внутри: так полночь и
- * чужой пояс проверяются подстановкой.
+ * Пояс — настенные часы сотрудника: зона региона его филиала, а без филиала —
+ * зона компании (ADR-0005, `regionService`). Одной общей зоны здесь больше
+ * нет: именно она объявляла опоздавшим москвича, пришедшего в девять.
+ *
+ * Аргументами принимает момент и зону, а не зовёт `new Date()` внутри: так
+ * полночь и чужой пояс проверяются подстановкой.
  */
-export function buildMarkTimes(now: Date): MarkTimes {
+export function buildMarkTimes(now: Date, timeZone: string = DEFAULT_TIME_ZONE): MarkTimes {
   const parts = new Intl.DateTimeFormat('ru-RU', {
-    timeZone: COMPANY_TIME_ZONE,
+    timeZone,
     year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
     hourCycle: 'h23',
@@ -250,8 +270,7 @@ export const attendanceService = {
   }): Promise<unknown> => {
     const normalizedCheckIn = normalizeTime(checkInTime)
     const normalizedCheckOut = normalizeTime(checkOutTime)
-    const delay = computeDelayTimeFromCheckIn(normalizedCheckIn)
-    const actionStatus = resolveActionStatusFromCheckIn(normalizedCheckIn)
+    const lateness = await computeLateness(userBaseId, date, normalizedCheckIn)
 
     return adminRequest.post(`/v2/items/${ATTENDANCE_COLLECTION}`, {
       data: {
@@ -260,9 +279,9 @@ export const attendanceService = {
         date,
         ...(normalizedCheckIn ? { check_in_time: normalizedCheckIn } : {}),
         ...(normalizedCheckOut ? { check_out_time: normalizedCheckOut } : {}),
-        delay_time: delay,
+        delay_time: lateness.delay_time,
         status: ['requested'],
-        action_status: [actionStatus],
+        action_status: [lateness.action_status],
       },
     })
   },
@@ -279,6 +298,7 @@ export const attendanceService = {
     action,
     picture,
     location,
+    timeZone,
     now = new Date(),
   }: {
     userBaseId: string
@@ -286,13 +306,15 @@ export const attendanceService = {
     action: MarkAction
     picture?: string
     location?: string
+    /** Зона региона филиала сотрудника; без неё — запасной циферблат. */
+    timeZone?: string
     now?: Date
   }): Promise<unknown> => {
     return adminRequest.post(`/v2/items/${ATTENDANCE_RECORDS_COLLECTION}`, {
       data: {
         user_base_id: userBaseId,
         companies_id: companyId || getCompaniesId(),
-        ...buildMarkTimes(now),
+        ...buildMarkTimes(now, timeZone),
         action: [action],
         source: 'webapp',
         ...(picture ? { picture } : {}),

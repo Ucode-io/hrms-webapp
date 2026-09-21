@@ -18,7 +18,12 @@ import {
   persistSession,
   type AuthSession,
 } from '../auth/session'
-import { tr } from '../i18n'
+import { langWithRegion, tr, useI18n } from '../i18n'
+import {
+  DEFAULT_TIME_ZONE,
+  getEmployeeRegion,
+  type EmployeeRegion,
+} from '../api/regionService'
 
 // Человеческий текст ucode кладёт в `data`, а в `description` — константу под
 // код ответа: на неверный пароль там «Invalid argument value passed», и именно
@@ -53,6 +58,8 @@ export function getInitials(user: UserData | null): string {
 interface AuthContextValue {
   session: AuthSession | null
   profile: UserData | null
+  /** Часы и язык места, где сотрудник работает. См. regionService. */
+  region: EmployeeRegion
   newsFeed: NewsItem[]
   isNewsLoading: boolean
   newsError: string
@@ -66,6 +73,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue>({
   session: null,
   profile: null,
+  region: { timezone: DEFAULT_TIME_ZONE, language: null },
   newsFeed: [],
   isNewsLoading: false,
   newsError: '',
@@ -77,6 +85,7 @@ const AuthContext = createContext<AuthContextValue>({
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { setLang } = useI18n()
   const [session, setSession] = useState<AuthSession | null>(() => loadSession())
   const [loginError, setLoginError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -124,6 +133,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const profile = profileData || session?.user_data || session?.user || null
   const newsError = _newsError ? tr('auth.newsFailed') : ''
+
+  // Регион сотрудника — часы его филиала и язык места. Часы нужны всегда:
+  // ими штампуется каждая отметка (ADR-0005), поэтому запрос платится один
+  // раз за сессию независимо от того, дошла ли до региона очередь по языку.
+  // Ключ — ровно то поле, которое читает запрос. В `session.user_data` связи не
+  // развёрнуты, и первый ответ — часы компании; когда приедет профиль от
+  // `getUserBaseByGuid(with_relations)`, регион появится и ключ сменится.
+  const regionId = (profile?.locations_id_data as { regions_id?: string } | null)?.regions_id
+  const { data: region = { timezone: DEFAULT_TIME_ZONE, language: null } } = useQuery({
+    queryKey: ['employeeRegion', profile?.guid, regionId],
+    queryFn: () => getEmployeeRegion(profile),
+    enabled: isAuthorized && Boolean(profile),
+  })
+
+  // Язык региона — предположение о месте, и в цепочке он отвечает последним
+  // (ADR-0006): всё, что известно про самого человека, побеждает регион.
+  // Порядок звеньев держит `pickLang`; здесь только применяем его ответ, и
+  // без записи в хранилище — догадка не должна пережить настоящий выбор.
+  useEffect(() => {
+    setLang(langWithRegion(region.language), false)
+  }, [region.language, setLang])
 
   const login = async (username: string, password: string) => {
     const normalizedUsername = username.trim()
@@ -192,7 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        session, profile, newsFeed, isNewsLoading, newsError,
+        session, profile, region, newsFeed, isNewsLoading, newsError,
         isAuthorized, login, logout, loginError, isSubmitting,
       }}
     >
