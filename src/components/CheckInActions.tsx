@@ -212,7 +212,7 @@ function hasFace(video: HTMLVideoElement, canvas: HTMLCanvasElement, classify: C
 }
 
 function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => void }) {
-  const { profile, session } = useAuth()
+  const { profile, session, region } = useAuth()
   const t = useT()
   const queryClient = useQueryClient()
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -387,6 +387,7 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
         action,
         picture,
         location,
+        timeZone: region.timezone,
       })
 
       // Экран успеха вместо мгновенного закрытия: отметка необратима, и
@@ -601,14 +602,16 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
  * потока нет. Хук общий для карточек и кнопки, react-query схлопнет запросы.
  */
 function useToday() {
-  const { profile, session } = useAuth()
+  const { profile, session, region } = useAuth()
 
   const employeeGuid =
     (typeof profile?.guid === 'string' && profile.guid) ||
     (typeof session?.user_data?.guid === 'string' && session.user_data.guid) ||
     (typeof session?.user?.guid === 'string' && session.user.guid) || ''
 
-  const iso = buildMarkTimes(new Date()).date
+  // «Сегодня» — у сотрудника, а не у сервера: около полуночи два филиала стоят
+  // на разных датах (ADR-0005).
+  const iso = buildMarkTimes(new Date(), region.timezone).date
 
   // Тот же ключ, что и на /time — данные общие, лишнего запроса не будет.
   const { data: records = [] } = useQuery({

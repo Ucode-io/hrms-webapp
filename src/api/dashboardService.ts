@@ -230,7 +230,7 @@ export const getAgendaHolidays = async ({
     data: {
       operation: 'SELECT',
       table:
-        'holiday_policy_days hpd LEFT JOIN holiday_policies hp ON hp.guid = hpd.holiday_policies_id LEFT JOIN locations l ON l.holiday_policies_id = hp.guid LEFT JOIN user_base ub ON ub.locations_id = l.guid',
+        'holiday_policy_days hpd LEFT JOIN holiday_policies hp ON hp.guid = hpd.holiday_policies_id LEFT JOIN regions r ON r.holiday_policies_id = hp.guid LEFT JOIN locations l ON l.regions_id = r.guid LEFT JOIN user_base ub ON ub.locations_id = l.guid',
       columns: [
         'hpd.guid AS holiday_guid',
         'hpd.title AS holiday_title',

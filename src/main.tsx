@@ -14,13 +14,17 @@ declare global {
         expand: () => void
         // Bot API 7.7, в старых клиентах метода нет — зовём опционально.
         disableVerticalSwipes?: () => void
+        // Открывает t.me внутри самого Telegram, а не во внешнем браузере.
+        openTelegramLink?: (url: string) => void
         // Подписанная строка с данными пользователя. Намеренно берём её, а не
         // initDataUnsafe.user.id: id оттуда подделывается обычным curl, а эту
         // строку бек проверяет HMAC-ом по токену бота и достаёт chat_id сам.
         initData: string
-        // Из неподписанной части берём только start_param — он решает, какой
-        // экран открыть, и подделывать в нём нечего.
-        initDataUnsafe?: { start_param?: string }
+        // Из неподписанной части берём start_param — он решает, какой экран
+        // открыть, и подделывать в нём нечего, — и язык клиента Telegram.
+        // Язык тоже подделывается, но ценой подделки будет чужой перевод
+        // интерфейса у себя же: проверять его HMAC-ом не за чем.
+        initDataUnsafe?: { start_param?: string; user?: { language_code?: string } }
         // Bot API 6.1, в старых клиентах нет — зовём опционально.
         HapticFeedback?: { notificationOccurred?: (type: 'error' | 'success' | 'warning') => void }
         // Bot API 8.0. Внутри Telegram это единственный источник координат:
