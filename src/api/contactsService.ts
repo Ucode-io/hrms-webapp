@@ -21,6 +21,7 @@ export interface ContactItem {
   work_phone?: string | null
   email?: string | null
   personal_email?: string | null
+  telegram?: string | null
   photo?: string | null
   positions_id_data?: { title?: string } | null
   departments_id_data?: { title?: string } | null
@@ -74,6 +75,28 @@ export function contactEmail(contact: ContactItem): string {
   return text(contact.email) || text(contact.personal_email)
 }
 
+/**
+ * Номер для `tel:` — только цифры и ведущий плюс: в вебвью Telegram номер с
+ * пробелами и скобками набор не открывает, ссылка просто ничего не делает.
+ */
+export function contactDialable(contact: ContactItem): string {
+  const phone = contactPhone(contact)
+  const digits = phone.replace(/[^\d]/g, '')
+  if (!digits) return ''
+  return phone.trimStart().startsWith('+') ? `+${digits}` : digits
+}
+
+/**
+ * Юзернейм из поля `telegram` админки. Вводят его как придётся — `@user`,
+ * `user`, `t.me/user`, целый https-адрес, — поэтому режем всё до последнего
+ * сегмента и проверяем по правилам Telegram (5–32 символа, буквы/цифры/_).
+ */
+export function contactTelegram(contact: ContactItem): string {
+  const raw = text(contact.telegram).replace(/^@/, '').split(/[?#]/)[0]
+  const username = raw.split('/').filter(Boolean).pop() ?? ''
+  return /^[A-Za-z]\w{4,31}$/.test(username) ? username : ''
+}
+
 /** Строка, по которой ищем: имя, должность, отдел и телефон разом. */
 export function contactHaystack(contact: ContactItem): string {
   return [
@@ -82,6 +105,7 @@ export function contactHaystack(contact: ContactItem): string {
     text(contact.departments_id_data?.title),
     contactPhone(contact),
     contactEmail(contact),
+    contactTelegram(contact),
   ]
     .join(' ')
     .toLowerCase()

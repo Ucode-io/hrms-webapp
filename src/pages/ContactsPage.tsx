@@ -3,24 +3,34 @@ import { useQuery } from '@tanstack/react-query'
 import { Icon } from '@iconify/react'
 import { useT } from '../i18n'
 import contactsService, {
-  contactEmail,
+  contactDialable,
   contactHaystack,
   contactInitials,
   contactName,
   contactPhone,
+  contactTelegram,
   type ContactItem,
 } from '../api/contactsService'
 
 /**
- * Звонок и письмо — обычными ссылками `tel:`/`mailto:`, их и Telegram, и
- * системный браузер отдают нужному приложению сами. Своего диалера тут не надо.
+ * Звонок — обычной ссылкой `tel:`, её и Telegram, и системный браузер отдают
+ * диалеру сами. Чат — ссылкой на `t.me`: внутри мини-аппа её открывает
+ * `openTelegramLink` (иначе Telegram уводит во внешний браузер), снаружи
+ * работает тот же href обычной ссылкой.
  */
 function ContactAction({ href, icon, label }: { href: string; icon: string; label: string }) {
   return (
     <a
       href={href}
       aria-label={label}
-      onClick={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation()
+        const openInTelegram = window.Telegram?.WebApp?.openTelegramLink
+        if (openInTelegram && href.startsWith('https://t.me/')) {
+          event.preventDefault()
+          openInTelegram(href)
+        }
+      }}
       className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)] no-underline transition-transform active:scale-95"
     >
       <Icon icon={icon} width={18} />
@@ -33,7 +43,8 @@ function ContactRow({ contact }: { contact: ContactItem }) {
 
   const name = contactName(contact)
   const phone = contactPhone(contact)
-  const email = contactEmail(contact)
+  const dialable = contactDialable(contact)
+  const telegram = contactTelegram(contact)
   const photo = typeof contact.photo === 'string' ? contact.photo.trim() : ''
   const subtitle = [contact.positions_id_data?.title, contact.departments_id_data?.title]
     .filter(Boolean)
@@ -54,14 +65,24 @@ function ContactRow({ contact }: { contact: ContactItem }) {
         {subtitle && (
           <p className="m-0 mt-0.5 truncate text-[12px] text-[var(--text-secondary)]">{subtitle}</p>
         )}
-        {phone && (
-          <p className="m-0 mt-0.5 text-[12px] font-semibold text-[var(--text-muted)]">{phone}</p>
+        {(phone || telegram) && (
+          <p className="m-0 mt-0.5 truncate text-[12px] font-semibold text-[var(--text-muted)]">
+            {[phone, telegram && `@${telegram}`].filter(Boolean).join(' · ')}
+          </p>
         )}
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5">
-        {phone && <ContactAction href={`tel:${phone}`} icon="mdi:phone" label={t('contacts.call', { name })} />}
-        {email && <ContactAction href={`mailto:${email}`} icon="mdi:email-outline" label={t('contacts.write', { name })} />}
+        {dialable && (
+          <ContactAction href={`tel:${dialable}`} icon="mdi:phone" label={t('contacts.call', { name })} />
+        )}
+        {telegram && (
+          <ContactAction
+            href={`https://t.me/${telegram}`}
+            icon="mdi:send"
+            label={t('contacts.write', { name })}
+          />
+        )}
       </div>
     </div>
   )
