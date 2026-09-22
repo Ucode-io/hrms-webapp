@@ -1,5 +1,5 @@
 import adminRequest from './adminRequest'
-import { asLang, type Lang } from '../i18n'
+import { asLang, asLangs, type Lang } from '../i18n'
 
 /**
  * Регион сотрудника: часы и язык места, где он работает.
@@ -22,6 +22,12 @@ export interface EmployeeRegion {
   timezone: string
   /** Язык региона: предположение о месте, последнее звено цепочки выбора. */
   language: Lang | null
+  /**
+   * Языки, из которых сотрудник выбирает интерфейс. Пустой список — «выбирай
+   * любой»: так же, как у сотрудника без региона, и так же у региона, где поле
+   * не заполняли (`pickLang.ts`).
+   */
+  languages: Lang[]
 }
 
 const toRecord = (value: unknown): Record<string, unknown> | null =>
@@ -90,15 +96,23 @@ export async function getEmployeeRegion(
   if (regionId) {
     const region = await getItem('regions', regionId)
     const timezone = readTimeZone(region?.timezone)
-    if (timezone) return { timezone, language: readLanguage(region) }
+    if (timezone) {
+      return {
+        timezone,
+        language: readLanguage(region),
+        languages: asLangs(region?.languages),
+      }
+    }
   }
 
   const companiesId = readString(profile?.companies_id)
   if (companiesId) {
     const company = await getItem('companies', companiesId)
+    // У компании набора нет: языки — свойство региона, а без региона
+    // ограничения не существует.
     const timezone = readTimeZone(company?.timezone)
-    if (timezone) return { timezone, language: readLanguage(company) }
+    if (timezone) return { timezone, language: readLanguage(company), languages: [] }
   }
 
-  return { timezone: DEFAULT_TIME_ZONE, language: null }
+  return { timezone: DEFAULT_TIME_ZONE, language: null, languages: [] }
 }

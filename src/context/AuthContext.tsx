@@ -73,7 +73,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue>({
   session: null,
   profile: null,
-  region: { timezone: DEFAULT_TIME_ZONE, language: null },
+  region: { timezone: DEFAULT_TIME_ZONE, language: null, languages: [] },
   newsFeed: [],
   isNewsLoading: false,
   newsError: '',
@@ -85,7 +85,7 @@ const AuthContext = createContext<AuthContextValue>({
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { setLang } = useI18n()
+  const { setLang, setAllowedLangs } = useI18n()
   const [session, setSession] = useState<AuthSession | null>(() => loadSession())
   const [loginError, setLoginError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -141,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // развёрнуты, и первый ответ — часы компании; когда приедет профиль от
   // `getUserBaseByGuid(with_relations)`, регион появится и ключ сменится.
   const regionId = (profile?.locations_id_data as { regions_id?: string } | null)?.regions_id
-  const { data: region = { timezone: DEFAULT_TIME_ZONE, language: null } } = useQuery({
+  const { data: region = { timezone: DEFAULT_TIME_ZONE, language: null, languages: [] } } = useQuery({
     queryKey: ['employeeRegion', profile?.guid, regionId],
     queryFn: () => getEmployeeRegion(profile),
     enabled: isAuthorized && Boolean(profile),
@@ -151,9 +151,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // (ADR-0006): всё, что известно про самого человека, побеждает регион.
   // Порядок звеньев держит `pickLang`; здесь только применяем его ответ, и
   // без записи в хранилище — догадка не должна пережить настоящий выбор.
+  // Набор разрешённых языков приезжает тем же запросом и фильтрует всю
+  // цепочку — до его приезда ограничения нет (`pickLang.ts`).
   useEffect(() => {
-    setLang(langWithRegion(region.language), false)
-  }, [region.language, setLang])
+    setAllowedLangs(region.languages)
+    setLang(langWithRegion(region.language, region.languages), false)
+  }, [region.language, region.languages, setAllowedLangs, setLang])
 
   const login = async (username: string, password: string) => {
     const normalizedUsername = username.trim()

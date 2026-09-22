@@ -1,6 +1,6 @@
 import { Icon } from '@iconify/react'
 import { useTheme, type ThemeMode } from '../context/ThemeContext'
-import { useI18n, LANGUAGES, type TKey } from '../i18n'
+import { useI18n, type TKey } from '../i18n'
 
 const THEME_OPTIONS: { value: ThemeMode; label: TKey; icon: string }[] = [
   { value: 'light', label: 'settings.themeLight', icon: 'mdi:white-balance-sunny' },
@@ -12,7 +12,9 @@ export function LanguageThemePage() {
   const { mode, setMode } = useTheme()
   // Язык живёт в контексте, а не в локальном стейте: выбор должен перерисовать
   // весь интерфейс, а не только эту страницу.
-  const { lang, setLang, t } = useI18n()
+  // `languages` — набор региона, а не все словари приложения: админ решает,
+  // на каких языках компания говорит с людьми этого места.
+  const { lang, languages, setLang, t } = useI18n()
 
   return (
     <div className="flex flex-col gap-3 animate-fade-in-up">
@@ -46,7 +48,7 @@ export function LanguageThemePage() {
           <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">{t('settings.language')}</p>
         </div>
         <div className="px-5 py-2">
-          {LANGUAGES.map((opt) => (
+          {languages.map((opt) => (
             <button
               key={opt.value}
               type="button"

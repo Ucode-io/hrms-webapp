@@ -14,7 +14,7 @@
  */
 
 import assert from 'node:assert/strict'
-import { asLang, LANG_CODES, pickLang } from './pickLang.ts'
+import { asLang, asLangs, LANG_CODES, pickLang } from './pickLang.ts'
 
 // Выбор сотрудника сильнее всего: он и есть знание о человеке.
 assert.equal(pickLang({ stored: 'en', telegram: 'zh', region: 'az' }), 'en')
@@ -48,5 +48,34 @@ assert.equal(pickLang({ stored: 'az' }), 'az')
 // Все шесть языков приложения опознаются: список в pickLang и словари в DICTS
 // обязаны сходиться, иначе язык выбирается и ничего не меняет.
 for (const code of LANG_CODES) assert.equal(asLang(code), code)
+
+// --- Набор языков региона -------------------------------------------------
+
+// Пустой набор — «ограничения нет», а не «нет языков». Так выглядит и регион,
+// где поле не заполняли, и сотрудник без региона (их в проде большинство).
+assert.equal(pickLang({ stored: 'zh' }, []), 'zh')
+assert.equal(pickLang({ telegram: 'uz' }, []), 'uz')
+
+// Набор фильтрует всю цепочку, включая выбор сотрудника: отозванный язык
+// отдаёт очередь дальше, а не показывает интерфейс без единой галочки.
+assert.equal(pickLang({ stored: 'zh', telegram: 'ru' }, ['ru', 'en']), 'ru')
+assert.equal(pickLang({ stored: 'zh', telegram: 'kk', region: 'en' }, ['ru', 'en']), 'en')
+
+// Никто из цепочки в набор не попал — первый из набора.
+assert.equal(pickLang({ stored: 'zh', telegram: 'kk', region: 'az' }, ['en', 'ru']), 'en')
+assert.equal(pickLang({}, ['uz', 'ru']), 'uz')
+
+// Язык региона тоже подчиняется набору: он звено цепочки, а не исключение.
+assert.equal(pickLang({ region: 'zh' }, ['ru', 'uz']), 'ru')
+
+// Набор из одного языка — ровно он, что бы ни знали про человека.
+assert.equal(pickLang({ stored: 'en', telegram: 'ru' }, ['uz']), 'uz')
+
+// `regions.languages` приходит массивом строк, и в нём может лежать что угодно:
+// чужие коды отбрасываются, набор от этого не становится пустым.
+assert.deepEqual(asLangs(['ru', 'de', 'uz']), ['ru', 'uz'])
+assert.deepEqual(asLangs(null), [])
+assert.deepEqual(asLangs('ru'), [])
+assert.equal(pickLang({ stored: 'en' }, asLangs(['de', 'ru'])), 'ru')
 
 console.log('pickLang: ok')

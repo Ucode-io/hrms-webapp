@@ -5,13 +5,13 @@ import { en } from './en'
 import { zh } from './zh'
 import { az } from './az'
 import { kk } from './kk'
-import { asLang, pickLang, type Lang } from './pickLang'
+import { asLang, asLangs, pickLang, type AllowedLangs, type Lang } from './pickLang'
 
 // ponytail: свой словарь вместо i18next — нужен ровно `t()` и переключатель,
 // а не backend-плагины, namespace-loader и детектор языка на 40 КБ.
 // Список языков и цепочка их выбора живут в `pickLang.ts` — он без React,
 // и потому запускаем в проверке.
-export { asLang, type Lang }
+export { asLang, asLangs, type AllowedLangs, type Lang }
 export type TKey = keyof typeof ru
 
 export const LANGUAGES: { value: Lang; label: string }[] = [
@@ -189,9 +189,12 @@ export function loadLang(): Lang {
   return pickLang({ stored: storedLang(), telegram: telegramLang() })
 }
 
-/** Та же цепочка, но с последним звеном — языком региона (см. `pickLang`). */
-export function langWithRegion(regionLang: Lang | null): Lang {
-  return pickLang({ stored: storedLang(), telegram: telegramLang(), region: regionLang })
+/**
+ * Та же цепочка, но с последним звеном — языком региона (см. `pickLang`), и
+ * с набором разрешённых языков того же региона.
+ */
+export function langWithRegion(regionLang: Lang | null, allowed: AllowedLangs = []): Lang {
+  return pickLang({ stored: storedLang(), telegram: telegramLang(), region: regionLang }, allowed)
 }
 
 export type Vars = Record<string, string | number>
@@ -220,6 +223,10 @@ export function translate(lang: Lang, key: TKey, vars?: Vars): string {
 
 type Ctx = {
   lang: Lang
+  /** Что показывать на странице выбора языка: набор региона либо всё. */
+  languages: typeof LANGUAGES
+  /** Набор приезжает с регионом уже после старта — до него ограничения нет. */
+  setAllowedLangs: (allowed: AllowedLangs) => void
   /**
    * `persist: false` — язык поставлен не человеком (сейчас так приходит язык
    * региона). Выбор сотрудника побеждает регион при каждом старте, поэтому
@@ -236,9 +243,17 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     currentLang = loadLang()
     return currentLang
   })
+  const [allowed, setAllowed] = useState<AllowedLangs>([])
+
+  const languages = useMemo(
+    () => (allowed.length === 0 ? LANGUAGES : LANGUAGES.filter((item) => allowed.includes(item.value))),
+    [allowed],
+  )
 
   const value = useMemo<Ctx>(() => ({
     lang,
+    languages,
+    setAllowedLangs: setAllowed,
     setLang: (next, persist = true) => {
       currentLang = next
       setLangState(next)
@@ -248,7 +263,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       document.documentElement.lang = next
     },
     t: (key, vars) => translate(lang, key, vars),
-  }), [lang])
+  }), [lang, languages])
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
 }
