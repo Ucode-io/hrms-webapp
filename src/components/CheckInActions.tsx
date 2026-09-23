@@ -7,6 +7,7 @@ import { useT, type TKey } from '../i18n'
 import { resolveCompaniesId } from '../api/adminRequest'
 import { uploadFile } from '../api/dashboardService'
 import pico from '../lib/pico.js'
+import { officeMiss } from '../lib/geo'
 import {
   attendanceService,
   buildMarkTimes,
@@ -18,8 +19,6 @@ import {
 
 const UPLOAD_TIMEOUT_MS = 10_000
 const GEO_DEADLINE_MS = 8_000
-// Столько раз спрашиваем координаты, прежде чем разрешить отметку без них.
-const GEO_ATTEMPTS = 2
 const PHOTO_MAX_SIDE = 720
 const PHOTO_QUALITY = 0.7
 
@@ -114,8 +113,8 @@ function formatLocation(latitude: number, longitude: number): string {
  * Внутри мини-аппа `navigator.geolocation` молчит — колбэк не приходит ни
  * успехом, ни ошибкой, поэтому единственный рабочий источник там
  * LocationManager (Bot API 8.0). Вне Telegram его нет, и работает обычная
- * браузерная геолокация. Возвращаем пустую строку вместо ошибки: отсутствие
- * координат отметку не отменяет.
+ * браузерная геолокация. Возвращаем пустую строку вместо ошибки: без координат
+ * кнопка просто остаётся заблокированной, а человек жмёт «определить ещё раз».
  */
 function requestLocation(onResult: (location: string) => void): void {
   const manager = window.Telegram?.WebApp?.LocationManager
@@ -226,10 +225,6 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
   // Автоснимок. Взводится, когда готовы камера и каскад, и выключается
   // насовсем по любому касанию экрана.
   const [cascadeReady, setCascadeReady] = useState(false)
-  // Координаты обязательны, но не любой ценой: после GEO_ATTEMPTS неудачных
-  // попыток отметка разрешается и без них. Иначе человек без разрешения на
-  // геолокацию не смог бы отметиться вообще, а отметка важнее координаты.
-  const [geoTries, setGeoTries] = useState(0)
   // Сразу true: первая попытка стартует вместе с монтированием шторки.
   const [geoPending, setGeoPending] = useState(true)
   const [countdown, setCountdown] = useState<number | null>(null)
@@ -242,12 +237,18 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
   const isCounting = countdown !== null
   // isSending — состояние, и внутри одного тика оно устаревшее. Отметка
   // необратима (триггер AFTER CREATE сразу шлёт карточку в Telegram, удаления
-  // из приложения нет), поэтому вход в submit сторожит ref, а не рендер.
+  // из приложения нет), поэтому вход в send сторожит ref, а не рендер.
   const sendingRef = useRef(false)
 
-  // Координаты обязательны, пока попытки не исчерпаны.
-  const geoOptional = geoTries >= GEO_ATTEMPTS
-  const canMark = Boolean(location) || geoOptional
+  // Координаты обязательны: без них отметку не с чем сверить, и дальний приход
+  // прошёл бы без согласования простым запретом геолокации.
+  const canMark = Boolean(location)
+
+  // Снимок сделан, но сотрудник за радиусом филиала — отметка ждёт причину.
+  // Отправлять до причины нельзя: триггер AFTER CREATE видит запись один раз.
+  const [pendingShot, setPendingShot] = useState<{ file: File | null } | null>(null)
+  const [reason, setReason] = useState('')
+  const miss = officeMiss(location, profile?.locations_id_data as Record<string, unknown> | null | undefined)
 
   const employeeGuid =
     (typeof profile?.guid === 'string' && profile.guid) ||
@@ -274,7 +275,6 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
       window.clearTimeout(timer)
       setGeoPending(false)
       if (result) setLocation(result)
-      else setGeoTries((tries) => tries + 1)
     }
 
     const timer = window.setTimeout(() => finish(''), GEO_DEADLINE_MS)
@@ -330,7 +330,7 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
   // открытия камеры. Координата нужна только в момент выстрела — её ждёт
   // `canMark` ниже, и отсчёт стартует сразу, как она придёт.
   useEffect(() => {
-    if (!cameraReady || !cascadeReady || autoOff || isSending || isCounting) return
+    if (!cameraReady || !cascadeReady || autoOff || isSending || isCounting || pendingShot) return
 
     memoryRef.current ??= pico.instantiate_detection_memory(5)
     grayRef.current ??= document.createElement('canvas')
@@ -355,9 +355,30 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
     }, DETECT_INTERVAL_MS)
 
     return () => window.clearInterval(timer)
-  }, [cameraReady, cascadeReady, canMark, autoOff, isSending, isCounting])
+  }, [cameraReady, cascadeReady, canMark, autoOff, isSending, isCounting, pendingShot])
 
-  const submit = async () => {
+  // Снимок. В радиусе — сразу отметка, за радиусом — сначала причина.
+  const shoot = async () => {
+    if (sendingRef.current || pendingShot) return
+    const file = cameraReady && videoRef.current ? await captureFrame(videoRef.current) : null
+    if (miss) {
+      setPendingShot({ file })
+      return
+    }
+    await send(file, '')
+  }
+
+  // Назад к камере за новой точкой: человек мог просто подойти ближе к офису.
+  const retake = () => {
+    setPendingShot(null)
+    setReason('')
+    setError('')
+    setLocation('')
+    setAutoOff(false)
+    tryGeo()
+  }
+
+  const send = async (file: File | null, markReason: string) => {
     if (sendingRef.current) return
     sendingRef.current = true
     setIsSending(true)
@@ -367,18 +388,15 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
       // Сначала фото, потом событие: карточку в Telegram собирает триггер
       // AFTER CREATE и берёт снимок из самой записи — дописать его позже уже некуда.
       let picture = ''
-      if (cameraReady && videoRef.current) {
-        const file = await captureFrame(videoRef.current)
-        if (file) {
-          // Фото не имеет права утопить отметку: не доехало — пишем без него.
-          picture = await Promise.race([
-            uploadFile(file),
-            new Promise<string>((resolve) => setTimeout(() => resolve(''), UPLOAD_TIMEOUT_MS)),
-          ]).catch((uploadError) => {
-            console.warn('Фото отметки не загрузилось', uploadError)
-            return ''
-          })
-        }
+      if (file) {
+        // Фото не имеет права утопить отметку: не доехало — пишем без него.
+        picture = await Promise.race([
+          uploadFile(file),
+          new Promise<string>((resolve) => setTimeout(() => resolve(''), UPLOAD_TIMEOUT_MS)),
+        ]).catch((uploadError) => {
+          console.warn('Фото отметки не загрузилось', uploadError)
+          return ''
+        })
       }
 
       await attendanceService.createMark({
@@ -387,6 +405,7 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
         action,
         picture,
         location,
+        reason: markReason,
         timeZone: region.timezone,
       })
 
@@ -429,10 +448,10 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
         return
       }
       setCountdown(null)
-      void submit()
+      void shoot()
     }, 1000)
     return () => window.clearTimeout(timer)
-    // submit пересоздаётся каждый рендер и перезапускал бы секунду; повторный
+    // shoot пересоздаётся каждый рендер и перезапускал бы секунду; повторный
     // вход всё равно закрыт sendingRef.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [countdown])
@@ -482,7 +501,7 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
                 </svg>
               </div>
               <p className="animate-fade-in-up animate-delay-4 m-0 text-[16px] font-bold text-white">
-                {t(ACTION_DONE[action])}
+                {pendingShot ? t('check.sentForApproval') : t(ACTION_DONE[action])}
               </p>
             </div>
           )}
@@ -514,6 +533,70 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
             </div>
           </div>
 
+          {pendingShot && miss ? (
+            <div className="shrink-0 space-y-3 bg-[#111a2b] px-5 pt-4 pb-[calc(env(safe-area-inset-bottom)+18px)]">
+              <div className="flex items-start gap-2.5 rounded-2xl bg-amber-500/15 px-4 py-3 text-amber-300">
+                <Icon icon="mdi:map-marker-alert-outline" width={20} className="mt-0.5 shrink-0" />
+                <div className="text-[13px] leading-snug">
+                  <p className="m-0 font-bold">{t('check.remoteTitle')}</p>
+                  <p className="m-0 mt-0.5 text-amber-200/90">
+                    {t('check.remoteDistance', {
+                      distance: miss.distanceM < 1000
+                        ? t('check.meters', { value: Math.round(miss.distanceM) })
+                        : t('check.km', { value: (miss.distanceM / 1000).toFixed(1) }),
+                      office: miss.title,
+                      radius: miss.radiusM,
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              <label className="block">
+                <span className="mb-1.5 block text-[13px] font-semibold text-white">{t('check.reasonLabel')}</span>
+                <textarea
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                  placeholder={t('check.reasonPlaceholder')}
+                  rows={3}
+                  maxLength={500}
+                  autoFocus
+                  className="w-full resize-none rounded-2xl bg-white/10 px-4 py-3 text-[14px] text-white outline-none placeholder:text-white/40 focus:bg-white/15"
+                />
+              </label>
+
+              {error && <p className="m-0 text-center text-[13px] text-rose-400">{error}</p>}
+
+              <button
+                type="button"
+                onClick={() => void send(pendingShot.file, reason.trim())}
+                disabled={isSending || !reason.trim()}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--accent)] py-4 text-[15px] font-bold text-white disabled:opacity-60"
+              >
+                {isSending
+                  ? <Icon icon="mdi:loading" width={20} className="animate-spin" />
+                  : <Icon icon="mdi:send-outline" width={20} />}
+                {t('check.sendForApproval')}
+              </button>
+
+              <button
+                type="button"
+                onClick={retake}
+                disabled={isSending}
+                className="w-full rounded-2xl bg-white/10 py-3 text-[14px] font-semibold text-white disabled:opacity-40"
+              >
+                {t('check.retake')}
+              </button>
+
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSending}
+                className="w-full py-2 text-[14px] text-white/50 disabled:opacity-40"
+              >
+                {t('common.cancel')}
+              </button>
+            </div>
+          ) : (
           <div className="shrink-0 space-y-3 bg-[#111a2b] px-5 pt-4 pb-[calc(env(safe-area-inset-bottom)+18px)]">
             {!cameraReady && (
               <div className="flex items-center gap-2.5 rounded-2xl bg-white/5 px-4 py-3 text-[13px] font-semibold text-white">
@@ -533,10 +616,6 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
                   <Icon icon="mdi:crosshairs-gps" width={18} className="animate-pulse" />
                   {t('check.geoPending')}
                 </div>
-              ) : geoOptional ? (
-                <p className="m-0 text-center text-[12px] text-amber-300">
-                  {t('check.geoOptional')}
-                </p>
               ) : (
                 <button
                   type="button"
@@ -569,7 +648,7 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
 
             <button
               type="button"
-              onClick={submit}
+              onClick={shoot}
               disabled={isSending || !canMark}
               className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--accent)] py-4 text-[15px] font-bold text-white disabled:opacity-60"
             >
@@ -588,6 +667,7 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
               {t('common.cancel')}
             </button>
           </div>
+          )}
         </Drawer.Content>
       </Drawer.Portal>
     </Drawer.Root>

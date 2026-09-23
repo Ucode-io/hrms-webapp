@@ -287,8 +287,9 @@ export const attendanceService = {
   },
 
   /**
-   * Отметка «я сейчас пришёл/ушёл» из webapp — событие того же веса, что проход
-   * через турникет, без согласования. Дальше всё делает триггер AFTER CREATE.
+   * Отметка «я сейчас пришёл/ушёл» из webapp. Дальше всё делает триггер
+   * AFTER CREATE: в радиусе филиала она весит как проход через турникет, за
+   * радиусом — отправляет день на согласование (`isRemoteMark` в hickvision).
    *
    * `hikvision_id` не заполняем: терминала у такого события нет.
    */
@@ -298,6 +299,7 @@ export const attendanceService = {
     action,
     picture,
     location,
+    reason,
     timeZone,
     now = new Date(),
   }: {
@@ -306,6 +308,8 @@ export const attendanceService = {
     action: MarkAction
     picture?: string
     location?: string
+    /** Причина отметки вне радиуса филиала; сам статус решает сервер. */
+    reason?: string
     /** Зона региона филиала сотрудника; без неё — запасной циферблат. */
     timeZone?: string
     now?: Date
@@ -321,6 +325,7 @@ export const attendanceService = {
         // Ключ `map`, а не `location`: ucode умеет показывать это поле на карте,
         // и координаты становятся кликабельными прямо в его интерфейсе.
         ...(location ? { map: location } : {}),
+        ...(reason ? { reason } : {}),
       },
     })
   },
