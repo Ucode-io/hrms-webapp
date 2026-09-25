@@ -28,7 +28,8 @@ import { KnowledgeArticlePage } from '../pages/KnowledgeArticlePage'
 import { NewsPage } from '../pages/NewsPage'
 import { MyDataPage } from '../pages/MyDataPage'
 import { LanguageThemePage } from '../pages/LanguageThemePage'
-import { PlaceholderPage } from '../pages/PlaceholderPage'
+// Заглушки временно скрыты из мини-аппа — вернуть вместе с маршрутами ниже.
+// import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { CalendarPage } from '../pages/CalendarPage'
 import { TasksCalendarPage } from '../pages/TasksCalendarPage'
 import { startRoute } from '../telegram/startParam'
@@ -139,7 +140,7 @@ const TABBAR_ROUTES = new Set(['/more'])
 
 export function AppShell() {
   const { isAuthorized } = useAuth()
-  const t = useT()
+  // const t = useT()
   const konstaTheme = useMemo(() => detectKonstaTheme(), [])
   const { resolvedTheme } = useTheme()
   const { pathname } = useLocation()
@@ -172,14 +173,14 @@ export function AppShell() {
             <Route path="/more" element={<MorePage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/profile/my-data" element={<MyDataPage />} />
-            <Route path="/kiosk-mode" element={<PlaceholderPage title={t('page.kiosk')} />} />
+            {/* <Route path="/kiosk-mode" element={<PlaceholderPage title={t('page.kiosk')} />} /> */}
             <Route path="/language-theme" element={<LanguageThemePage />} />
-            <Route path="/tracking-settings" element={<PlaceholderPage title={t('page.tracking')} />} />
-            <Route path="/change-password" element={<PlaceholderPage title={t('page.changePassword')} />} />
-            <Route path="/privacy-policy" element={<PlaceholderPage title={t('page.privacy')} />} />
-            <Route path="/support" element={<PlaceholderPage title={t('page.support')} />} />
-            <Route path="/company" element={<PlaceholderPage title={t('page.company')} />} />
-            <Route path="/reports" element={<PlaceholderPage title={t('page.reports')} />} />
+            {/* <Route path="/tracking-settings" element={<PlaceholderPage title={t('page.tracking')} />} /> */}
+            {/* <Route path="/change-password" element={<PlaceholderPage title={t('page.changePassword')} />} /> */}
+            {/* <Route path="/privacy-policy" element={<PlaceholderPage title={t('page.privacy')} />} /> */}
+            {/* <Route path="/support" element={<PlaceholderPage title={t('page.support')} />} /> */}
+            {/* <Route path="/company" element={<PlaceholderPage title={t('page.company')} />} /> */}
+            {/* <Route path="/reports" element={<PlaceholderPage title={t('page.reports')} />} /> */}
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/tasks-calendar" element={<TasksCalendarPage />} />
             <Route path="/sport" element={<SportPage />} />

@@ -21,12 +21,12 @@ interface MenuItem {
 
 const MENU_ITEMS: MenuItem[] = [
   { label: 'page.myData', icon: 'mdi:account-outline', tint: 'rgba(59,108,245,0.14)', fg: '#6c9bff', to: '/profile/my-data' },
-  { label: 'page.kiosk', icon: 'mdi:crop-free', tint: 'rgba(16,185,129,0.14)', fg: '#34d399', to: '/kiosk-mode' },
+  // { label: 'page.kiosk', icon: 'mdi:crop-free', tint: 'rgba(16,185,129,0.14)', fg: '#34d399', to: '/kiosk-mode' },
   { label: 'page.languageTheme', icon: 'mdi:web', tint: 'rgba(139,92,246,0.14)', fg: '#a78bfa', to: '/language-theme' },
-  { label: 'page.tracking', icon: 'mdi:target-variant', tint: 'rgba(217,119,6,0.14)', fg: '#f0b34d', to: '/tracking-settings' },
-  { label: 'profile.changePassword', icon: 'mdi:lock-outline', tint: 'rgba(239,68,68,0.14)', fg: '#f87171', to: '/change-password' },
-  { label: 'page.privacy', icon: 'mdi:file-document-outline', tint: 'rgba(59,108,245,0.14)', fg: '#6c9bff', to: '/privacy-policy' },
-  { label: 'page.support', icon: 'mdi:chat-outline', tint: 'rgba(16,185,129,0.14)', fg: '#34d399', to: '/support' },
+  // { label: 'page.tracking', icon: 'mdi:target-variant', tint: 'rgba(217,119,6,0.14)', fg: '#f0b34d', to: '/tracking-settings' },
+  // { label: 'profile.changePassword', icon: 'mdi:lock-outline', tint: 'rgba(239,68,68,0.14)', fg: '#f87171', to: '/change-password' },
+  // { label: 'page.privacy', icon: 'mdi:file-document-outline', tint: 'rgba(59,108,245,0.14)', fg: '#6c9bff', to: '/privacy-policy' },
+  // { label: 'page.support', icon: 'mdi:chat-outline', tint: 'rgba(16,185,129,0.14)', fg: '#34d399', to: '/support' },
 ]
 
 export function ProfilePage() {

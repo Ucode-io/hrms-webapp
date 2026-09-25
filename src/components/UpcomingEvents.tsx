@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Preloader } from 'konsta/react'
+// import { Preloader } from 'konsta/react'
 import { useAuth } from '../context/AuthContext'
 import { useI18n, type TKey, formatDateLocal } from '../i18n'
-import { CalendarOffIcon } from './Icons'
+// import { CalendarOffIcon } from './Icons'
 import { useUpcomingEventsQuery, type UpcomingEventItem } from '../api/dashboardService'
 import shiftsService, { formatShiftRange, type ShiftRecord } from '../api/shiftsService'
 
@@ -38,37 +38,39 @@ const buildDayChips = (base: Date, count: number): DayChip[] =>
     }
   })
 
-const formatHumanDate = (iso: string, fallback: string): string => {
-  if (!iso) return fallback
-  const date = new Date(`${iso}T00:00:00`)
-  if (Number.isNaN(date.getTime())) return fallback
-  return formatDateLocal(date, {
-    weekday: 'long',
-    day: '2-digit',
-    month: 'long',
-  })
-}
-
-const getTypeBadge = (type: UpcomingEventItem['type']): { label: TKey; className: string } => {
-  if (type === 'weekend') {
-    return {
-      label: 'events.weekend',
-      className: 'bg-amber-50 text-amber-700 border border-amber-200',
-    }
-  }
-
-  if (type === 'working_holiday') {
-    return {
-      label: 'events.workingHoliday',
-      className: 'bg-violet-50 text-violet-700 border border-violet-200',
-    }
-  }
-
-  return {
-    label: 'events.holiday',
-    className: 'bg-rose-50 text-rose-700 border border-rose-200',
-  }
-}
+// Заголовок и панель дня под лентой временно скрыты — на главной остаётся
+// только лента. Вернуть вместе с разметкой ниже.
+// const formatHumanDate = (iso: string, fallback: string): string => {
+//   if (!iso) return fallback
+//   const date = new Date(`${iso}T00:00:00`)
+//   if (Number.isNaN(date.getTime())) return fallback
+//   return formatDateLocal(date, {
+//     weekday: 'long',
+//     day: '2-digit',
+//     month: 'long',
+//   })
+// }
+//
+// const getTypeBadge = (type: UpcomingEventItem['type']): { label: TKey; className: string } => {
+//   if (type === 'weekend') {
+//     return {
+//       label: 'events.weekend',
+//       className: 'bg-amber-50 text-amber-700 border border-amber-200',
+//     }
+//   }
+//
+//   if (type === 'working_holiday') {
+//     return {
+//       label: 'events.workingHoliday',
+//       className: 'bg-violet-50 text-violet-700 border border-violet-200',
+//     }
+//   }
+//
+//   return {
+//     label: 'events.holiday',
+//     className: 'bg-rose-50 text-rose-700 border border-rose-200',
+//   }
+// }
 
 /**
  * Подпись дня в ленте — её решает смена, а не день недели.
@@ -119,9 +121,9 @@ export function UpcomingEvents() {
 
   const {
     data: events = [],
-    isLoading,
-    isError,
-    refetch,
+    // isLoading,
+    // isError,
+    // refetch,
   } = useUpcomingEventsQuery({
     params: {
       userBaseId,
@@ -160,12 +162,13 @@ export function UpcomingEvents() {
     return map
   }, [shifts])
 
-  const selectedEvents = eventsByDate.get(selectedDate) || []
+  // const selectedEvents = eventsByDate.get(selectedDate) || []
 
   return (
     <section className="animate-fade-in-up animate-delay-2 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 shadow-sm">
-      {/* Подзаголовка нет намеренно: строка «праздники и выходные на ближайшие
-          дни» пересказывала ленту, которая и так под ней. */}
+      {/*
+       Подзаголовка нет намеренно: строка «праздники и выходные на ближайшие
+          дни» пересказывала ленту, которая и так под ней.
       <div className="flex items-center justify-between gap-2">
         <p className="m-0 text-[14px] font-extrabold text-[var(--text-main)] tracking-tight">
           {t('events.title')}
@@ -175,7 +178,9 @@ export function UpcomingEvents() {
         </span>
       </div>
 
-      <div className="mt-2 flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
+      */}
+
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
         {dayChips.map((day) => {
           const isSelected = selectedDate === day.dateKey
           const dayEvents = eventsByDate.get(day.dateKey) || []
@@ -207,10 +212,11 @@ export function UpcomingEvents() {
         })}
       </div>
 
-      {/* Панель дня видна всегда — она и есть ответ на тап по чипу. В пустой
+      {/*
+       Панель дня видна всегда — она и есть ответ на тап по чипу. В пустой
           день от неё остаётся одна строка: дата и «Без событий». Счётчика
           рядом со списком нет намеренно — события под ним и так пересчитаны
-          глазом, а «1 событий» пришлось бы склонять. */}
+          глазом, а «1 событий» пришлось бы склонять.
       <div className="mt-2 rounded-xl border border-[var(--line)] bg-[var(--app-bg)] px-2.5 py-2">
         <div className="flex items-center justify-between gap-2">
           <p className="m-0 text-[11px] font-bold capitalize text-[var(--text-main)]">
@@ -263,6 +269,7 @@ export function UpcomingEvents() {
           </div>
         ) : null}
       </div>
+      */}
     </section>
   )
 }
