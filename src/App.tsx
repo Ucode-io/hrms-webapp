@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { AppShell } from './components/AppShell'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { LoginPage } from './pages/LoginPage'
-import { hasPendingTaskId } from './telegram/startParam'
+import { startRoute } from './telegram/startParam'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,7 +27,7 @@ function AuthGate() {
       <Route
         path="/login"
         element={
-          isAuthorized ? <Navigate to={hasPendingTaskId() ? '/tasks' : '/home'} replace /> : <LoginPage />
+          isAuthorized ? <Navigate to={startRoute()} replace /> : <LoginPage />
         }
       />
       <Route

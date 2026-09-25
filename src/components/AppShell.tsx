@@ -31,7 +31,7 @@ import { LanguageThemePage } from '../pages/LanguageThemePage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { CalendarPage } from '../pages/CalendarPage'
 import { TasksCalendarPage } from '../pages/TasksCalendarPage'
-import { hasPendingTaskId } from '../telegram/startParam'
+import { startRoute } from '../telegram/startParam'
 import { useT, type TKey } from '../i18n'
 
 function detectKonstaTheme(): 'ios' | 'material' {
@@ -164,7 +164,7 @@ export function AppShell() {
         >
           <Routes>
             {/* Deep link из уведомления приходит на «/» — ведём сразу на задачи. */}
-            <Route index element={<Navigate to={hasPendingTaskId() ? '/tasks' : '/home'} replace />} />
+            <Route index element={<Navigate to={startRoute()} replace />} />
             <Route path="/home" element={<HomePage />} />
             <Route path="/absence" element={<Navigate to="/time" replace />} />
             <Route path="/time" element={<TimePage />} />

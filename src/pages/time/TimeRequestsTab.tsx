@@ -13,6 +13,7 @@ import {
   type EmployeeAbsenceRequest,
   type EmployeeAbsenceStatus,
 } from '../../api/reportsService'
+import { takePendingAbsence } from '../../telegram/startParam'
 
 const DEFAULT_ICON = 'mdi:airplane'
 import { useT, type TKey } from '../../i18n'
@@ -103,6 +104,15 @@ export function TimeRequestsTab() {
 
   const policies: EmployeeAbsencePolicy[] = data?.policies ?? []
   const requests: EmployeeAbsenceRequest[] = data?.requests ?? []
+
+  // Пришли из бота кнопкой «Отпроситься» — открываем ту же шторку, что и плюс,
+  // но только когда загрузились политики: без них форме нечего предложить.
+  const [pendingCreate, setPendingCreate] = useState(takePendingAbsence)
+  if (pendingCreate && policies.length > 0) {
+    setPendingCreate(false)
+    setInitPolicyId(policies[0].guid)
+    setShowCreate(true)
+  }
 
   const policyById = useMemo(() => {
     const m = new Map<string, EmployeeAbsencePolicy>()

@@ -9,6 +9,7 @@
 
 const KEY = 'telegram_pending_task'
 const PREFIX = 'task_'
+const ABSENCE_KEY = 'telegram_pending_absence'
 
 export function capturePendingTaskId(): void {
   const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param
@@ -17,9 +18,22 @@ export function capturePendingTaskId(): void {
   }
 }
 
-/** Для редиректов: есть ли куда вести, не расходуя ссылку. */
-export function hasPendingTaskId(): boolean {
-  return sessionStorage.getItem(KEY) !== null
+// Кнопка «Отпроситься» под полем ввода в боте — web_app-кнопка клавиатуры, а
+// у неё start_param не бывает, поэтому экран приходит в query: `?open=absence`.
+// Из адреса его убираем, иначе перезагрузка мини-аппа откроет шторку снова.
+export function capturePendingAbsence(): void {
+  const url = new URL(window.location.href)
+  if (url.searchParams.get('open') !== 'absence') return
+  sessionStorage.setItem(ABSENCE_KEY, '1')
+  url.searchParams.delete('open')
+  window.history.replaceState(null, '', url)
+}
+
+/** Для редиректов: куда вести с «/» и после логина, не расходуя ссылку. */
+export function startRoute(): string {
+  if (sessionStorage.getItem(KEY) !== null) return '/tasks'
+  if (sessionStorage.getItem(ABSENCE_KEY) !== null) return '/time'
+  return '/home'
 }
 
 /** Для экрана задач: забрать и погасить, чтобы шторка не открывалась снова. */
@@ -27,4 +41,11 @@ export function takePendingTaskId(): string | null {
   const id = sessionStorage.getItem(KEY)
   if (id !== null) sessionStorage.removeItem(KEY)
   return id
+}
+
+/** Для экрана «Время»: забрать и погасить, как takePendingTaskId. */
+export function takePendingAbsence(): boolean {
+  const pending = sessionStorage.getItem(ABSENCE_KEY) !== null
+  sessionStorage.removeItem(ABSENCE_KEY)
+  return pending
 }

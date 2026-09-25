@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import { capturePendingTaskId } from './telegram/startParam'
+import { capturePendingAbsence, capturePendingTaskId } from './telegram/startParam'
 
 // ponytail: минимальная типизация SDK вместо @types/telegram-web-app —
 // используем ровно три метода и одно поле.
@@ -59,8 +59,9 @@ if (window.location.hash.includes('tgWebApp')) {
 // Вне Telegram window.Telegram нет — обычный webview работает как работал.
 const tg = window.Telegram?.WebApp
 if (tg) {
-  // До рендера: роутер уже на первом кадре решает, вести на /home или /tasks.
+  // До рендера: роутер уже на первом кадре решает, вести на /home, /tasks или /time.
   capturePendingTaskId()
+  capturePendingAbsence()
   tg.ready()
   tg.expand() // без expand мини-апп открывается на половину экрана
   // Иначе свайп вниз по скроллящейся странице закрывает мини-апп.
