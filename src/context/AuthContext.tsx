@@ -200,25 +200,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   //
   // Молча, без индикации: уведомления в боте — приятный бонус, и упавшая
   // привязка не повод показывать сотруднику ошибку на входе.
-  const telegramLinkedRef = useRef(false)
+  //
+  // Раз на карточку, а не на запуск: выход не перезагружает приложение, и вход
+  // под другой карточкой в том же запуске иначе оставался непривязанным.
+  //
+  // initData пуст и тогда, когда мини-апп открыт кнопкой клавиатуры бота
+  // («Отпроситься»): такой запуск Telegram не подписывает. Привяжется при
+  // следующем открытии через кнопку меню.
+  const telegramLinkedRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!isAuthorized || telegramLinkedRef.current) return
+    if (!isAuthorized || !userGuid || telegramLinkedRef.current === userGuid) return
     const initData = window.Telegram?.WebApp?.initData
     if (!initData) return // вне Telegram привязывать нечего
 
-    telegramLinkedRef.current = true
+    telegramLinkedRef.current = userGuid
     void reportsService.linkTelegram(initData).catch(() => {})
-  }, [isAuthorized])
+  }, [isAuthorized, userGuid])
 
   // «Последний вход» в админке. Отдельно от привязки Telegram: та требует
   // подписанный initData и обновляет одну строку из нескольких у человека в
   // нескольких компаниях, из-за чего часть входов до админки не доходила.
   // Один раз на запуск приложения — и после свежего входа, и после
   // восстановленной сессии, то есть ровно «человек открыл приложение».
-  const loginTouchedRef = useRef(false)
+  const loginTouchedRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!isAuthorized || !userGuid || loginTouchedRef.current) return
-    loginTouchedRef.current = true
+    if (!isAuthorized || !userGuid || loginTouchedRef.current === userGuid) return
+    loginTouchedRef.current = userGuid
     void reportsService.touchLogin(userGuid).catch(() => {})
   }, [isAuthorized, userGuid])
 
