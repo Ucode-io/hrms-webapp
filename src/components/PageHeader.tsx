@@ -18,7 +18,10 @@ export function PageHeader({ title, showBack = true, rightSlot }: PageHeaderProp
         {showBack && (
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            // Мини-апп, открытый кнопкой бота или ссылкой из уведомления, стартует
+            // сразу на внутреннем экране: шага назад в истории нет, и navigate(-1)
+            // молча ничего не делает. Тогда — на главную.
+            onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/home', { replace: true }))}
             className="w-9 h-9 rounded-xl flex items-center justify-center border-0 bg-transparent text-[var(--text-main)] cursor-pointer active:bg-gray-100 transition-colors"
             aria-label={t('common.back')}
           >

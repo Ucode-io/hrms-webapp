@@ -160,7 +160,8 @@ export function AppShell() {
               ? 'flex-1 pb-[84px] flex flex-col'
               : // Запас снизу — ровно под таббар, и только там, где он есть.
                 // Без этого страницы без таббара упирались в пустые 100px.
-                `flex-1 px-4 pt-4 flex flex-col gap-4 ${hasTabbar ? 'pb-[100px]' : 'pb-6'}`
+                // «Время» рисует свой таббар (см. TimePage) — запас нужен и ему.
+                `flex-1 px-4 pt-4 flex flex-col gap-4 ${hasTabbar || pathname === '/time' ? 'pb-[100px]' : 'pb-6'}`
           }
         >
           <Routes>

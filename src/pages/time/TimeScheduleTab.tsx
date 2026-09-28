@@ -205,7 +205,7 @@ export function TimeScheduleTab() {
                     color: SHIFT_KIND_META.off.color,
                   }}
                 >
-                  {SHIFT_KIND_META.off.label}
+                  {t(SHIFT_KIND_META.off.label)}
                 </div>
               ) : (
                 dayShifts.map((shift) => {
