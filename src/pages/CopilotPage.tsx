@@ -12,6 +12,7 @@ import {
   type CopilotStreamEvent,
   type CopilotTable,
 } from '../api/copilotService'
+import { getCompaniesId } from '../api/adminRequest'
 
 /**
  * AI-помощник внутри мини-аппа.
@@ -58,6 +59,16 @@ const ERROR_TEXT: Record<CopilotErrorCode, TKey> = {
   unavailable: 'copilot.unavailable',
   internal: 'copilot.internal',
 }
+
+/** Vegapharm держит эти списки статьями базы знаний; kb_search отдаёт файлы
+ *  статьи внешними ссылками — их мини-апп и показывает. Как в админке. */
+const VEGAPHARM_COMPANY_ID = 'c9a7fee7-e210-477e-bee3-5f18e388e630'
+/** `article` — точный заголовок в дереве: поиск матчит по нему. */
+const VEGAPHARM_HOTKEYS = [
+  { label: '💰 Прайс', article: 'Прайс' },
+  { label: '📦 Остатки', article: 'Остатки' },
+  { label: '⏳ Сроковые позиции', article: 'Сроки по регионам' },
+]
 
 const SUGGESTION_KEYS: TKey[] = ['copilot.suggest1', 'copilot.suggest2', 'copilot.suggest3']
 
@@ -173,6 +184,7 @@ function applyEvent(msgs: Msg[], e: CopilotStreamEvent): Msg[] {
 
 export function CopilotPage() {
   const t = useT()
+  const isVegapharm = getCompaniesId() === VEGAPHARM_COMPANY_ID
 
   const [messages, setMessages] = useState<Msg[]>([])
   const [draft, setDraft] = useState('')
@@ -275,7 +287,11 @@ export function CopilotPage() {
   )
 
   return (
-    <div className="animate-fade-in-up flex flex-col gap-3 flex-1 min-h-0 pb-[calc(84px+var(--keyboard-inset))]">
+    <div
+      className={`animate-fade-in-up flex flex-col gap-3 flex-1 min-h-0 ${
+        isVegapharm ? 'pb-[calc(122px+var(--keyboard-inset))]' : 'pb-[calc(84px+var(--keyboard-inset))]'
+      }`}
+    >
       {messages.length === 0 && (
         <div className="flex flex-col gap-3 pt-6">
           <div className="flex flex-col items-center gap-2 text-center">
@@ -325,6 +341,21 @@ export function CopilotPage() {
           В iOS-вебвью клавиатура не сжимает layout viewport, поэтому `fixed`
           сам по себе уехал бы под неё; высоту считает main.tsx. */}
       <div className="fixed bottom-[var(--keyboard-inset)] left-0 right-0 z-20 px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 bg-[var(--app-bg)]/95 backdrop-blur-xl">
+        {isVegapharm && (
+          <div className="mb-2 flex gap-1.5 overflow-x-auto">
+            {VEGAPHARM_HOTKEYS.map(({ label, article }) => (
+              <button
+                key={article}
+                type="button"
+                onClick={() => send(`Скинь файлы из раздела «${article}» базы знаний`)}
+                disabled={isStreaming}
+                className="shrink-0 whitespace-nowrap rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-[12px] text-[var(--text-main)] disabled:opacity-40 active:scale-95 transition"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex items-end gap-2">
           <textarea
             value={draft}
