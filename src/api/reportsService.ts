@@ -352,7 +352,7 @@ const normalizeInvokeResult = <T>(raw: ReportsInvokeResponse<T>): T => {
   return raw as T
 }
 
-const invokeReports = async <T>(method: string, data: Record<string, unknown>): Promise<T> => {
+export const invokeReports = async <T>(method: string, data: Record<string, unknown>): Promise<T> => {
   const response = await adminRequest.post(REPORTS_FUNCTION_PATH, {
     data: {
       method,

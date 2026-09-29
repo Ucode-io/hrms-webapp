@@ -19,6 +19,7 @@ import { reportsService } from '../../api/reportsService'
 // между экранами «Зарплата» и «Учёт времени».
 import { formatAmount } from '../../api/payrollService'
 import { CheckInSummary } from '../../components/CheckInActions'
+import { latePermissionService } from '../../api/latePermissionService'
 
 /* ── Date helpers ────────────────────────────────────── */
 function getMonthKey(date: Date) {
@@ -235,10 +236,12 @@ function CalendarGrid({
 }
 
 /* ── Record detail drawer ────────────────────────────── */
-function RecordDetailDrawer({ record, open, onClose }: {
+function RecordDetailDrawer({ record, open, onClose, lateBy }: {
   record: AttendanceRecord | null
   open: boolean
   onClose: () => void
+  /** «Приду к» одобренного разрешения на опоздание этого дня (ADR-0015). */
+  lateBy?: string
 }) {
   const t = useT()
 
@@ -287,10 +290,18 @@ function RecordDetailDrawer({ record, open, onClose }: {
                   {d ? formatDateLocal(d, { weekday: 'long' }) : ''}
                 </p>
               </div>
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold ${actionCfg.cls}`}>
-                <Icon icon={actionCfg.icon} width={14} />
-                {badgeLabel(actionCfg.label)}
-              </span>
+              <div className="flex flex-col items-end gap-1.5">
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold ${actionCfg.cls}`}>
+                  <Icon icon={actionCfg.icon} width={14} />
+                  {badgeLabel(actionCfg.label)}
+                </span>
+                {lateBy ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-2.5 py-1 text-[11px] font-semibold text-sky-500">
+                    <Icon icon="mdi:clock-check-outline" width={13} />
+                    {t('late.badge', { time: lateBy })}
+                  </span>
+                ) : null}
+              </div>
             </div>
 
             {/* Times */}
@@ -496,6 +507,17 @@ export function TimeSheetTab() {
     [profile, session],
   )
 
+  // Одобренные разрешения на опоздание — бейдж «к 11:00» в карточке дня.
+  const { data: lateItems = [] } = useQuery({
+    queryKey: ['late-permissions-mine', employeeGuid],
+    queryFn: latePermissionService.listMine,
+    enabled: Boolean(employeeGuid),
+  })
+  const lateByDate = useMemo(
+    () => new Map(lateItems.filter((item) => item.status === 'approved').map((item) => [item.date, item.arrive_by])),
+    [lateItems],
+  )
+
   const { data: allRecords = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['attendance', employeeGuid],
     queryFn: () => attendanceService.getByEmployee(employeeGuid),
@@ -686,6 +708,7 @@ export function TimeSheetTab() {
         record={selectedRecord}
         open={Boolean(selectedRecord)}
         onClose={() => setSelectedRecord(null)}
+        lateBy={selectedRecord ? lateByDate.get(recordDateIso(selectedRecord)) : undefined}
       />
 
       <AddRecordDrawer

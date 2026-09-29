@@ -7,6 +7,7 @@ import { useCompany } from '../../context/CompanyContext'
 import { absenceService, formatDateRu, toIsoDate } from '../../api/absenceService'
 import { uploadFile } from '../../api/dashboardService'
 import DateField from '../../components/DateField'
+import TimeField from '../../components/TimeField'
 import {
   reportsService,
   type EmployeeAbsencePolicy,
@@ -14,6 +15,11 @@ import {
   type EmployeeAbsenceStatus,
 } from '../../api/reportsService'
 import { takePendingAbsence } from '../../telegram/startParam'
+import {
+  latePermissionErrorCode,
+  latePermissionService,
+  type LatePermission,
+} from '../../api/latePermissionService'
 
 const DEFAULT_ICON = 'mdi:airplane'
 import { useT, type TKey } from '../../i18n'
@@ -31,6 +37,11 @@ const STATUS_COLORS: Record<EmployeeAbsenceStatus, { bg: string; text: string }>
 }
 
 const GROUP_ORDER: EmployeeAbsenceStatus[] = ['pending', 'approved', 'rejected']
+
+// Leave и Late Permission — общий список заявок, новые даты сверху.
+type Entry =
+  | { kind: 'absence'; key: string; date: string; status: EmployeeAbsenceStatus; req: EmployeeAbsenceRequest }
+  | { kind: 'late'; key: string; date: string; status: EmployeeAbsenceStatus; item: LatePermission }
 
 function countWeekdays(from: string, to: string): number {
   const s = new Date(from)
@@ -103,16 +114,36 @@ export function TimeRequestsTab() {
   })
 
   const policies: EmployeeAbsencePolicy[] = data?.policies ?? []
-  const requests: EmployeeAbsenceRequest[] = data?.requests ?? []
+  const requests = useMemo<EmployeeAbsenceRequest[]>(() => data?.requests ?? [], [data])
 
-  // Пришли из бота кнопкой «Отпроситься» — открываем ту же шторку, что и плюс,
-  // но только когда загрузились политики: без них форме нечего предложить.
+  const { data: lateItems = [], refetch: refetchLate } = useQuery({
+    queryKey: ['late-permissions-mine', employeeGuid],
+    queryFn: latePermissionService.listMine,
+    enabled: Boolean(employeeGuid),
+  })
+  const [showLate, setShowLate] = useState(false)
+  const [showChoice, setShowChoice] = useState(false)
+
+  // Пришли из бота кнопкой «Отпроситься» — сначала выбор «опоздаю / не приду».
   const [pendingCreate, setPendingCreate] = useState(takePendingAbsence)
-  if (pendingCreate && policies.length > 0) {
+  if (pendingCreate) {
     setPendingCreate(false)
-    setInitPolicyId(policies[0].guid)
-    setShowCreate(true)
+    setShowChoice(true)
   }
+
+  const entries = useMemo<Entry[]>(() => {
+    const list: Entry[] = [
+      ...requests.map((req) => ({
+        kind: 'absence' as const, key: req.guid, date: req.date_from || '', status: req.status, req,
+      })),
+      ...lateItems
+        .filter((item) => item.status !== 'withdrawn')
+        .map((item) => ({
+          kind: 'late' as const, key: item.guid, date: item.date, status: item.status as EmployeeAbsenceStatus, item,
+        })),
+    ]
+    return list.sort((a, b) => b.date.localeCompare(a.date))
+  }, [requests, lateItems])
 
   const policyById = useMemo(() => {
     const m = new Map<string, EmployeeAbsencePolicy>()
@@ -121,25 +152,37 @@ export function TimeRequestsTab() {
   }, [policies])
 
   const filtered = useMemo(
-    () => (filter === 'all' ? requests : requests.filter((r) => r.status === filter)),
-    [requests, filter],
+    () => (filter === 'all' ? entries : entries.filter((r) => r.status === filter)),
+    [entries, filter],
   )
 
   const grouped = useMemo(() => {
     if (filter !== 'all') return null
-    const map = new Map<EmployeeAbsenceStatus, EmployeeAbsenceRequest[]>()
+    const map = new Map<EmployeeAbsenceStatus, Entry[]>()
     for (const status of GROUP_ORDER) map.set(status, [])
     for (const r of filtered) map.get(r.status)?.push(r)
     return map
   }, [filtered, filter])
 
   const counts = useMemo(() => {
-    const c = { all: requests.length, pending: 0, approved: 0, rejected: 0 }
-    requests.forEach((r) => {
+    const c = { all: entries.length, pending: 0, approved: 0, rejected: 0 }
+    entries.forEach((r) => {
       if (r.status in c) c[r.status] += 1
     })
     return c
-  }, [requests])
+  }, [entries])
+
+  const renderEntry = (entry: Entry) =>
+    entry.kind === 'late' ? (
+      <LateRow key={entry.key} item={entry.item} brandColor={company.mainColor} onChanged={() => void refetchLate()} />
+    ) : (
+      <RequestRow
+        key={entry.key}
+        req={entry.req}
+        pol={policyById.get(entry.req.absence_policies_id || '')}
+        brandColor={company.mainColor}
+      />
+    )
 
   /* ── Loading / Error ── */
   if (isLoading) {
@@ -179,6 +222,28 @@ export function TimeRequestsTab() {
   return (
     <>
       <div className="flex flex-col gap-5 animate-fade-in-up">
+        {/* ── Late Permission — отдельно от балансов: баланса у него нет ── */}
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 flex items-center gap-3 shadow-sm">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: `${company.mainColor}22`, color: company.mainColor }}
+          >
+            <Icon icon="mdi:clock-alert-outline" width={20} height={20} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="m-0 text-[13px] font-bold text-[var(--text-main)]">{t('late.cardTitle')}</p>
+            <p className="m-0 mt-0.5 text-[11px] text-[var(--text-muted)] leading-snug">{t('late.cardHint')}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowLate(true)}
+            className="shrink-0 h-9 px-4 rounded-xl border-0 text-[12px] font-bold text-white cursor-pointer shadow-sm transition-all active:scale-[0.97]"
+            style={{ background: company.mainColor }}
+          >
+            {t('late.create')}
+          </button>
+        </div>
+
         {/* ── Balance cards ── */}
         {policies.length > 0 ? (
           <div className="flex gap-3 overflow-x-auto pb-0.5 -mx-4 pl-4 pr-4 snap-x snap-proximity scroll-pl-4 scroll-pr-4 scrollbar-hide">
@@ -304,27 +369,13 @@ export function TimeRequestsTab() {
                   <p className="m-0 text-[13px] font-bold text-[var(--text-main)]">
                     {t(STATUS_LABELS[status])}
                   </p>
-                  {items.map((req) => (
-                    <RequestRow
-                      key={req.guid}
-                      req={req}
-                      pol={policyById.get(req.absence_policies_id || '')}
-                      brandColor={company.mainColor}
-                    />
-                  ))}
+                  {items.map(renderEntry)}
                 </div>
               )
             })
           ) : (
             <div className="flex flex-col gap-2">
-              {filtered.map((req) => (
-                <RequestRow
-                  key={req.guid}
-                  req={req}
-                  pol={policyById.get(req.absence_policies_id || '')}
-                  brandColor={company.mainColor}
-                />
-              ))}
+              {filtered.map(renderEntry)}
             </div>
           )}
         </section>
@@ -377,7 +428,302 @@ export function TimeRequestsTab() {
           </Drawer.Content>
         </Drawer.Portal>
       </Drawer.Root>
+
+      {/* ── Late Permission Drawer ── */}
+      <Drawer.Root open={showLate} onOpenChange={setShowLate} handleOnly>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" />
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)] rounded-t-[28px] outline-none h-[88vh] max-h-[92vh] flex flex-col">
+            <Drawer.Title className="sr-only">{t('late.newSr')}</Drawer.Title>
+            <Drawer.Description className="sr-only">{t('late.newTitle')}</Drawer.Description>
+            <div className="flex justify-center pt-3 pb-1">
+              <Drawer.Handle className="!w-10 !h-[4px] !bg-gray-300" />
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 pt-2 pb-[calc(20px+env(safe-area-inset-bottom))]">
+              <LateForm
+                color={company.mainColor}
+                onClose={() => setShowLate(false)}
+                onDone={() => {
+                  setShowLate(false)
+                  void refetchLate()
+                }}
+              />
+            </div>
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
+
+      {/* ── «Отпроситься» из бота: опоздаю или не приду ── */}
+      <Drawer.Root open={showChoice} onOpenChange={setShowChoice}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" />
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)] rounded-t-[28px] outline-none flex flex-col px-5 pt-3 pb-[calc(20px+env(safe-area-inset-bottom))]">
+            <div className="flex justify-center pb-3">
+              <Drawer.Handle className="!w-10 !h-[4px] !bg-gray-300" />
+            </div>
+            <Drawer.Title className="m-0 mb-4 text-[18px] font-extrabold text-[var(--text-main)]">
+              {t('late.chooseTitle')}
+            </Drawer.Title>
+            <Drawer.Description className="sr-only">{t('late.chooseTitle')}</Drawer.Description>
+            {[
+              { icon: 'mdi:clock-alert-outline', title: t('late.chooseLate'), hint: t('late.chooseLateHint'),
+                onClick: () => setShowLate(true), disabled: false },
+              { icon: DEFAULT_ICON, title: t('late.chooseAbsent'), hint: t('late.chooseAbsentHint'),
+                onClick: () => {
+                  setInitPolicyId(policies[0]?.guid || '')
+                  setShowCreate(true)
+                },
+                disabled: policies.length === 0 },
+            ].map((option) => (
+              <button
+                key={option.title}
+                type="button"
+                disabled={option.disabled}
+                onClick={() => {
+                  setShowChoice(false)
+                  option.onClick()
+                }}
+                className="mb-2.5 w-full text-left rounded-2xl border border-[var(--line)] bg-[var(--surface-muted)] p-3.5 flex items-center gap-3 cursor-pointer active:scale-[0.985] transition-all disabled:opacity-50"
+              >
+                <div
+                  className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center"
+                  style={{ background: `${company.mainColor}22`, color: company.mainColor }}
+                >
+                  <Icon icon={option.icon} width={20} height={20} />
+                </div>
+                <div className="min-w-0">
+                  <p className="m-0 text-[14px] font-bold text-[var(--text-main)]">{option.title}</p>
+                  <p className="m-0 mt-0.5 text-[11.5px] text-[var(--text-muted)]">{option.hint}</p>
+                </div>
+              </button>
+            ))}
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
     </>
+  )
+}
+
+/* ── Late Permission Row ──────────────────────────── */
+
+function LateRow({
+  item,
+  brandColor,
+  onChanged,
+}: {
+  item: LatePermission
+  brandColor: string
+  onChanged: () => void
+}) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const status = item.status as EmployeeAbsenceStatus
+  const sc = STATUS_COLORS[status]
+
+  const withdraw = async () => {
+    setBusy(true)
+    setErr('')
+    try {
+      await latePermissionService.withdraw(item.guid)
+      onChanged()
+    } catch (error) {
+      const code = latePermissionErrorCode(error)
+      setErr(code === 'not_pending' ? t('late.error.not_pending') : t('late.error.generic'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="w-full rounded-2xl border border-[var(--line)] bg-[var(--surface)] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full text-left border-0 bg-transparent p-3.5 flex items-center gap-3 cursor-pointer active:scale-[0.985] transition-all"
+      >
+        <div
+          className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center"
+          style={{ background: `${brandColor}22`, color: brandColor }}
+        >
+          <Icon icon="mdi:clock-alert-outline" width={18} height={18} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="m-0 text-[13px] font-bold text-[var(--text-main)] truncate">
+              {t('late.title', { time: item.arrive_by })}
+            </p>
+            {sc ? (
+              <span className={`shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-bold ${sc.bg} ${sc.text}`}>
+                {t(STATUS_LABELS[status])}
+              </span>
+            ) : null}
+          </div>
+          <p className="m-0 mt-0.5 text-[11px] text-[var(--text-muted)]">{formatDateRu(item.date)}</p>
+        </div>
+        <Icon
+          icon="mdi:chevron-down"
+          width={16}
+          className={`shrink-0 text-[var(--text-muted)] transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open && (
+        <div className="px-3.5 pb-3.5 border-t border-[var(--line)]">
+          <div className="mt-3 p-2.5 rounded-xl bg-[var(--surface-muted)] border border-[var(--line)] flex items-center gap-1.5">
+            <Icon icon="mdi:comment-outline" width={14} className="text-[var(--text-muted)] shrink-0" />
+            <p className="m-0 text-[12px] text-[var(--text-secondary)] leading-relaxed">{item.reason}</p>
+          </div>
+          {item.status === 'rejected' && item.reject_reason ? (
+            <div className="mt-2.5 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
+              <p className="m-0 text-[10px] text-rose-500 uppercase tracking-wider font-semibold">
+                {t('absence.rejectReason')}
+              </p>
+              <p className="m-0 mt-0.5 text-[12px] text-[var(--text-main)] leading-relaxed">{item.reject_reason}</p>
+            </div>
+          ) : null}
+          {item.status === 'pending' ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void withdraw()}
+              className="mt-2.5 w-full h-10 rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[13px] font-bold text-rose-500 cursor-pointer active:scale-[0.98] disabled:opacity-50"
+            >
+              {t('late.withdraw')}
+            </button>
+          ) : null}
+          {err ? <p className="m-0 mt-2 text-[12px] text-[var(--error-text)]">{err}</p> : null}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Late Permission Form ─────────────────────────── */
+
+function formatDelay(t: ReturnType<typeof useT>, minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return [h ? t('late.hours', { h }) : '', m ? t('late.minutes', { m }) : ''].filter(Boolean).join(' ')
+}
+
+const toMinutes = (hhmm: string) => {
+  const [h, m] = hhmm.split(':').map(Number)
+  return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null
+}
+
+function LateForm({
+  color,
+  onClose,
+  onDone,
+}: {
+  color: string
+  onClose: () => void
+  onDone: () => void
+}) {
+  const t = useT()
+  const today = toIsoDate(new Date())
+  const [date, setDate] = useState(today)
+  const [arriveBy, setArriveBy] = useState('')
+  const [reason, setReason] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [err, setErr] = useState('')
+
+  const { data: plan } = useQuery({
+    queryKey: ['late-permission-day', date],
+    queryFn: () => latePermissionService.day(date),
+  })
+
+  const errorText = (code: string | null) => {
+    const key = `late.error.${code}` as TKey
+    return code && t(key) !== key ? t(key) : t('late.error.generic')
+  }
+
+  const startMinutes = plan?.start ? toMinutes(plan.start) : null
+  const arriveMinutes = arriveBy ? toMinutes(arriveBy) : null
+  const delay = startMinutes != null && arriveMinutes != null ? arriveMinutes - startMinutes : null
+
+  const submit = async () => {
+    setSubmitting(true)
+    setErr('')
+    try {
+      await latePermissionService.submit({ date, arrive_by: arriveBy, reason: reason.trim() })
+      onDone()
+    } catch (error) {
+      setErr(errorText(latePermissionErrorCode(error)))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const labelCls = 'text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider'
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center justify-between">
+        <p className="m-0 text-[18px] font-extrabold text-[var(--text-main)]">{t('late.newTitle')}</p>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t('common.close')}
+          className="w-9 h-9 rounded-xl border-0 bg-[var(--surface-muted)] text-[var(--text-main)] flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+        >
+          <Icon icon="mdi:close" width={18} />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-1.5">
+          <label className={labelCls}>{t('late.date')}</label>
+          <DateField value={date} min={today} accent={color} onChange={setDate} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className={labelCls}>{t('late.arriveBy')}</label>
+          <TimeField value={arriveBy} onChange={setArriveBy} defaultValue={plan?.start || undefined} accent={color} />
+        </div>
+      </div>
+
+      {plan?.refusal ? (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-500 px-4 py-2.5 text-[13px] font-medium">
+          {errorText(plan.refusal)}
+        </div>
+      ) : plan?.start ? (
+        <p className="m-0 -mt-2 text-[12px] text-[var(--text-muted)]">
+          {t('late.bySchedule', {
+            start: plan.start,
+            delay: delay != null && delay > 0 ? formatDelay(t, delay) : '…',
+          })}
+        </p>
+      ) : null}
+
+      <div className="flex flex-col gap-1.5">
+        <label className={labelCls}>{t('late.reason')}</label>
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder={t('late.reasonPlaceholder')}
+          rows={3}
+          className="rounded-2xl border border-[var(--line)] bg-[var(--surface-muted)] px-4 py-3 text-[14px] text-[var(--text-main)] outline-none resize-none focus:border-[var(--accent)] transition-colors"
+        />
+      </div>
+
+      {err && (
+        <div className="rounded-2xl border border-[var(--error-line)] bg-[var(--error-bg)] text-[var(--error-text)] px-4 py-2.5 text-[13px] font-medium">
+          {err}
+        </div>
+      )}
+
+      <button
+        type="button"
+        disabled={submitting || !arriveBy || !reason.trim() || Boolean(plan?.refusal)}
+        onClick={() => void submit()}
+        className="w-full h-[52px] rounded-2xl text-white font-bold text-[15px] border-0 cursor-pointer transition-all active:scale-[0.97] disabled:opacity-50 shadow-lg"
+        style={{ background: color }}
+      >
+        {submitting ? t('late.submitting') : t('late.submit')}
+      </button>
+    </div>
   )
 }
 
