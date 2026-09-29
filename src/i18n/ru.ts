@@ -84,6 +84,8 @@ export const ru = {
   'check.meters': '{value} м',
   'check.km': '{value} км',
   'check.geoRetry': 'Нужна геолокация — определить ещё раз',
+  'check.zonePending': 'Уточняем часовой пояс…',
+  'check.zoneRetry': 'Не удалось узнать часовой пояс — повторить',
   'check.autoShot': 'Снимаем автоматически',
   'check.faceSeen': 'Лицо в кадре — не двигайтесь',
   'check.lookAtCamera': 'Смотрите в камеру — снимем автоматически',

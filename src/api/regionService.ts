@@ -4,14 +4,14 @@ import { asLang, asLangs, type Lang } from '../i18n'
 /**
  * Регион сотрудника: часы и язык места, где он работает.
  *
- * Регион висит на филиале, а не на человеке (ADR-0006), поэтому цепочка идёт
- * `user_base → locations_id → regions_id`. Развернуть её одним запросом
- * нельзя: `with_relations` разворачивает ровно один уровень, второй прыжок —
- * отдельный GET.
+ * Пояс считает hickvision (`resolve_time_zones`, ADR-0014 п. 3): филиал на
+ * дату → регион филиала → пояс компании → Asia/Tashkent. Тем же методом
+ * админка пересчитывает отметки на экран, поэтому своей цепочки здесь нет:
+ * карточка, отставшая от записи о работе, штамповала бы в одном поясе, а
+ * админка пересчитывала бы из другого.
  *
- * Филиала у сотрудника может не быть — он не обязателен, и в проде пустых
- * `locations_id` больше половины. Такой человек судится по часам компании
- * (known-gaps.md §3); её `timezone` миграция уже перевела в IANA.
+ * Язык и набор языков читаются у региона по `regions_id` из ответа, а без
+ * региона — язык компании (ADR-0006).
  */
 
 /** Последний запасной циферблат: ровно им штамповались все отметки до регионов. */
@@ -51,18 +51,12 @@ const readString = (value: unknown): string =>
   typeof value === 'string' ? value.trim() : ''
 
 /**
- * Часовой пояс одной строкой.
- *
- * У `regions.timezone` тип SINGLE_LINE, а у `companies.timezone` — массив:
- * «одна зона» списком не выражается, но колонку компании не трогали. Берём
- * первый элемент — ровно его и брал бы `Intl.DateTimeFormat`.
- *
- * Колонка свободная: в неё через ucode можно завести что угодно, а не-IANA имя
- * роняет `Intl` прямо на рендере (ADR-0005 п.2). Поэтому здесь же и проверяем —
- * мусор становится пустой строкой, и дальше отрабатывает цепочка фолбэков.
+ * IANA-имя, которое понимает `Intl` этого браузера. Сервер проверил имя своим
+ * `Intl`, но справочники у Node и старого WebView не обязаны совпадать, а
+ * незнакомое имя роняет `Intl` прямо на рендере (ADR-0005 п.2).
  */
 const readTimeZone = (value: unknown): string => {
-  const timezone = Array.isArray(value) ? readString(value[0]) : readString(value)
+  const timezone = readString(value)
   try {
     new Intl.DateTimeFormat('ru-RU', { timeZone: timezone })
     return timezone
@@ -83,36 +77,64 @@ const getItem = async (table: string, guid: string) => {
   return unwrapItem(res)
 }
 
-/**
- * Часы и язык для профиля. Сетевых запросов максимум два, и оба — точечные
- * GET-ы по guid: филиал уже развёрнут в самом профиле.
- */
-export async function getEmployeeRegion(
-  profile: Record<string, unknown> | null | undefined,
-): Promise<EmployeeRegion> {
-  const branch = toRecord(profile?.locations_id_data)
-  const regionId = readString(branch?.regions_id)
+/** Пояс сотрудника на дату — то, чем штампуется отметка. */
+export interface EmployeeTimeZone {
+  timezone: string
+  /** Регион, давший пояс; пусто — пояс компании или запасной. */
+  regionId: string
+}
 
+/**
+ * Пояс сотрудника на дату `today` — один вызов метода, без запросов за языком:
+ * отметка ждёт только его (`CheckInActions`).
+ *
+ * Отказ метода, ответ без сотрудника и пояс, которого не знает `Intl`
+ * устройства, — исключение, и отметка заблокирована: штамп по запасному
+ * циферблату необратим (ADR-0005), а любой свой фолбэк разошёлся бы с тем,
+ * из чего пересчитывает админка. Компанию метод не фильтрует, так что без
+ * сотрудника ответ бывает только на несуществующий guid.
+ *
+ * ponytail: `today` — по устройству: пояса, чтобы спросить дату по нему, ещё
+ * нет. Разойтись это может только в день перевода между поясами и только
+ * около полуночи; `AuthContext` меняет дату в ключе, как только она сменилась.
+ */
+export async function getEmployeeTimeZone(userBaseId: string, today: string): Promise<EmployeeTimeZone> {
+  const res = await adminRequest.post('/v2/invoke_function/udevs-hrms-hickvision', {
+    data: {
+      method: 'resolve_time_zones',
+      data: { user_base_ids: [userBaseId], date_from: today, date_to: today },
+    },
+  })
+
+  const payload = toRecord(res) ?? {}
+  const zones = toRecord(toRecord(payload.result ?? payload)?.time_zones)
+  if (!zones) throw new Error('Unexpected response format for resolve_time_zones')
+
+  const interval = toRecord((zones[userBaseId] as unknown[] | undefined)?.[0])
+  if (!interval) throw new Error('Employee is missing from resolve_time_zones')
+
+  const timezone = readTimeZone(interval.timezone)
+  if (!timezone) throw new Error(`Device does not know time zone "${readString(interval.timezone)}"`)
+
+  return { timezone, regionId: readString(interval.regions_id) }
+}
+
+/**
+ * Язык и набор языков: у региона, давшего пояс, а без него — язык компании
+ * (ADR-0006). Отдельно от пояса: язык — догадка, и медленный GET за ним не
+ * должен держать отметку.
+ */
+export async function getRegionLanguage(
+  regionId: string,
+  companiesId: string,
+): Promise<Pick<EmployeeRegion, 'language' | 'languages'>> {
   if (regionId) {
     const region = await getItem('regions', regionId)
-    const timezone = readTimeZone(region?.timezone)
-    if (timezone) {
-      return {
-        timezone,
-        language: readLanguage(region),
-        languages: asLangs(region?.languages),
-      }
-    }
+    return { language: readLanguage(region), languages: asLangs(region?.languages) }
   }
 
-  const companiesId = readString(profile?.companies_id)
-  if (companiesId) {
-    const company = await getItem('companies', companiesId)
-    // У компании набора нет: языки — свойство региона, а без региона
-    // ограничения не существует.
-    const timezone = readTimeZone(company?.timezone)
-    if (timezone) return { timezone, language: readLanguage(company), languages: [] }
-  }
-
-  return { timezone: DEFAULT_TIME_ZONE, language: null, languages: [] }
+  // У компании набора нет: языки — свойство региона, а без региона
+  // ограничения не существует.
+  const company = await getItem('companies', companiesId)
+  return { language: readLanguage(company), languages: [] }
 }

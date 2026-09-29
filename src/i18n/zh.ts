@@ -77,6 +77,8 @@ export const zh: Partial<Record<TKey, string>> = {
   'check.meters': '{value} 米',
   'check.km': '{value} 公里',
   'check.geoRetry': '需要位置 — 重新获取',
+  'check.zonePending': '正在确定时区…',
+  'check.zoneRetry': '无法获取时区 — 重试',
   'check.autoShot': '正在自动拍照',
   'check.faceSeen': '已识别到人脸 — 请保持不动',
   'check.lookAtCamera': '请看向摄像头 — 我们会自动拍照',

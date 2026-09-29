@@ -21,9 +21,12 @@ import {
 import { langWithRegion, tr, useI18n } from '../i18n'
 import {
   DEFAULT_TIME_ZONE,
-  getEmployeeRegion,
+  getEmployeeTimeZone,
+  getRegionLanguage,
   type EmployeeRegion,
+  type EmployeeTimeZone,
 } from '../api/regionService'
+import { toIsoDate } from '../api/absenceService'
 
 // Человеческий текст ucode кладёт в `data`, а в `description` — константу под
 // код ответа: на неверный пароль там «Invalid argument value passed», и именно
@@ -60,6 +63,12 @@ interface AuthContextValue {
   profile: UserData | null
   /** Часы и язык места, где сотрудник работает. См. regionService. */
   region: EmployeeRegion
+  /**
+   * Пришёл ли пояс от сервера. Пока нет, `region.timezone` — запасной
+   * Ташкент, и отметку ставить нельзя: штамп необратим (ADR-0005).
+   */
+  regionStatus: 'pending' | 'error' | 'success'
+  retryRegion: () => void
   newsFeed: NewsItem[]
   isNewsLoading: boolean
   newsError: string
@@ -70,10 +79,16 @@ interface AuthContextValue {
   isSubmitting: boolean
 }
 
+/** Запасной циферблат и пустой язык — пока нет ни одного ответа о поясе. */
+const NO_LANGUAGES: EmployeeRegion['languages'] = []
+const FALLBACK_REGION: EmployeeRegion = { timezone: DEFAULT_TIME_ZONE, language: null, languages: NO_LANGUAGES }
+
 const AuthContext = createContext<AuthContextValue>({
   session: null,
   profile: null,
-  region: { timezone: DEFAULT_TIME_ZONE, language: null, languages: [] },
+  region: FALLBACK_REGION,
+  regionStatus: 'pending',
+  retryRegion: () => {},
   newsFeed: [],
   isNewsLoading: false,
   newsError: '',
@@ -135,17 +150,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const newsError = _newsError ? tr('auth.newsFailed') : ''
 
   // Регион сотрудника — часы его филиала и язык места. Часы нужны всегда:
-  // ими штампуется каждая отметка (ADR-0005), поэтому запрос платится один
-  // раз за сессию независимо от того, дошла ли до региона очередь по языку.
-  // Ключ — ровно то поле, которое читает запрос. В `session.user_data` связи не
-  // развёрнуты, и первый ответ — часы компании; когда приедет профиль от
-  // `getUserBaseByGuid(with_relations)`, регион появится и ключ сменится.
-  const regionId = (profile?.locations_id_data as { regions_id?: string } | null)?.regions_id
-  const { data: region = { timezone: DEFAULT_TIME_ZONE, language: null, languages: [] } } = useQuery({
-    queryKey: ['employeeRegion', profile?.guid, regionId],
-    queryFn: () => getEmployeeRegion(profile),
-    enabled: isAuthorized && Boolean(profile),
+  // ими штампуется каждая отметка (ADR-0005), поэтому запрос идёт независимо
+  // от того, дошла ли до региона очередь по языку. Филиал на дату сервер
+  // находит сам, развёрнутые связи профиля не нужны.
+  //
+  // Запрос — раз в сутки устройства: дата в ключе. Мини-апп живёт в Telegram
+  // сутками, а с первого дня перевода в филиал другого пояса штамп обязан
+  // смениться. Минутный тик ничего не запрашивает — ключ меняется только со
+  // сменой даты; возврат из фона проверяет сразу, таймеры там стоят.
+  const [today, setToday] = useState(() => toIsoDate(new Date()))
+  useEffect(() => {
+    const tick = () => setToday(toIsoDate(new Date()))
+    const timer = window.setInterval(tick, 60_000)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', tick)
+    }
+  }, [])
+  // Тот же guid, что у отметки (`CheckInActions`): профиль бывает без guid, и
+  // запрос, ждущий только его, не стартовал бы никогда.
+  const employeeGuid =
+    (typeof profile?.guid === 'string' && profile.guid) ||
+    (typeof session?.user_data?.guid === 'string' && session.user_data.guid) ||
+    (typeof session?.user?.guid === 'string' && session.user.guid) || ''
+  const companiesId = typeof profile?.companies_id === 'string' ? profile.companies_id : ''
+  const { data: zone, status, fetchStatus, refetch: refetchRegion } = useQuery({
+    queryKey: ['employeeTimeZone', employeeGuid, today],
+    queryFn: () => getEmployeeTimeZone(employeeGuid, today),
+    enabled: isAuthorized && Boolean(employeeGuid),
   })
+  // Последний удачный пояс — для «сегодня» на экране и для языка, пока новый
+  // день грузится или упал. Штамповать по нему нельзя — это решает статус ниже.
+  const [lastZone, setLastZone] = useState<EmployeeTimeZone | null>(null)
+  if (zone && zone !== lastZone) setLastZone(zone)
+  const shownZone = zone ?? (isAuthorized ? lastZone : null)
+  // Язык — отдельным запросом: медленный GET за ним не держит отметку. Пока
+  // грузится новый, держим прошлый — язык догадка, мигать ему незачем.
+  const { data: regionLanguage } = useQuery({
+    queryKey: ['regionLanguage', shownZone?.regionId ?? '', companiesId],
+    queryFn: () => getRegionLanguage(shownZone?.regionId ?? '', companiesId),
+    enabled: Boolean(shownZone),
+    placeholderData: (previous) => previous,
+  })
+  const region: EmployeeRegion = shownZone
+    ? {
+        timezone: shownZone.timezone,
+        language: regionLanguage?.language ?? null,
+        languages: regionLanguage?.languages ?? NO_LANGUAGES,
+      }
+    : FALLBACK_REGION
+  // Штамп — только по ответу на сегодня. Он есть — упавший фоновый
+  // перезапрос его не отменяет. Его нет — ждём, а «повторить» показываем
+  // после отказа (не во время повтора) и без сети: там запрос стоит на паузе
+  // и сам не кончится.
+  const regionStatus: AuthContextValue['regionStatus'] = zone
+    ? 'success'
+    : (status === 'error' && fetchStatus !== 'fetching') || fetchStatus === 'paused'
+      ? 'error'
+      : 'pending'
 
   // Язык региона — предположение о месте, и в цепочке он отвечает последним
   // (ADR-0006): всё, что известно про самого человека, побеждает регион.
@@ -232,7 +295,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        session, profile, region, newsFeed, isNewsLoading, newsError,
+        session, profile, region, regionStatus, retryRegion: () => void refetchRegion(), newsFeed, isNewsLoading, newsError,
         isAuthorized, login, logout, loginError, isSubmitting,
       }}
     >

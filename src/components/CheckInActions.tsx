@@ -211,7 +211,7 @@ function hasFace(video: HTMLVideoElement, canvas: HTMLCanvasElement, classify: C
 }
 
 function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => void }) {
-  const { profile, session, region } = useAuth()
+  const { profile, session, region, regionStatus, retryRegion } = useAuth()
   const t = useT()
   const queryClient = useQueryClient()
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -241,8 +241,11 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
   const sendingRef = useRef(false)
 
   // Координаты обязательны: без них отметку не с чем сверить, и дальний приход
-  // прошёл бы без согласования простым запретом геолокации.
-  const canMark = Boolean(location)
+  // прошёл бы без согласования простым запретом геолокации. Пояс тоже: до
+  // ответа сервера в `region.timezone` запасной Ташкент, и бакинец, отмеченный
+  // по нему, получил бы необратимое опоздание на час (ADR-0005). Метод лежит
+  // стойко — отметка заблокирована, а не штампуется наугад.
+  const canMark = Boolean(location) && regionStatus === 'success'
 
   // Снимок сделан, но сотрудник за радиусом филиала — отметка ждёт причину.
   // Отправлять до причины нельзя: триггер AFTER CREATE видит запись один раз.
@@ -380,6 +383,12 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
 
   const send = async (file: File | null, markReason: string) => {
     if (sendingRef.current) return
+    // Все пути к штампу сходятся здесь — кнопка, причина вне радиуса, отсчёт
+    // автоснимка. Пояс мог уйти в ожидание уже после открытия шторки (сменились
+    // сутки), и тогда штамп по запасному часу необратим (ADR-0005). Что с
+    // поясом, говорит `zoneNotice` — своей ошибки здесь не пишем, она бы
+    // пережила его приход.
+    if (regionStatus !== 'success') return
     sendingRef.current = true
     setIsSending(true)
     setError('')
@@ -470,6 +479,25 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
   }
 
   const isArmed = cameraReady && cascadeReady && !autoOff && !isCounting && !isSending
+
+  // Пояс может уйти в ожидание или отказ уже при открытой шторке: сменились
+  // сутки, пропала сеть. Показываем это на обоих экранах — и у кнопки, и у
+  // причины вне радиуса, — с «повторить» при отказе.
+  const zoneNotice = regionStatus === 'pending' ? (
+    <div className="flex items-center justify-center gap-2 text-[13px] text-white/60">
+      <Icon icon="mdi:earth" width={18} className="animate-pulse" />
+      {t('check.zonePending')}
+    </div>
+  ) : regionStatus === 'error' ? (
+    <button
+      type="button"
+      onClick={retryRegion}
+      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/10 py-3 text-[14px] font-semibold text-white"
+    >
+      <Icon icon="mdi:earth-off" width={18} />
+      {t('check.zoneRetry')}
+    </button>
+  ) : null
 
   return (
     <Drawer.Root open onOpenChange={(open) => { if (!open && !isSending) onClose() }}>
@@ -565,11 +593,12 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
               </label>
 
               {error && <p className="m-0 text-center text-[13px] text-rose-400">{error}</p>}
+              {zoneNotice}
 
               <button
                 type="button"
                 onClick={() => void send(pendingShot.file, reason.trim())}
-                disabled={isSending || !reason.trim()}
+                disabled={isSending || !reason.trim() || regionStatus !== 'success'}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--accent)] py-4 text-[15px] font-bold text-white disabled:opacity-60"
               >
                 {isSending
@@ -627,6 +656,8 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
                 </button>
               )
             )}
+
+            {zoneNotice}
 
             {/* Плашки «загружаем детектор» намеренно нет: продукт здесь —
                 кнопка, автоснимок лишь бонус, и его отсутствие не новость. */}
@@ -690,18 +721,30 @@ function useToday() {
     (typeof session?.user?.guid === 'string' && session.user.guid) || ''
 
   // «Сегодня» — у сотрудника, а не у сервера: около полуночи два филиала стоят
-  // на разных датах (ADR-0005).
+  // на разных датах (ADR-0005). Полночь сотрудника не совпадает с полночью
+  // телефона, если пояса разные, поэтому пересчёт — по своему минутному тику,
+  // а не по чужим ре-рендерам.
+  const [, setMinute] = useState(0)
+  useEffect(() => {
+    const tick = () => setMinute((value) => value + 1)
+    const timer = window.setInterval(tick, 60_000)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', tick)
+    }
+  }, [])
   const iso = buildMarkTimes(new Date(), region.timezone).date
 
   // Тот же ключ, что и на /time — данные общие, лишнего запроса не будет.
-  const { data: records = [] } = useQuery({
+  const { data: records = [], isPending: recordsPending } = useQuery({
     queryKey: ['attendance', employeeGuid],
     queryFn: () => attendanceService.getByEmployee(employeeGuid),
     enabled: Boolean(employeeGuid),
     staleTime: 60_000,
   })
 
-  const { data: marks = [] } = useQuery({
+  const { data: marks = [], isFetching: marksFetching } = useQuery({
     queryKey: ['attendance-marks', employeeGuid, iso],
     queryFn: () => attendanceService.getMarksForDate(employeeGuid, iso),
     enabled: Boolean(employeeGuid),
@@ -727,8 +770,16 @@ function useToday() {
       ? (last === 'IN' ? 'OUT' : 'IN')
       : (checkIn === EMPTY_TIME ? 'IN' : 'OUT')
 
-    return { employeeGuid, checkIn, checkOut, nextAction }
-  }, [records, marks, iso, employeeGuid])
+    // Направление — только по свежим отметкам дня. Пока они грузятся или
+    // перезапрашиваются (после отметки `invalidateQueries` держит старые),
+    // `nextAction` — по устаревшему списку, и второе нажатие дало бы второй
+    // приход с второй карточкой в Telegram. Сводка дня нужна, только когда
+    // отметок нет, — только тогда и ждём историю. Отказ запроса — не
+    // ожидание: кнопка работает по тому, что есть, как и раньше.
+    const ready = !marksFetching && ((marks as AttendanceMark[]).length > 0 || !recordsPending)
+
+    return { employeeGuid, checkIn, checkOut, nextAction, ready }
+  }, [records, marks, iso, employeeGuid, recordsPending, marksFetching])
 }
 
 /** Карточки «Приход / Уход» над лентой — как в примере с Kirish/Chiqish. */
@@ -758,7 +809,8 @@ export function CheckInSummary() {
 
 export function CheckInActions() {
   const [action, setAction] = useState<MarkAction | null>(null)
-  const { nextAction } = useToday()
+  const { nextAction, ready } = useToday()
+  const { regionStatus, retryRegion } = useAuth()
   const t = useT()
 
   // Каскад тянем заранее, пока человек ещё смотрит ленту: 234 КБ по мобильной
@@ -772,6 +824,30 @@ export function CheckInActions() {
     // `mt-auto` и подложка цветом фона, чтобы лента не просвечивала. На новом
     // месте всё это не нужно: обычный блок в потоке.
     <section className="animate-fade-in-up">
+      {/* Пока пояс не пришёл, «сегодня» посчитано по запасному Ташкенту, и
+          направление IN/OUT взято бы по чужому дню: шанхаец в 00:30 получил
+          бы уход по вчерашним отметкам. Кнопка ждёт пояс, как и сам штамп, а
+          после него — отметки уже своего дня. */}
+      {regionStatus === 'success' && !ready ? (
+        <button
+          type="button"
+          disabled
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--surface-muted)] py-2.5 text-[14px] font-semibold text-[var(--text-main)] opacity-60"
+        >
+          <Icon icon="mdi:loading" width={18} className="animate-spin" />
+          {t('common.loading')}
+        </button>
+      ) : regionStatus !== 'success' ? (
+        <button
+          type="button"
+          onClick={retryRegion}
+          disabled={regionStatus === 'pending'}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--surface-muted)] py-2.5 text-[14px] font-semibold text-[var(--text-main)] disabled:opacity-60"
+        >
+          <Icon icon={regionStatus === 'pending' ? 'mdi:earth' : 'mdi:earth-off'} width={18} className={regionStatus === 'pending' ? 'animate-pulse' : ''} />
+          {t(regionStatus === 'pending' ? 'check.zonePending' : 'check.zoneRetry')}
+        </button>
+      ) : (
       <button
         type="button"
         onClick={() => setAction(nextAction)}
@@ -782,6 +858,7 @@ export function CheckInActions() {
         <Icon icon={nextAction === 'IN' ? 'mdi:login' : 'mdi:logout'} width={18} />
         {t(ACTION_LABEL[nextAction])}
       </button>
+      )}
 
       {action && <CameraSheet action={action} onClose={() => setAction(null)} />}
     </section>

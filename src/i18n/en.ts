@@ -77,6 +77,8 @@ export const en: Partial<Record<TKey, string>> = {
   'check.meters': '{value} m',
   'check.km': '{value} km',
   'check.geoRetry': 'Location required — detect again',
+  'check.zonePending': 'Checking your time zone…',
+  'check.zoneRetry': 'Couldn\'t get your time zone — try again',
   'check.autoShot': 'Taking the photo automatically',
   'check.faceSeen': 'Face in frame — hold still',
   'check.lookAtCamera': 'Look at the camera — we will shoot automatically',

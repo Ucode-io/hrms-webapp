@@ -77,6 +77,8 @@ export const kk: Partial<Record<TKey, string>> = {
   'check.meters': '{value} м',
   'check.km': '{value} км',
   'check.geoRetry': 'Орналасу қажет — қайта анықтаңыз',
+  'check.zonePending': 'Уақыт белдеуі анықталуда…',
+  'check.zoneRetry': 'Уақыт белдеуін анықтау мүмкін болмады — қайталау',
   'check.autoShot': 'Фото автоматты түрде түсірілуде',
   'check.faceSeen': 'Бет кадрда — қозғалмай тұрыңыз',
   'check.lookAtCamera': 'Камераға қараңыз — автоматты түрде түсіреміз',

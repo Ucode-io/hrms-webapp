@@ -77,6 +77,8 @@ export const uz: Partial<Record<TKey, string>> = {
   'check.meters': '{value} m',
   'check.km': '{value} km',
   'check.geoRetry': 'Joylashuv kerak — qayta aniqlash',
+  'check.zonePending': 'Vaqt mintaqasi aniqlanmoqda…',
+  'check.zoneRetry': 'Vaqt mintaqasini aniqlab bo‘lmadi — qayta urinish',
   'check.autoShot': 'Avtomatik suratga olamiz',
   'check.faceSeen': 'Yuz kadrda — qimirlamang',
   'check.lookAtCamera': 'Kameraga qarang — avtomatik suratga olamiz',
