@@ -657,7 +657,7 @@ export const uz: Partial<Record<TKey, string>> = {
   'late.newSr': 'Kechikish uchun yangi so‘rov',
   'late.date': 'Sana',
   'late.arriveBy': 'Kelaman',
-  'late.bySchedule': 'jadval bo‘yicha {start} → +{delay}',
+  'late.scheduleStart': 'Jadval bo‘yicha',
   'late.hours': '{h} soat',
   'late.minutes': '{m} daq',
   'late.reason': 'Sabab',

@@ -689,12 +689,17 @@ function LateForm({
           {errorText(plan.refusal)}
         </div>
       ) : plan?.start ? (
-        <p className="m-0 -mt-2 text-[12px] text-[var(--text-muted)]">
-          {t('late.bySchedule', {
-            start: plan.start,
-            delay: delay != null && delay > 0 ? formatDelay(t, delay) : '…',
-          })}
-        </p>
+        <div className="-mt-1 flex items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface-muted)] px-4 py-3">
+          <div className="flex items-center gap-2 text-[14px] text-[var(--text-secondary)]">
+            <Icon icon="mdi:calendar-clock" width={18} className="shrink-0 text-[var(--text-muted)]" />
+            {t('late.scheduleStart')}
+            <span className="text-[16px] font-extrabold tabular-nums text-[var(--text-main)]">{plan.start}</span>
+          </div>
+          {/* Янтарный, как опоздание в табеле: цвет бренда бывает тёмным и тонет в тёмной теме. */}
+          <span className="shrink-0 rounded-xl bg-amber-500/15 px-3 py-1.5 text-[15px] font-extrabold tabular-nums text-amber-500">
+            {delay != null && delay > 0 ? `+${formatDelay(t, delay)}` : '—'}
+          </span>
+        </div>
       ) : null}
 
       <div className="flex flex-col gap-1.5">

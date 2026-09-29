@@ -657,7 +657,7 @@ export const en: Partial<Record<TKey, string>> = {
   'late.newSr': 'New late arrival request',
   'late.date': 'Date',
   'late.arriveBy': 'Arrive by',
-  'late.bySchedule': 'scheduled {start} → +{delay}',
+  'late.scheduleStart': 'Scheduled',
   'late.hours': '{h} h',
   'late.minutes': '{m} min',
   'late.reason': 'Reason',

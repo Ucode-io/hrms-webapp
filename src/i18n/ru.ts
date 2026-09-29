@@ -693,7 +693,7 @@ export const ru = {
   'late.newSr': 'Новая заявка на опоздание',
   'late.date': 'Дата',
   'late.arriveBy': 'Приду к',
-  'late.bySchedule': 'по графику {start} → +{delay}',
+  'late.scheduleStart': 'По графику',
   'late.hours': '{h} ч',
   'late.minutes': '{m} мин',
   'late.reason': 'Причина',
