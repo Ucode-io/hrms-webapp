@@ -201,16 +201,23 @@ export const attendanceService = {
    * второй приход за день в них уже не виден. Чтобы понимать, что человек
    * нажмёт следующим, нужен сам поток событий — в нём и турникет, и webapp.
    */
-  getMarksForDate: async (userBaseId: string, date: string): Promise<AttendanceMark[]> => {
-    if (!userBaseId || !date) return []
+  getMarksForDate: async (userBaseId: string, date: string): Promise<AttendanceMark[]> =>
+    attendanceService.getMarksForRange(userBaseId, date, date),
+
+  /**
+   * Сырые отметки за несколько дней, свежие сверху. Ночная смена лежит на двух
+   * календарных датах: приход 22:00 в среду, уход 06:00 в четверг.
+   */
+  getMarksForRange: async (userBaseId: string, from: string, to: string): Promise<AttendanceMark[]> => {
+    if (!userBaseId || !from || !to) return []
 
     const res = await adminRequest.get(`/v2/items/${ATTENDANCE_RECORDS_COLLECTION}`, {
       params: {
         data: encodeData({
           user_base_id: userBaseId,
-          // Диапазон из одного дня, а не равенство: так же это поле фильтрует
-          // админка, и на DATE-колонке это единственный проверенный способ.
-          date: { $gte: date, $lte: date },
+          // Диапазон, а не равенство: так же это поле фильтрует админка, и на
+          // DATE-колонке это единственный проверенный способ.
+          date: { $gte: from, $lte: to },
           with_relations: true,
           limit: 200,
           offset: 0,
@@ -218,8 +225,9 @@ export const attendanceService = {
       },
     })
 
+    const dayOf = (mark: AttendanceMark) => String(mark.date || '').slice(0, 10)
     return extractList<AttendanceMark>(res).sort((a, b) =>
-      markOrder(b).localeCompare(markOrder(a)))
+      dayOf(b).localeCompare(dayOf(a)) || markOrder(b).localeCompare(markOrder(a)))
   },
 
   getByEmployee: async (userBaseId: string): Promise<AttendanceRecord[]> => {

@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "check:lang": "node --experimental-strip-types src/i18n/pickLang.check.ts",
+    "check:shift": "node --experimental-strip-types src/api/shiftWindow.check.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },

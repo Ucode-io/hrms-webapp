@@ -16,6 +16,8 @@ import {
   type AttendanceRecord,
   type MarkAction,
 } from '../api/attendanceService'
+import shiftsService from '../api/shiftsService'
+import { addDays, currentShift, marksOfShift } from '../api/shiftWindow'
 
 const UPLOAD_TIMEOUT_MS = 10_000
 const GEO_DEADLINE_MS = 8_000
@@ -706,7 +708,13 @@ function CameraSheet({ action, onClose }: { action: MarkAction; onClose: () => v
 }
 
 /**
- * Сегодняшний день: отметки, времена и то, что человек нажмёт следующим.
+ * Текущая смена: отметки, времена и то, что человек нажмёт следующим.
+ *
+ * «Текущая» — по тому же правилу, что у бэкенда: смена, в чью зону (4 часа до
+ * начала — 4 часа после конца) попадает «сейчас». Ночнику в четверг в 06:00
+ * это ночь среды, и кнопка — «Уход», а не новый «Приход» по пустому четвергу.
+ * Смены нет — сегодняшний календарный день, как раньше: отметка ляжет
+ * «вне графика».
  *
  * Два источника намеренно: поток событий точен и знает про повторные приходы,
  * агрегат — страховка на случай, когда турникет доехал до сводки дня, а до
@@ -734,7 +742,21 @@ function useToday() {
       document.removeEventListener('visibilitychange', tick)
     }
   }, [])
-  const iso = buildMarkTimes(new Date(), region.timezone).date
+  const now = buildMarkTimes(new Date(), region.timezone)
+  const iso = now.date
+
+  // Смены вокруг сегодня: вчерашняя ночь ещё может идти, а зона завтрашней
+  // смены с 00:00 открывается уже сегодня вечером.
+  const { data: shifts = [], isPending: shiftsPending } = useQuery({
+    queryKey: ['my-shifts-around', employeeGuid, iso],
+    queryFn: () => shiftsService.getMine(employeeGuid, { from: addDays(iso, -1), to: addDays(iso, 1) }),
+    enabled: Boolean(employeeGuid),
+    staleTime: 60_000,
+  })
+  const shift = currentShift(shifts, iso, now.event_time.slice(0, 5))
+  // Зона смены лежит максимум на трёх датах вокруг её собственной.
+  const from = shift?.date ? addDays(shift.date, -1) : iso
+  const to = shift?.date ? addDays(shift.date, 1) : iso
 
   // Тот же ключ, что и на /time — данные общие, лишнего запроса не будет.
   const { data: records = [], isPending: recordsPending } = useQuery({
@@ -744,42 +766,47 @@ function useToday() {
     staleTime: 60_000,
   })
 
-  const { data: marks = [], isFetching: marksFetching } = useQuery({
-    queryKey: ['attendance-marks', employeeGuid, iso],
-    queryFn: () => attendanceService.getMarksForDate(employeeGuid, iso),
-    enabled: Boolean(employeeGuid),
+  // Префикс ['attendance-marks', employeeGuid] сбрасывается после отметки.
+  const { data: rawMarks = [], isFetching: marksFetching } = useQuery({
+    queryKey: ['attendance-marks', employeeGuid, from, to],
+    queryFn: () => attendanceService.getMarksForRange(employeeGuid, from, to),
+    enabled: Boolean(employeeGuid) && !shiftsPending,
     staleTime: 30_000,
   })
 
   return useMemo(() => {
+    // Строка посещаемости смены — на дату её начала (решение 3).
+    const workDate = shift?.date ? shift.date.slice(0, 10) : iso
     const day = (records as AttendanceRecord[])
-      .find((record) => String(record.date || '').slice(0, 10) === iso)
+      .find((record) => String(record.date || '').slice(0, 10) === workDate)
 
-    // Отметки приходят свежими сверху, поэтому первый OUT — последний уход,
-    // а последний IN — первый приход за день.
-    const ins = (marks as AttendanceMark[]).filter((mark) => readMarkAction(mark) === 'IN')
-    const outs = (marks as AttendanceMark[]).filter((mark) => readMarkAction(mark) === 'OUT')
+    // Отметки текущей смены по порядку, либо сегодняшние — без смены.
+    const ordered = shift
+      ? marksOfShift(shift, rawMarks as AttendanceMark[])
+      : [...(rawMarks as AttendanceMark[])].reverse()
+    const ins = ordered.filter((mark) => readMarkAction(mark) === 'IN')
+    const outs = ordered.filter((mark) => readMarkAction(mark) === 'OUT')
 
-    const checkIn = showTime(ins.at(-1)?.event_time ?? day?.check_in_time)
-    const checkOut = showTime(outs[0]?.event_time ?? day?.check_out_time)
+    const checkIn = showTime(ins[0]?.event_time ?? day?.check_in_time)
+    const checkOut = showTime(outs.at(-1)?.event_time ?? day?.check_out_time)
 
-    // Чередуем от последнего события: приход → уход → приход → уход. Без потока
-    // событий откатываемся на сводку дня — там видно только первый приход.
-    const last = (marks as AttendanceMark[]).map(readMarkAction).find(Boolean)
+    // Чередуем от последнего события смены: приход → уход → приход → уход. Без
+    // потока событий откатываемся на сводку дня — там видно только первый приход.
+    const last = [...ordered].reverse().map(readMarkAction).find(Boolean)
     const nextAction: MarkAction = last
       ? (last === 'IN' ? 'OUT' : 'IN')
       : (checkIn === EMPTY_TIME ? 'IN' : 'OUT')
 
-    // Направление — только по свежим отметкам дня. Пока они грузятся или
+    // Направление — только по свежим отметкам смены. Пока они грузятся или
     // перезапрашиваются (после отметки `invalidateQueries` держит старые),
     // `nextAction` — по устаревшему списку, и второе нажатие дало бы второй
     // приход с второй карточкой в Telegram. Сводка дня нужна, только когда
     // отметок нет, — только тогда и ждём историю. Отказ запроса — не
     // ожидание: кнопка работает по тому, что есть, как и раньше.
-    const ready = !marksFetching && ((marks as AttendanceMark[]).length > 0 || !recordsPending)
+    const ready = !shiftsPending && !marksFetching && (ordered.length > 0 || !recordsPending)
 
     return { employeeGuid, checkIn, checkOut, nextAction, ready }
-  }, [records, marks, iso, employeeGuid, recordsPending, marksFetching])
+  }, [records, rawMarks, shift, iso, employeeGuid, recordsPending, marksFetching, shiftsPending])
 }
 
 /** Карточки «Приход / Уход» над лентой — как в примере с Kirish/Chiqish. */
