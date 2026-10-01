@@ -389,6 +389,7 @@ export const ru = {
   'sheet.absentShort': '{count} отс.',
   'sheet.latePenalty': 'Штраф за опоздания',
   'sheet.calendar': 'Календарь',
+  'sheet.offSchedule': 'Вне графика',
   'schedule.totalHours': 'Итого часов',
   'schedule.at': 'в {place}',
   'schedule.as': 'как {position}',

@@ -362,6 +362,7 @@ export const en: Partial<Record<TKey, string>> = {
   'sheet.absentShort': '{count} abs.',
   'sheet.latePenalty': 'Late penalty',
   'sheet.calendar': 'Calendar',
+  'sheet.offSchedule': 'Off schedule',
   'schedule.totalHours': 'Total hours',
   'schedule.at': 'at {place}',
   'schedule.as': 'as {position}',

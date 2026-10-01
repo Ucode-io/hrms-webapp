@@ -362,6 +362,7 @@ export const zh: Partial<Record<TKey, string>> = {
   'sheet.absentShort': '缺勤 {count}',
   'sheet.latePenalty': '迟到扣款',
   'sheet.calendar': '日历',
+  'sheet.offSchedule': '排班外',
   'schedule.totalHours': '总工时',
   'schedule.at': '在 {place}',
   'schedule.as': '任 {position}',

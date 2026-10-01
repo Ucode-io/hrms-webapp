@@ -362,6 +362,7 @@ export const uz: Partial<Record<TKey, string>> = {
   'sheet.absentShort': '{count} yo‘q',
   'sheet.latePenalty': 'Kechikish jarimasi',
   'sheet.calendar': 'Kalendar',
+  'sheet.offSchedule': 'Grafikdan tashqari',
   'schedule.totalHours': 'Jami soat',
   'schedule.at': '{place}da',
   'schedule.as': '{position} sifatida',

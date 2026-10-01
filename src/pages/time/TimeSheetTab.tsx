@@ -20,6 +20,7 @@ import { reportsService } from '../../api/reportsService'
 import { formatAmount } from '../../api/payrollService'
 import { CheckInSummary } from '../../components/CheckInActions'
 import { latePermissionService } from '../../api/latePermissionService'
+import shiftsService from '../../api/shiftsService'
 
 /* ── Date helpers ────────────────────────────────────── */
 function getMonthKey(date: Date) {
@@ -48,35 +49,33 @@ function firstWeekdayOfMonth(key: string): number {
   return (d.getDay() + 6) % 7
 }
 
-function isWeekend(dayNum: number, key: string): boolean {
-  const d = monthKeyToDate(key)
-  const wd = new Date(d.getFullYear(), d.getMonth(), dayNum).getDay()
-  return wd === 0 || wd === 6
-}
-
-function countWorkdaysInMonth(key: string): number {
-  const total = daysInMonth(key)
+// Рабочий день — день, на который у сотрудника стоит смена, а не «пн–пт»:
+// у ночных и сменных графиков выходной бывает в среду, а суббота — рабочая.
+function countElapsedShiftDays(shiftDates: Set<string>, todayIso: string): number {
   let count = 0
-  for (let i = 1; i <= total; i++) if (!isWeekend(i, key)) count++
-  return count
-}
-
-function countElapsedWorkdays(key: string, todayIso: string): number {
-  const today = new Date(todayIso)
-  const d = monthKeyToDate(key)
-  const total = daysInMonth(key)
-  let count = 0
-  for (let i = 1; i <= total; i++) {
-    const cur = new Date(d.getFullYear(), d.getMonth(), i)
-    if (cur > today) break
-    if (!isWeekend(i, key)) count++
-  }
+  for (const iso of shiftDates) if (iso <= todayIso) count++
   return count
 }
 
 function isoForDay(key: string, day: number): string {
   const d = monthKeyToDate(key)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+/** Отметка без смены на этот день: день не отработан, плана и опоздания нет. */
+function isOffScheduleRecord(r: AttendanceRecord): boolean {
+  const raw = r.source_type
+  const list = Array.isArray(raw) ? raw : [raw]
+  return list.some((item) => String(item || '').trim().toLowerCase() === 'off_schedule')
+}
+
+/**
+ * Запись, которая говорит за день. Настоящая запись по смене важнее «вне
+ * графика»: если рядом лежат обе, день — рабочий. Записи приходят от новой к
+ * старой, поэтому берётся первая подходящая.
+ */
+function representativeRecord(recs: AttendanceRecord[]): AttendanceRecord | undefined {
+  return recs.find((r) => !isOffScheduleRecord(r)) ?? recs[0]
 }
 
 function recordDateIso(r: AttendanceRecord): string {
@@ -86,21 +85,25 @@ function recordDateIso(r: AttendanceRecord): string {
 }
 
 /* ── Day status type ─────────────────────────────────── */
-type DayStatus = 'present' | 'late' | 'absent' | 'active' | 'future' | 'weekend' | 'empty'
+type DayStatus = 'present' | 'late' | 'absent' | 'active' | 'future' | 'weekend' | 'empty' | 'offSchedule'
 
 function getDayStatus(
   day: number,
   key: string,
   todayIso: string,
   recordsByDate: Map<string, AttendanceRecord[]>,
+  shiftDates: Set<string>,
 ): DayStatus {
   const iso = isoForDay(key, day)
-  if (isWeekend(day, key)) return 'weekend'
+  const recs = recordsByDate.get(iso) || []
+  const last = representativeRecord(recs)
+  // Отметка без смены — свой вид дня, зелёной галочкой «пришёл» он не станет.
+  if (last && isOffScheduleRecord(last)) return 'offSchedule'
+  // Нет смены и нет отметки — выходной.
+  if (!shiftDates.has(iso) && recs.length === 0) return 'weekend'
   if (iso > todayIso) return 'future'
   if (iso === todayIso) {
-    const recs = recordsByDate.get(iso) || []
-    if (recs.length > 0) {
-      const last = recs[0]
+    if (last) {
       const inn = normalizeTime(String(last.check_in_time || ''))
       const out = normalizeTime(String(last.check_out_time || ''))
       if (inn && !out) return 'active'
@@ -111,9 +114,7 @@ function getDayStatus(
     }
     return 'active'
   }
-  const recs = recordsByDate.get(iso) || []
-  if (recs.length === 0) return 'empty'
-  const last = recs[0]
+  if (!last) return 'empty'
   const actionStatus = normalizeActionStatus(last.action_status)
   if (actionStatus === 'late') return 'late'
   if (actionStatus === 'absent') return 'absent'
@@ -128,6 +129,7 @@ const DAY_STATUS_STYLE: Record<DayStatus, { cell: string; num: string; dot?: str
   active:  { cell: 'border-2 border-[var(--accent)] bg-[var(--accent-light)]', num: 'text-[var(--accent)] font-extrabold' },
   future:  { cell: 'bg-transparent', num: 'text-[var(--text-muted)] opacity-50 font-medium' },
   weekend: { cell: 'bg-[var(--surface-muted)]', num: 'text-[var(--text-muted)] opacity-60 font-medium' },
+  offSchedule: { cell: 'bg-slate-500/10 border border-slate-400/30', num: 'text-slate-500 font-bold', dot: 'bg-slate-400' },
   empty:   { cell: 'bg-transparent', num: 'text-[var(--text-muted)] opacity-70 font-medium' },
 }
 
@@ -137,6 +139,7 @@ const ACTION_BADGE: Record<string, { label: TKey | '—'; cls: string; icon: str
   late:    { label: 'sheet.late',    cls: 'bg-amber-500/15 text-amber-500',        icon: 'mdi:clock-alert' },
   absent:  { label: 'sheet.absent',  cls: 'bg-rose-500/15 text-rose-500',          icon: 'mdi:close-circle' },
   active:  { label: 'sheet.active',  cls: 'bg-[var(--accent-light)] text-[var(--accent)]', icon: 'mdi:circle' },
+  offSchedule: { label: 'sheet.offSchedule', cls: 'bg-slate-500/15 text-slate-500', icon: 'mdi:calendar-remove-outline' },
   unknown: { label: '—',             cls: 'bg-[var(--surface-muted)] text-[var(--text-muted)]', icon: 'mdi:minus' },
 }
 
@@ -155,11 +158,14 @@ function CalendarGrid({
   monthKey,
   todayIso,
   recordsByDate,
+  shiftDates,
   onDayPress,
 }: {
   monthKey: string
   todayIso: string
   recordsByDate: Map<string, AttendanceRecord[]>
+  /** Даты месяца, на которые у сотрудника стоит смена. */
+  shiftDates: Set<string>
   onDayPress: (iso: string) => void
 }) {
   const t = useT()
@@ -188,10 +194,11 @@ function CalendarGrid({
         {cells.map((day, idx) => {
           if (!day) return <div key={`empty-${idx}`} />
           const iso = isoForDay(monthKey, day)
-          const status = getDayStatus(day, monthKey, todayIso, recordsByDate)
+          const status = getDayStatus(day, monthKey, todayIso, recordsByDate, shiftDates)
           const style = DAY_STATUS_STYLE[status]
           const recs = recordsByDate.get(iso) || []
-          const checkIn = recs.length > 0 ? normalizeTime(String(recs[0].check_in_time || '')) : ''
+          const rep = representativeRecord(recs)
+          const checkIn = rep ? normalizeTime(String(rep.check_in_time || '')) : ''
           const isToday = iso === todayIso
           const interactive = status !== 'future' && status !== 'weekend'
 
@@ -224,6 +231,7 @@ function CalendarGrid({
           { color: 'bg-amber-400', label: t('sheet.late') },
           { color: 'bg-rose-400', label: t('sheet.absent') },
           { color: 'bg-[var(--accent)]', label: t('sheet.active') },
+          { color: 'bg-slate-400', label: t('sheet.offSchedule') },
         ].map(({ color, label }) => (
           <div key={label} className="flex items-center gap-1">
             <span className={`h-2 w-2 rounded-full ${color}`} />
@@ -256,14 +264,17 @@ function RecordDetailDrawer({ record, open, onClose, lateBy }: {
       return h * 60 + m
     }
     const a = toMin(String(record.check_in_time || '')), b = toMin(String(record.check_out_time || ''))
-    if (a == null || b == null || b <= a) return ''
-    const diff = b - a
+    // Строка лежит на дате начала смены: уход раньше прихода — следующие сутки
+    // (22:00 → 06:00 это 8 ч, а не пустая длительность).
+    if (a == null || b == null || b === a) return ''
+    const diff = b > a ? b - a : b + 24 * 60 - a
     const h = Math.floor(diff / 60), m = diff % 60
     return tr('sheet.hoursMinutes', { hours: h, minutes: String(m).padStart(2, '0') })
   })()
   const actionStatus = normalizeActionStatus(record.action_status)
   const workflowStatus = normalizeWorkflowStatus(record.status)
-  const actionCfg = ACTION_BADGE[actionStatus] || ACTION_BADGE.unknown
+  const offSchedule = isOffScheduleRecord(record)
+  const actionCfg = offSchedule ? ACTION_BADGE.offSchedule : (ACTION_BADGE[actionStatus] || ACTION_BADGE.unknown)
   // Только записанное опоздание: своего расчёта здесь нет, он был бы
   // вычитанием чужих 09:00 (CONTEXT.md, Lateness). В строке уже лежит цифра,
   // посчитанная по графику сотрудника при записи.
@@ -328,8 +339,9 @@ function RecordDetailDrawer({ record, open, onClose, lateBy }: {
               </div>
               <div className="rounded-2xl bg-[var(--app-bg)] px-4 py-3.5">
                 <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">{t('sheet.delay')}</span>
-                <p className={`m-0 mt-1 text-[17px] font-extrabold ${delay !== '00:00' ? 'text-amber-500' : 'text-emerald-500'}`}>
-                  {delay !== '00:00' ? `+${delay}` : t('sheet.onTime')}
+                {/* Без смены опаздывать не с чем: «Вовремя» тут было бы ложью. */}
+                <p className={`m-0 mt-1 text-[17px] font-extrabold ${offSchedule ? 'text-[var(--text-muted)]' : delay !== '00:00' ? 'text-amber-500' : 'text-emerald-500'}`}>
+                  {offSchedule ? '—' : delay !== '00:00' ? `+${delay}` : t('sheet.onTime')}
                 </p>
               </div>
             </div>
@@ -539,6 +551,22 @@ export function TimeSheetTab() {
 
   const monthPrefix = monthKey + '-'
 
+  /* Смены месяца: рабочий день — день со сменой, а не «пн–пт». Ночная смена
+     последнего числа целиком лежит на своей дате, поэтому диапазон — ровно месяц. */
+  const { data: monthShifts = [], isLoading: shiftsLoading, isError: shiftsError, refetch: refetchShifts } = useQuery({
+    queryKey: ['shifts-month', employeeGuid, monthKey],
+    queryFn: () => shiftsService.getMine(employeeGuid, {
+      from: isoForDay(monthKey, 1),
+      to: isoForDay(monthKey, daysInMonth(monthKey)),
+    }),
+    enabled: Boolean(employeeGuid),
+    staleTime: 60_000,
+  })
+  const shiftDates = useMemo(
+    () => new Set(monthShifts.map((shift) => String(shift.date || '').slice(0, 10)).filter(Boolean)),
+    [monthShifts],
+  )
+
   /* Опоздания и штраф за месяц — считает сервер: нужны оклад, график работы,
      рабочие дни по календарю праздников и настройки компании (коэффициент и
      «прощаемые» минуты), которых на клиенте нет. */
@@ -571,12 +599,16 @@ export function TimeSheetTab() {
 
   /* Stats — counted per unique day (a day may have several attendance rows) */
   const stats = useMemo(() => {
-    const plannedDays = countWorkdaysInMonth(monthKey)
-    const elapsedDays = countElapsedWorkdays(monthKey, todayIso)
+    const plannedDays = shiftDates.size
+    const elapsedDays = countElapsedShiftDays(shiftDates, todayIso)
     let worked = 0, late = 0, absent = 0
     for (const [iso, recs] of recordsByDate) {
       if (!iso.startsWith(monthPrefix) || recs.length === 0) continue
-      const s = normalizeActionStatus(recs[0].action_status) // recs[0] = newest
+      const rep = representativeRecord(recs)
+      // «Вне графика» — не отработанный день: он не идёт ни в «отработано»,
+      // ни в опоздания, ни в прогулы.
+      if (!rep || isOffScheduleRecord(rep)) continue
+      const s = normalizeActionStatus(rep.action_status)
       if (s === 'present' || s === 'late') worked++
       if (s === 'late') late++
       if (s === 'absent') absent++
@@ -586,7 +618,7 @@ export function TimeSheetTab() {
       : rate >= 80 ? tr('sheet.rateGood')
         : rate >= 60 ? tr('sheet.rateFair') : tr('sheet.rateLow')
     return { plannedDays, elapsedDays, worked, late, absent, rate, rateLabel }
-  }, [recordsByDate, monthPrefix, monthKey, todayIso])
+  }, [recordsByDate, monthPrefix, shiftDates, todayIso])
 
   const prevMonth = () => {
     const d = monthKeyToDate(monthKey)
@@ -602,7 +634,8 @@ export function TimeSheetTab() {
   // Tap a calendar day: open its record if one exists, otherwise add a new one.
   const handleDayPress = (iso: string) => {
     const recs = recordsByDate.get(iso)
-    if (recs && recs.length > 0) setSelectedRecord(recs[0])
+    const rep = recs ? representativeRecord(recs) : undefined
+    if (rep) setSelectedRecord(rep)
     else openAdd(iso)
   }
 
@@ -633,13 +666,13 @@ export function TimeSheetTab() {
         </div>
 
         {/* ── Error ─────────────────────────────────── */}
-        {isError && !isLoading && (
+        {(isError || shiftsError) && !isLoading && !shiftsLoading && (
           <div className="rounded-2xl bg-rose-500/15 px-4 py-3.5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <Icon icon="mdi:alert-circle-outline" width={20} className="shrink-0 text-rose-500" />
               <p className="m-0 text-[13px] font-semibold text-rose-500 truncate">{t('sheet.loadFailed')}</p>
             </div>
-            <button type="button" onClick={() => void refetch()}
+            <button type="button" onClick={() => { void refetch(); void refetchShifts() }}
               className="shrink-0 rounded-xl bg-[var(--surface)] px-3 py-1.5 text-[12px] font-bold text-rose-500 active:scale-95 transition-transform">
               {t('events.repeat')}
             </button>
@@ -647,7 +680,7 @@ export function TimeSheetTab() {
         )}
 
         {/* ── Stats 2×2 ─────────────────────────────── */}
-        {!isLoading && !isError && (
+        {!isLoading && !isError && !shiftsLoading && !shiftsError && (
           <div className="grid grid-cols-2 gap-3">
             <StatCard icon="mdi:calendar-month" iconBg="bg-indigo-400"
               value={String(stats.plannedDays)} label={t('sheet.workingDays')} sub={t('sheet.elapsed', { count: stats.elapsedDays })} />
@@ -682,7 +715,7 @@ export function TimeSheetTab() {
             <p className="m-0 text-[15px] font-extrabold text-[var(--text-main)]">{t('sheet.calendar')}</p>
             <p className="m-0 text-[13px] text-[var(--text-muted)]">{monthLabel(monthKey)}</p>
           </div>
-          {isLoading ? (
+          {isLoading || shiftsLoading ? (
             <div className="flex justify-center py-8">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--line)]" style={{ borderTopColor: accent }} />
             </div>
@@ -691,6 +724,7 @@ export function TimeSheetTab() {
               monthKey={monthKey}
               todayIso={todayIso}
               recordsByDate={recordsByDate}
+              shiftDates={shiftDates}
               onDayPress={handleDayPress}
             />
           )}

@@ -362,6 +362,7 @@ export const kk: Partial<Record<TKey, string>> = {
   'sheet.absentShort': '{count} болмаған',
   'sheet.latePenalty': 'Кешігу айыппұлы',
   'sheet.calendar': 'Күнтізбе',
+  'sheet.offSchedule': 'Кестеден тыс',
   'schedule.totalHours': 'Жалпы сағат',
   'schedule.at': '{place} орнында',
   'schedule.as': '{position} ретінде',
