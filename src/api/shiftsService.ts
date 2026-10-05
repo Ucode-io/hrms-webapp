@@ -23,15 +23,17 @@ export interface ShiftRecord {
   hours_per_day?: number | string | null
   positions_id_data?: { title?: string } | null
   locations_id_data?: { title?: string } | null
+  /** Удалённая смена — поле, а не название филиала (решения 22–23). Пусто — нет. */
+  is_remote?: boolean | null
   project?: string | null
   comment?: string | null
   [key: string]: unknown
 }
 
 /**
- * Вид смены — то же прочтение, что в админке: ночь выводится из времени,
- * удалёнка из локации, «выходной» — из отсутствия смены. Хранимого поля нет,
- * поэтому расходиться с гридом планировщика тут нечему.
+ * Вид смены — то же прочтение, что в админке: удалёнка — поле `is_remote`,
+ * ночь — переход через полночь, «выходной» — отсутствие смены. Виды
+ * взаимоисключающи: удалённая через полночь остаётся удалённой.
  */
 export type ShiftKind = 'day' | 'night' | 'remote' | 'off'
 
@@ -44,12 +46,9 @@ export const SHIFT_KIND_META: Record<ShiftKind, { label: TKey; color: string; so
   off: { label: 'shift.off', color: '#94a3b8', soft: '#f8fafc' },
 }
 
-/** Локация считается удалённой по названию — отдельного флага у `locations` нет. */
-const REMOTE_LOCATION = /удал|remote|дом/i
-
 export function shiftKind(shift: ShiftRecord): ShiftKind {
+  if (shift.is_remote === true) return 'remote'
   if (isNightShift(shift)) return 'night'
-  if (REMOTE_LOCATION.test(String(shift.locations_id_data?.title || ''))) return 'remote'
   return 'day'
 }
 
